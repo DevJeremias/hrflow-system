@@ -1,0 +1,33 @@
+=========================================
+Instruções de Git para a Equipe - HRFlow
+=========================================
+
+Fala galera! 🚀
+
+Pra gente não ter dor de cabeça com conflito de código na véspera da entrega, vamos organizar o Git de um jeito bem simples.
+
+⚠️ REGRA DE OURO: NINGUÉM dá "git push" direto na "main" ou na "dev". Todo código novo entra via Pull Request (PR) pra gente revisar antes de juntar tudo.
+
+Estrutura de Branches:
+- main: Versão final intocável (só vai o que tá 100% pronto).
+- dev: Onde a gente junta o front e o back pra testar.
+- feat/nome-da-tarefa: A branch onde você vai codar a sua parte.
+
+🛠️ PASSO A PASSO PARA TRABALHAR NO SEU CÓDIGO:
+
+1. Antes de começar a codar no dia (Puxar as atualizações):
+git checkout dev
+git pull origin dev
+
+2. Criar a sua branch da tarefa:
+(Use 'feat/' pra funcionalidade e 'fix/' pra corrigir bug)
+git checkout -b feat/sua-tarefa
+
+3. Terminou? Salva e manda pro GitHub:
+git add .
+git commit -m "feat: o que você fez de forma resumida"
+git push origin feat/sua-tarefa
+
+4. Abrir o Pull Request (PR):
+Vai lá no repositório no GitHub, clica em "Compare & pull request". 
+Mude o destino de "main" para "dev" e avise aqui no grupo pra alguém aprovar!
