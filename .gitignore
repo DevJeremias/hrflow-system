@@ -1,0 +1,9 @@
+# Dependências do Node
+node_modules/
+
+# Variáveis de ambiente (Senhas do banco, chaves JWT)
+.env
+
+# Logs e arquivos de sistema do SO
+npm-debug.log
+.DS_Store
