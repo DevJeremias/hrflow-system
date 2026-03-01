@@ -5,10 +5,12 @@ const cors = require('cors');
 const db = require('./config/db'); // <--- ESSA LINHA É O QUE ESTÁ FALTANDO!
 
 const app = express();
+const funcionarioRoutes = require('./routes/funcionarioRoutes');
 
 // 2. Middlewares
 app.use(cors());
 app.use(express.json());
+app.use('/api/funcionarios', funcionarioRoutes);
 
 // 3. Teste de conexão (A linha 12 que deu erro)
 db.query('SELECT 1 + 1 AS result')
