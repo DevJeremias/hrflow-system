@@ -1,62 +1,78 @@
-# hrflow-system
 
-# 🚀 HRFlow - Sistema de Gerenciamento de RH
 
-Este é o **Back-end** do projeto **HRFlow**, desenvolvido para centralizar a gestão de funcionários, cargos e departamentos de forma **segura, escalável e eficiente**.
+# 🚀 HRFlow System - Back-end
 
----
+O **HRFlow** é um sistema de gerenciamento de Recursos Humanos desenvolvido para centralizar a gestão de funcionários, cargos e departamentos, garantindo segurança e controle de acesso hierárquico.
+
+## 🏗️ Arquitetura e Estrutura do Projeto
+
+O projeto foi estruturado utilizando uma adaptação do padrão **MVC (Model-View-Controller)** para APIs RESTful, separando claramente as responsabilidades:
+
+* **Routes (Rotas):** Portas de entrada da API. Direcionam as requisições HTTP para os controladores corretos.
+* **Controllers (Controladores):** Contêm as regras de negócio. Processam as requisições, interagem com o banco de dados e formatam as respostas JSON.
+* **Middlewares:** Interceptadores de segurança. Validam tokens JWT e verificam permissões de acesso (RBAC) antes de deixar a requisição chegar ao Controller.
+* **Database (Modelos/Queries):** Gerenciamento da conexão com o banco de dados MySQL e execução das queries SQL.
+
+### 📂 Estrutura de Pastas
+```text
+backend/
+├── controllers/          # Lógica de negócio (ex: funcionarioController.js)
+├── middlewares/          # Filtros de segurança (authMiddleware.js, roleMiddleware.js)
+├── routes/               # Definição dos endpoints (funcionarioRoutes.js)
+├── database/             # Scripts SQL e configuração de conexão
+├── .env.example          # Template das variáveis de ambiente
+├── server.js             # Arquivo principal que inicializa a aplicação
+└── package.json          # Dependências do projeto
+
+```
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Node.js** com **Express**
-- **MySQL** para persistência de dados
-- **JWT (JSON Web Token)** para autenticação
-- **Bcryptjs** para criptografia de senhas
+* **Node.js** com **Express** (Framework web rápido e minimalista)
+* **MySQL** (Banco de Dados Relacional)
+* **JWT (JSON Web Token)** (Autenticação de usuários)
+* **Bcryptjs** (Criptografia de senhas)
+
+## 🔐 Controle de Acesso (RBAC)
+
+O sistema possui três níveis de permissão que restringem o que cada usuário pode fazer na API:
+
+1. **Administrador:** Acesso total ao sistema.
+2. **RH:** Pode gerenciar (Criar, Editar, Excluir) funcionários, cargos e departamentos.
+3. **Colaborador:** Acesso de leitura (Apenas visualização das listagens).
 
 ---
 
-## 📋 Pré-requisitos para a Equipe
+## 🚀 Como Rodar o Projeto Localmente
 
-Antes de rodar o projeto, certifique-se de ter instalado:
+### 1. Pré-requisitos
 
-- [Node.js](https://nodejs.org/)
-- MySQL Server
+* Node.js instalado.
+* MySQL Server rodando localmente.
 
----
+### 2. Configuração do Banco de Dados
 
-## 🗄️ Configuração do Banco de Dados
+Crie um banco de dados chamado `hrflow_db` e execute os scripts SQL disponíveis com a equipe para criar as tabelas (`usuarios`, `funcionarios`, `cargos`, `departamentos`).
 
-1. Crie um banco de dados chamado:
+### 3. Configuração do Ambiente
 
-```sql
-CREATE DATABASE hrflow_db;
-```
-
-2. Execute os scripts SQL localizados na pasta `/database`
-   *(ou solicite o dump atualizado ao líder do projeto).*
-
----
-
-## ⚙️ Configuração do Arquivo `.env`
-
-Crie um arquivo `.env` na raiz da pasta `backend` com as seguintes variáveis:
+Crie um arquivo `.env` na raiz da pasta `backend` seguindo o modelo do `.env.example`:
 
 ```env
 PORT=3000
 DB_HOST=localhost
-DB_USER=seu_usuario
-DB_PASS=sua_senha
+DB_USER=seu_usuario_mysql
+DB_PASS=sua_senha_mysql
 DB_NAME=hrflow_db
-JWT_SECRET=projeto_hrflow_2026
+JWT_SECRET=sua_chave_secreta_aqui
+
 ```
 
----
-
-## 🚀 Como Rodar o Projeto
+### 4. Instalação e Execução
 
 ```bash
 # Clone o repositório
-git clone https://github.com/seu-usuario/hrflow.git
+git clone url-do-seu-repositorio
 
 # Acesse a pasta do backend
 cd backend
@@ -66,71 +82,28 @@ npm install
 
 # Inicie o servidor
 node server.js
-```
 
-O servidor será iniciado em:
-```
-http://localhost:3000
 ```
 
 ---
 
-## 🔐 Guia da API (Endpoints)
+## 📡 Endpoints da API (MVP)
+
+> **⚠️ Atenção:** Para acessar rotas protegidas, envie o Token JWT no cabeçalho da requisição: `Authorization: Bearer <seu_token>`
 
 ### 🔑 Autenticação (Público)
 
-- `POST /api/auth/registrar`  
-  Cria um novo usuário (**Admin / RH / Colaborador**)
+| Método | Rota | Descrição |
+| --- | --- | --- |
+| `POST` | `/api/auth/registrar` | Cria um novo usuário (Admin/RH/Colaborador). |
+| `POST` | `/api/auth/login` | Autentica o usuário e retorna o Token JWT. |
 
-- `POST /api/auth/login`  
-  Autentica o usuário e retorna o **Token JWT**
+### 👥 Funcionários (Protegido)
 
----
+| Método | Rota | Descrição | Permissão Exigida |
+| --- | --- | --- | --- |
+| `GET` | `/api/funcionarios` | Lista todos os funcionários. | Qualquer usuário logado |
+| `POST` | `/api/funcionarios` | Cadastra um novo funcionário. | Administrador ou RH |
+| `PUT` | `/api/funcionarios/:id` | Atualiza os dados de um funcionário. | Administrador ou RH |
+| `DELETE` | `/api/funcionarios/:id` | Exclui um funcionário do sistema. | Administrador ou RH |
 
-### 👥 Funcionários (Protegido - Requer Token)
-
-- `GET /api/funcionarios`  
-  Retorna a lista de funcionários com cargo e departamento
-
-- `POST /api/funcionarios`  
-  Cadastra um novo funcionário
-
----
-
-## 💡 Instruções para o Front-end (React + Axios)
-
-Para acessar rotas protegidas, envie o **Token JWT** no cabeçalho das requisições usando o padrão **Bearer Token**.
-
-### Exemplo com Axios:
-
-```javascript
-import axios from 'axios';
-
-const token = localStorage.getItem('token');
-
-const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
-  headers: {
-    Authorization: `Bearer ${token}`
-  }
-});
-
-export default api;
-```
-
-> ⚠️ **Atenção:**  
-> Caso o token não seja enviado ou esteja inválido, a API retornará:
-> - `401 Unauthorized`
-> - `400 Bad Request`
-
----
-
-## 📌 Observações Finais
-
-- Este projeto segue boas práticas de autenticação e organização de código.
-- Ideal para uso acadêmico, portfólio profissional e projetos colaborativos.
-- Documentação de **Editar** e **Excluir** pode ser adicionada para completar o CRUD.
-
----
-
-🚀 **Projeto pronto para evoluir!**
