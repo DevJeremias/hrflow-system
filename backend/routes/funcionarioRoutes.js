@@ -9,4 +9,10 @@ router.post('/', verificarPerfil(['Administrador', 'RH']), funcionarioController
 // O GET continua liberado para qualquer um que esteja logado (Colaboradores podem ver a lista)
 router.get('/', funcionarioController.listarFuncionarios);
 
+// Rota DELETE para excluir funcionário (Apenas Admin e RH)
+router.delete('/:id', verificarPerfil(['Administrador', 'RH']), funcionarioController.deletarFuncionario);
+
+// Rota PUT para editar funcionário (Apenas Admin e RH)
+router.put('/:id', verificarPerfil(['Administrador', 'RH']), funcionarioController.atualizarFuncionario);
+
 module.exports = router;
