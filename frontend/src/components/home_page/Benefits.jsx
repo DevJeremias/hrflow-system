@@ -1,6 +1,6 @@
 import React from "react";
 import "./Benefits.css";
-import mosaicoImage from "../assets/benefits_imagem.png";
+import mosaicoImage from "../../assets/benefits_imagem.png";
 
 export default function Benefits() {
   const benefitsList = [
