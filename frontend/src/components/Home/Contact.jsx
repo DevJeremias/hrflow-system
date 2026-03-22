@@ -1,13 +1,21 @@
 import React from "react";
+import { useNavigate } from "react-router-dom"; 
 import "./Contact.css";
 
 export default function Contact() {
+  const navigate = useNavigate(); 
+
   const formBenefits = [
     "Sistema dedicado para facilitar o RH e DP",
     "Fácil de usar, simples e intuitiva",
     "Aplicável para CLTs, PJs, Autônomos e outros",
     "Campos e processos totalmente customizáveis",
   ];
+
+  const handleSubmit = (e) => {
+    e.preventDefault(); 
+    navigate("/admin"); 
+  };
 
   return (
     <section className="contact-section" id="contato">
@@ -41,7 +49,7 @@ export default function Contact() {
       </div>
 
       <div className="contact-form-wrapper">
-        <form className="demo-form" onSubmit={(e) => e.preventDefault()}>
+        <form className="demo-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="nome">
               Nome <span>*</span>
@@ -95,8 +103,8 @@ export default function Contact() {
               Quantidade de Colaboradores <span>*</span>
             </label>
             <div className="custom-select-wrapper">
-              <select id="tamanho" required>
-                <option value="" disabled selected>
+              <select id="tamanho" required defaultValue="">
+                <option value="" disabled>
                   Selecione uma opção
                 </option>
                 <option value="1-20">Menos de 20 colaboradores</option>

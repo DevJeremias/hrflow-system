@@ -11,7 +11,6 @@ export default function Stats() {
       trendText: "vs. mês anterior",
       isPositive: true,
       colorTheme: "blue",
-
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -36,7 +35,6 @@ export default function Stats() {
       trendText: "vs. mês anterior",
       isPositive: true,
       colorTheme: "green",
-
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -58,7 +56,6 @@ export default function Stats() {
       trendText: "vs. mês anterior",
       isPositive: false,
       colorTheme: "purple",
-
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -81,7 +78,6 @@ export default function Stats() {
       trendText: "vs. mês anterior",
       isPositive: true,
       colorTheme: "orange",
-
       icon: (
         <svg
           viewBox="0 0 24 24"
@@ -109,22 +105,27 @@ export default function Stats() {
       <div className="stats-grid">
         {statsData.map((stat) => (
           <div key={stat.id} className="stat-card">
+            
             <div className={`stat-icon-wrapper ${stat.colorTheme}`}>
               {stat.icon}
             </div>
-            <h3 className="stat-value">{stat.value}</h3>
-            <p className="stat-label-text">{stat.label}</p>
 
-            <div className="stat-trend">
-              <span
-                className={`trend-badge ${
-                  stat.isPositive ? "positive" : "negative"
-                }`}
-              >
-                {stat.trend}
-              </span>
-              <span className="trend-text">{stat.trendText}</span>
+            <div className="stat-content">
+              <p className="stat-label-text">{stat.label}</p>
+              <h3 className="stat-value">{stat.value}</h3>
+
+              <div className="stat-trend">
+                <span
+                  className={`trend-badge ${
+                    stat.isPositive ? "positive" : "negative"
+                  }`}
+                >
+                  {stat.trend}
+                </span>
+                <span className="trend-text">{stat.trendText}</span>
+              </div>
             </div>
+
           </div>
         ))}
       </div>
