@@ -13,11 +13,13 @@ const Employees = () => {
   const [colaboradorParaEditar, setColaboradorParaEditar] = useState(null);  
   const [colaboradorVisualizando, setColaboradorVisualizando] = useState(null);
 
+  // joguei a busca pra uma função separada pra gente poder reaproveitar
+  const carregarDados = async () => {
+    const dadosDoBanco = await buscarColaboradores();
+    setColaboradores(dadosDoBanco);
+  };
+
   useEffect(() => {
-    const carregarDados = async () => {
-      const dadosDoBanco = await buscarColaboradores();
-      setColaboradores(dadosDoBanco);
-    };
     carregarDados();
   }, []);
 
@@ -33,18 +35,19 @@ const Employees = () => {
 
   const handleSalvarColaborador = async (dadosDoFormulario) => {
     try {
-      const colaboradorSalvo = await salvarColaborador(dadosDoFormulario);
+      // manda os dados pro backend
+      await salvarColaborador(dadosDoFormulario);
       
-      if (dadosDoFormulario.id) {
-        setColaboradores(colaboradores.map(colab => colab.id === colaboradorSalvo.id ? colaboradorSalvo : colab));
-        if (colaboradorVisualizando && colaboradorVisualizando.id === colaboradorSalvo.id) {
-          setColaboradorVisualizando(colaboradorSalvo);
-        }
-      } else {
-        setColaboradores([...colaboradores, colaboradorSalvo]);
+      // se deu certo, busca tudo atualizado do banco pra não dar erro na tela
+      await carregarDados();
+      
+      // se a gente estava visualizando o perfil de alguém, fecha pra atualizar
+      if (colaboradorVisualizando) {
+        setColaboradorVisualizando(null);
       }
     } catch (erro) {
-      alert("Erro ao salvar.");
+      console.error(erro);
+      alert("Erro ao salvar. Verifique se os dados estão corretos.");
     }
   };
 

@@ -1,53 +1,76 @@
 // src/services/colaboradoresService.js
 
-// Um "banco de dados" falso na memória para você testar a tela
-// Arquivo: src/services/colaboradoresService.js
+const API_URL = 'http://localhost:3000/api';
 
-let bancoMock = [
-  { 
-    id: 1, 
-    nomeCompleto: 'Jeremias Branco', 
-    emailPessoal: 'jeremias.branco@email.com', 
-    telefone: '(11) 98765-4321',
-    cpf: '123.456.789-00', 
-    dataNascimento: '1990-05-15',
-    enderecoCompleto: 'Rua das Flores, 123, São Paulo - SP',
-    matricula: 'COL001',
-    cargo: 'Gerente de Projetos', 
-    departamento: 'TI',
-    dataAdmissao: '2020-01-14',
-    tipoContrato: 'CLT',
-    salarioBase: '8500.00',
-    // Avatar falso usando o Pravatar para ficar com foto na tela
-    avatar: 'https://i.pravatar.cc/150?u=anasilva' 
-  }
-];
-
-
-// O Front-end chama isso para pegar os dados
+// 1. BUSCAR COLABORADORES DO SEU MYSQL
 export const buscarColaboradores = async () => {
-  // Simulando lentidão de internet (meio segundo)
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([...bancoMock]);
-    }, 500);
-  });
+  const token = localStorage.getItem('token'); // Pega o passaporte gerado no login
+
+  try {
+    const resposta = await fetch(`${API_URL}/funcionarios`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!resposta.ok) throw new Error('Falha ao buscar dados do servidor');
+    
+    const dadosDoBanco = await resposta.json();
+
+    // TRADUÇÃO: O que vem do banco (nome) vira o que a tela espera (nomeCompleto)
+    return dadosDoBanco.map(func => ({
+      id: func.id,
+      nomeCompleto: func.nome,
+      emailPessoal: func.email,
+      senhaAcesso: func.senha,
+      cpf: func.cpf || '',
+      cargo: func.perfil || 'Colaborador', // Traz o perfil do banco
+      status: func.ativo === 1 ? 'Ativo' : 'Inativo',
+    }));
+
+  } catch (erro) {
+    console.error("Erro no serviço de busca:", erro);
+    return []; 
+  }
 };
 
-// O Front-end chama isso para Salvar (Criar ou Editar)
-export const salvarColaborador = async (dados) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (dados.id) {
-        // É uma edição
-        bancoMock = bancoMock.map(colab => colab.id === dados.id ? dados : colab);
-        resolve(dados);
-      } else {
-        // É um cadastro novo
-        const novoRegistro = { ...dados, id: Date.now() };
-        bancoMock.push(novoRegistro);
-        resolve(novoRegistro);
-      }
-    }, 500);
-  });
+// 2. SALVAR NOVO COLABORADOR NO MYSQL
+export const salvarColaborador = async (dadosDaTela) => {
+  const token = localStorage.getItem('token');
+
+  // TRADUÇÃO: A tela manda "nomeCompleto", nós convertemos para "nome" pro banco aceitar
+  const payloadParaOBanco = {
+    nome: dadosDaTela.nomeCompleto,
+    email: dadosDaTela.emailPessoal,
+    senha: dadosDaTela.senhaAcesso || '123456', 
+    perfil: 'Colaborador', 
+    ativo: 1
+  };
+
+  try {
+    const url = dadosDaTela.id ? `${API_URL}/funcionarios/${dadosDaTela.id}` : `${API_URL}/funcionarios`;
+    const method = dadosDaTela.id ? 'PUT' : 'POST';
+
+    const resposta = await fetch(url, {
+      method: method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payloadParaOBanco)
+    });
+
+    if (!resposta.ok) {
+      const erroServidor = await resposta.json();
+      throw new Error(erroServidor.mensagem || 'Erro ao salvar no servidor');
+    }
+
+    return await resposta.json();
+
+  } catch (erro) {
+    console.error("Erro ao salvar:", erro);
+    throw erro; // Repassa o erro para a tela exibir um alerta
+  }
 };
