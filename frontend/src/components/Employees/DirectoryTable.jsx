@@ -1,8 +1,9 @@
 import React from 'react';
-import { MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2 } from 'lucide-react';
 import './DirectoryTable.css';
 
-const DirectoryTable = ({ dados, onVerPerfil  }) => {
+// recebemos a prop onExcluir la do pai
+const DirectoryTable = ({ dados, onVerPerfil, onExcluir }) => {
   if (!dados || dados.length === 0) {
     return <div className="empty-table-msg" style={{ padding: '2rem', textAlign: 'center' }}>Nenhum colaborador encontrado.</div>;
   }
@@ -40,7 +41,12 @@ const DirectoryTable = ({ dados, onVerPerfil  }) => {
                   <button className="btn-icon-action edit" title="Editar" onClick={() => onVerPerfil(colab)}>
                     <Edit2 size={16} />
                   </button>
-                  <button className="btn-icon-action delete" title="Excluir">
+                  {/* botao de apagar agora chama a funcao enviando o id e o nome pra gente usar no alert */}
+                  <button 
+                    className="btn-icon-action delete" 
+                    title="Excluir" 
+                    onClick={() => onExcluir(colab.id, colab.nomeCompleto || colab.nome)}
+                  >
                     <Trash2 size={16} />
                   </button>
                 </div>

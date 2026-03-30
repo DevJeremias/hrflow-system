@@ -27,9 +27,10 @@ const Sidebar = ({ isOpen }) => {
            <Users size={20} /> Colaboradores
          </Link>
          
+         {/* padronizei a url pra folha-pagamento tanto no link quanto no active */}
          <Link 
-           to="/admin/eventos" 
-           className={`nav-item ${location.pathname === '/admin/folhaPagamento' ? 'active' : ''}`}
+           to="/admin/folha-pagamento" 
+           className={`nav-item ${location.pathname === '/admin/folha-pagamento' ? 'active' : ''}`}
          >
            <Calendar size={20} /> Folha de Pagamento
          </Link>

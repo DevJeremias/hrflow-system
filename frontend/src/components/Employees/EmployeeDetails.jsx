@@ -7,6 +7,10 @@ const EmployeeDetails = ({ colaborador, onVoltar, onAbrirEdicao }) => {
 
   if (!colaborador) return null;
 
+  // pega o primeiro nome com segurança pra não dar tela azul no split
+  const nomeSeguro = colaborador.nomeCompleto || colaborador.nome || 'Colaborador';
+  const primeiroNome = nomeSeguro.split(' ')[0];
+
   return (
     <div className="perfil-container">
       <button className="btn-voltar" onClick={onVoltar}>
@@ -117,7 +121,8 @@ const EmployeeDetails = ({ colaborador, onVoltar, onAbrirEdicao }) => {
             <div className="documento-item">
               <FileText size={24} color="#3b82f6" />
               <div className="doc-info">
-                <strong>Contrato de Trabalho - {colaborador.nome.split(' ')[0]}.pdf</strong>
+                {/* agora usa a variavel segura pra nao quebrar */}
+                <strong>Contrato de Trabalho - {primeiroNome}.pdf</strong>
                 <span>2.3 MB • Adicionado em 14/01/2020</span>
               </div>
             </div>

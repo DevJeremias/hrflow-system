@@ -15,4 +15,5 @@ router.delete('/:id', verificarPerfil(['Administrador', 'RH']), funcionarioContr
 // Rota PUT para editar funcionário (Apenas Admin e RH)
 router.put('/:id', verificarPerfil(['Administrador', 'RH']), funcionarioController.atualizarFuncionario);
 
+// É ESTA LINHA QUE O EXPRESS ESTAVA SENTINDO FALTA SE O ARQUIVO QUEBROU
 module.exports = router;

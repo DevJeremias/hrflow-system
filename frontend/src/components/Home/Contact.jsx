@@ -1,10 +1,8 @@
 import React from "react";
-import { useNavigate } from "react-router-dom"; 
+// tirei o useNavigate daqui porque a gente não vai mais redirecionar a tela
 import "./Contact.css";
 
 export default function Contact() {
-  const navigate = useNavigate(); 
-
   const formBenefits = [
     "Sistema dedicado para facilitar o RH e DP",
     "Fácil de usar, simples e intuitiva",
@@ -14,7 +12,11 @@ export default function Contact() {
 
   const handleSubmit = (e) => {
     e.preventDefault(); 
-    navigate("/admin"); 
+    // simula o envio dos dados pro backend e avisa o cliente
+    alert("Solicitação enviada com sucesso! Nossa equipe entrará em contato em breve.");
+    
+    // limpa os campos do formulário
+    e.target.reset();
   };
 
   return (

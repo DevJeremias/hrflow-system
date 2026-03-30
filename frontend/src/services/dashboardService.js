@@ -1,12 +1,14 @@
 // src/services/dashboardService.js
+import { buscarColaboradores } from './colaboradoresService';
 
-// Este é o "pacote" completo que a API vai devolver quando a tela carregar
+// Mantemos os dados falsos (mock) para as partes do sistema que 
+// ainda não tem tabela no banco de dados (Avisos, Férias, Aniversários)
 const mockDashboardData = {
   estatisticas: {
-    totalColaboradores: 6,
+    totalColaboradores: 0, // será substituído pela API
     aniversariantesMes: 1,
     solicitacoesPendentes: 4,
-    presencaHoje: "5/6"
+    presencaHoje: "0/0"    // será substituído pela API
   },
   aniversarianteDestaque: {
     name: "Mariana Costa Ferreira",
@@ -46,10 +48,27 @@ const mockDashboardData = {
 
 // A função que o seu componente Dashboard vai chamar
 export const buscarDadosDashboard = async () => {
-  return new Promise((resolve) => {
-    // Simulando o tempo de ir ao banco de dados e voltar
-    setTimeout(() => {
-      resolve(mockDashboardData);
-    }, 600);
-  });
+  try {
+    // 1. Vai no seu banco de dados real e busca os funcionários
+    const colaboradoresReais = await buscarColaboradores();
+    
+    // 2. Conta quantas pessoas vieram na lista
+    const totalReal = colaboradoresReais.length;
+
+    // 3. Devolve o pacote misturando os dados reais com os dados de layout
+    return {
+      ...mockDashboardData,
+      estatisticas: {
+        ...mockDashboardData.estatisticas,
+        totalColaboradores: totalReal, // AQUI ENTRA O DADO REAL!
+        presencaHoje: `${totalReal}/${totalReal}` // Faz uma brincadeira simulando 100% de presença
+      }
+    };
+  } catch (erro) {
+    console.error("Erro ao puxar dados reais pro dashboard:", erro);
+    
+    // Se der problema na conexão, devolve os dados falsos originais 
+    // pro sistema não capotar e mostrar a "tela azul"
+    return mockDashboardData;
+  }
 };

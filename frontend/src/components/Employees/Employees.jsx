@@ -5,7 +5,7 @@ import ModalCadastro from './EmployeeForm';
 import PerfilColaborador from './EmployeeDetails'; 
 import { Plus, Search } from 'lucide-react';
 import './Employees.css';
-import { buscarColaboradores, salvarColaborador } from '../../services/colaboradoresService';
+import { buscarColaboradores, salvarColaborador, excluirColaborador } from '../../services/colaboradoresService';
 
 const Employees = () => {
   const [colaboradores, setColaboradores] = useState([]);
@@ -13,7 +13,7 @@ const Employees = () => {
   const [colaboradorParaEditar, setColaboradorParaEditar] = useState(null);  
   const [colaboradorVisualizando, setColaboradorVisualizando] = useState(null);
 
-  // joguei a busca pra uma função separada pra gente poder reaproveitar
+  // busca os dados na api e atualiza a tela
   const carregarDados = async () => {
     const dadosDoBanco = await buscarColaboradores();
     setColaboradores(dadosDoBanco);
@@ -35,19 +35,29 @@ const Employees = () => {
 
   const handleSalvarColaborador = async (dadosDoFormulario) => {
     try {
-      // manda os dados pro backend
       await salvarColaborador(dadosDoFormulario);
+      await carregarDados(); // recarrega a tabela apos salvar
       
-      // se deu certo, busca tudo atualizado do banco pra não dar erro na tela
-      await carregarDados();
-      
-      // se a gente estava visualizando o perfil de alguém, fecha pra atualizar
       if (colaboradorVisualizando) {
         setColaboradorVisualizando(null);
       }
     } catch (erro) {
       console.error(erro);
-      alert("Erro ao salvar. Verifique se os dados estão corretos.");
+      alert("Erro ao salvar. Verifica se os dados estão corretos.");
+    }
+  };
+
+  // lida com o clique na lixeira
+  const handleExcluirColaborador = async (id, nome) => {
+    // da um aviso antes de apagar do banco de verdade
+    if (window.confirm(`Tens a certeza que desejas excluir o colaborador ${nome}? Esta ação não pode ser desfeita.`)) {
+      try {
+        await excluirColaborador(id);
+        await carregarDados(); // recarrega a tabela sem o cara que foi apagado
+      } catch (erro) {
+        console.error(erro);
+        alert("Erro ao excluir colaborador.");
+      }
     }
   };
 
@@ -85,6 +95,7 @@ const Employees = () => {
               <ColaboradoresTable 
                 dados={colaboradores} 
                 onVerPerfil={(colab) => setColaboradorVisualizando(colab)} 
+                onExcluir={handleExcluirColaborador} 
               />
             </div>
           </>

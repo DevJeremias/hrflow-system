@@ -2,52 +2,69 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-exports.registrar = async (req, res) => {
+// NOVA FUNÇÃO: Cria a Empresa e o Usuário Admin ao mesmo tempo
+exports.registrarConta = async (req, res) => {
     try {
-        const { nome, email, senha, perfil } = req.body;
-        
-        // gera o hash da senha antes de salvar
+        const { nomeEmpresa, nomeAdmin, email, senha } = req.body;
+
+        if (!nomeEmpresa || !nomeAdmin || !email || !senha) {
+            return res.status(400).json({ erro: "Preencha todos os campos." });
+        }
+
+        // 1. Verifica se o email já existe para evitar duplicidade
+        const [users] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+        if (users.length > 0) return res.status(400).json({ erro: "E-mail já cadastrado." });
+
+        // 2. Cria a Empresa no banco
+        const sqlEmpresa = `INSERT INTO empresas (nome_fantasia) VALUES (?)`;
+        const [resultEmpresa] = await db.query(sqlEmpresa, [nomeEmpresa]);
+        const empresaId = resultEmpresa.insertId; // Pega o ID da empresa que acabou de nascer
+
+        // 3. Criptografa a senha
         const salt = await bcrypt.genSalt(10);
         const senhaCripto = await bcrypt.hash(senha, salt);
 
-        const sql = `INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)`;
-        await db.query(sql, [nome, email, senhaCripto, perfil || 'Colaborador']);
+        // 4. Cria o Usuário Admin vinculado a essa nova empresa
+        const sqlUsuario = `INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)`;
+        
+        await db.query(sqlUsuario, [nomeAdmin, email, senhaCripto, 'Administrador', empresaId]);
 
-        res.status(201).json({ mensagem: "Usuário criado com sucesso!" });
+        res.status(201).json({ mensagem: "Conta criada com sucesso!" });
     } catch (error) {
-        console.error("erro no registro:", error);
-        res.status(500).json({ erro: "Erro ao registrar usuário." });
+        console.error("Erro ao registrar conta:", error);
+        res.status(500).json({ erro: "Erro ao criar conta." });
     }
 };
 
+// ATUALIZADO: Agora o login guarda a empresa_id no Token
 exports.login = async (req, res) => {
     try {
         const { email, senha } = req.body;
         const [users] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 
-        // se nao achou o email, ja barra direto
         if (users.length === 0) return res.status(401).json({ erro: "E-mail ou senha inválidos." });
 
         const usuario = users[0];
         
-        // verifica a senha. testa o bcrypt primeiro pq eh o padrao
+        // Verifica a senha (tenta bcrypt, se falhar tenta texto puro pelo nosso teste antigo)
         let senhaValida = false;
         try {
             senhaValida = await bcrypt.compare(senha, usuario.senha);
-        } catch (e) {
-            // ignora se der erro pq o hash eh invalido
-        }
+        } catch (e) {}
 
-        // se o bcrypt falhar, testa como texto puro pra quebrar nosso galho do teste no banco
         if (!senhaValida) {
             senhaValida = (senha === usuario.senha);
         }
 
         if (!senhaValida) return res.status(401).json({ erro: "E-mail ou senha inválidos." });
 
-        // cria o passaporte. coloquei um fallback caso a gnt esqueça de criar o .env
+        // O PULO DO GATO: Colocamos o empresa_id dentro do token JWT!
         const token = jwt.sign(
-            { id: usuario.id, perfil: usuario.perfil },
+            { 
+                id: usuario.id, 
+                perfil: usuario.perfil, 
+                empresa_id: usuario.empresa_id // <- A Mágica acontece aqui
+            },
             process.env.JWT_SECRET || 'chave_secreta_hrflow',
             { expiresIn: '1d' }
         );

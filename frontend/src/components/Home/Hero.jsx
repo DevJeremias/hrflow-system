@@ -1,8 +1,11 @@
 import React from "react";
+import { useNavigate } from "react-router-dom"; // traz o hook
 import "./Hero.css";
 import heroImage from "../../assets/hero_imagem.avif";
 
 export default function Hero() {
+  const navigate = useNavigate(); // inicia o hook
+
   return (
     <section className="hero-section">
       <div className="hero-content">
@@ -22,9 +25,11 @@ export default function Hero() {
         </p>
 
         <div className="hero-buttons">
-          <button className="btn-primary hero-btn">
+          {/* botao principal agora aponta pro login */}
+          <button className="btn-primary hero-btn" onClick={() => navigate('/login')}>
             Começar Gratuitamente <span>&rarr;</span>
           </button>
+          
           <button className="btn-demo">
             <span className="play-icon">▶</span> Ver Demo
           </button>
