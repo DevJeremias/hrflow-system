@@ -9,6 +9,15 @@ export default function Contact() {
     "Campos e processos totalmente customizáveis",
   ];
 
+  const handleSubmit = (e) => {
+    e.preventDefault(); 
+    // simula o envio dos dados pro backend e avisa o cliente
+    alert("Solicitação enviada com sucesso! Nossa equipe entrará em contato em breve.");
+    
+    // limpa os campos do formulário
+    e.target.reset();
+  };
+
   return (
     <section className="contact-section" id="contato">
       <div className="contact-info">
@@ -41,7 +50,7 @@ export default function Contact() {
       </div>
 
       <div className="contact-form-wrapper">
-        <form className="demo-form" onSubmit={(e) => e.preventDefault()}>
+        <form className="demo-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="nome">
               Nome <span>*</span>
@@ -95,8 +104,8 @@ export default function Contact() {
               Quantidade de Colaboradores <span>*</span>
             </label>
             <div className="custom-select-wrapper">
-              <select id="tamanho" required>
-                <option value="" disabled selected>
+              <select id="tamanho" required defaultValue="">
+                <option value="" disabled>
                   Selecione uma opção
                 </option>
                 <option value="1-20">Menos de 20 colaboradores</option>

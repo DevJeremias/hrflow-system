@@ -1,0 +1,81 @@
+.colaboradores-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.colaboradores-header-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap; 
+}
+
+.header-title-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.header-title-section p {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.header-actions-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-bar-list {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 300px;
+  transition: border-color 0.2s;
+}
+
+.search-bar-list:focus-within {
+  border-color: #3b82f6;
+}
+
+.search-bar-list input {
+  border: none;
+  outline: none;
+  font-size: 0.9rem;
+  color: #1e293b;
+  width: 100%;
+}
+
+.btn-add-colaborador {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-add-colaborador:hover {
+  background-color: #2563eb;
+}
+
+.table-container-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden; 
+}
