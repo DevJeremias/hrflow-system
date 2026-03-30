@@ -1,5 +1,4 @@
 import React from "react";
-// tirei o useNavigate daqui porque a gente não vai mais redirecionar a tela
 import "./Contact.css";
 
 export default function Contact() {

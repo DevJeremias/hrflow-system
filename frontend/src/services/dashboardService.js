@@ -1,4 +1,3 @@
-// src/services/dashboardService.js
 import { buscarColaboradores } from './colaboradoresService';
 
 // Mantemos os dados falsos (mock) para as partes do sistema que 

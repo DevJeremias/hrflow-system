@@ -1,7 +1,7 @@
 import React from 'react';
 
-// Agora recebe cargos e departamentos como propriedades
-const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) => {
+// Agora recebe cargos, departamentos e a propriedade de erros
+const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [], errors = {} }) => {
   return (
     <div className="tab-content">
       
@@ -9,7 +9,13 @@ const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) =>
         <div className="form-group">
           <label>Matrícula *</label>
           <input 
-            type="text" name="matricula" value={formData.matricula || ''} onChange={handleChange} required placeholder="COL999" 
+            type="text" 
+            name="matricula" 
+            value={formData.matricula || ''} 
+            onChange={handleChange} 
+            required 
+            placeholder="COL999" 
+            className={errors.matricula ? 'input-error' : ''}
           />
         </div>
         
@@ -20,6 +26,7 @@ const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) =>
             value={formData.cargo_id || ''} 
             onChange={handleChange} 
             required
+            className={errors.cargo_id ? 'input-error' : ''}
           >
             <option value="" disabled>Selecione um Cargo</option>
             {cargos.map(cargo => (
@@ -37,6 +44,7 @@ const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) =>
             value={formData.departamento_id || ''} 
             onChange={handleChange} 
             required
+            className={errors.departamento_id ? 'input-error' : ''}
           >
             <option value="" disabled>Selecione um Departamento</option>
             {departamentos.map(dept => (
@@ -48,7 +56,12 @@ const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) =>
         <div className="form-group">
           <label>Data de Admissão *</label>
           <input 
-            type="date" name="dataAdmissao" value={formData.dataAdmissao || ''} onChange={handleChange} required 
+            type="date" 
+            name="dataAdmissao" 
+            value={formData.dataAdmissao || ''} 
+            onChange={handleChange} 
+            required 
+            className={errors.dataAdmissao ? 'input-error' : ''}
           />
         </div>
       </div>
@@ -56,7 +69,13 @@ const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) =>
       <div className="form-group-row">
         <div className="form-group">
           <label>Tipo de Contrato *</label>
-          <select name="tipoContrato" value={formData.tipoContrato || ''} onChange={handleChange} required>
+          <select 
+            name="tipoContrato" 
+            value={formData.tipoContrato || ''} 
+            onChange={handleChange} 
+            required
+            className={errors.tipoContrato ? 'input-error' : ''}
+          >
             <option value="" disabled>Selecione</option>
             <option value="CLT">CLT</option>
             <option value="PJ">PJ</option>
@@ -66,10 +85,17 @@ const WorkTab = ({ formData, handleChange, cargos = [], departamentos = [] }) =>
         <div className="form-group">
           <label>Salário Base *</label>
           <input 
-            type="text" name="salarioBase" value={formData.salarioBase || ''} onChange={handleChange} required placeholder="R$ 0,00"
+            type="text" 
+            name="salarioBase" 
+            value={formData.salarioBase || ''} 
+            onChange={handleChange} 
+            required 
+            placeholder="R$ 0,00"
+            className={errors.salarioBase ? 'input-error' : ''}
           />
         </div>
       </div>
+
     </div>
   );
 };

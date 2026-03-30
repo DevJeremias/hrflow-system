@@ -1,9 +1,9 @@
 import React from "react";
-import { useNavigate } from "react-router-dom"; // traz o hook de navegacao
+import { useNavigate } from "react-router-dom"; 
 import "./Navbar.css"; 
 
 export default function Navbar() {
-  const navigate = useNavigate(); // inicia o hook
+  const navigate = useNavigate(); 
 
   return (
     <nav className="navbar">
@@ -13,11 +13,12 @@ export default function Navbar() {
       </div>
 
       <div className="nav-actions">
-        {/* joga o usuario pra tela de login no clique */}
+        {/* Vai para a tela de Login normal */}
         <button className="btn-login" onClick={() => navigate('/login')}>
           Entrar
         </button>
-        <button className="btn-primary" onClick={() => navigate('/login')}>
+        {/* Agora leva o novo cliente direto para criar a empresa dele! */}
+        <button className="btn-primary" onClick={() => navigate('/registro')}>
           Teste Grátis
         </button>
       </div>

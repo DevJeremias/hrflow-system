@@ -1,6 +1,6 @@
 import React from 'react';
-import { Menu, X, Search, Bell, LogOut } from 'lucide-react'; // importei o LogOut
-import { useNavigate } from 'react-router-dom'; // importei o hook de navegação
+import { Menu, X, Search, Bell, LogOut } from 'lucide-react'; 
+import { useNavigate } from 'react-router-dom'; 
 import './Header.css';
 
 const Header = ({ isOpen, toggleSidebar }) => {
