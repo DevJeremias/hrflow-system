@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {  Plus, Search, Loader2 } from 'lucide-react';
-import { Employee, employeeService } from '../../services/employeeService';
+import { Employee, employeeService } from '../../../services/employeeService';
 import EmployeeRow from './EmployeeRow';
 import EmployeeModal from './EmployeeModal';
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, Download, Filter } from 'lucide-react';
-import { generateMonthlyPayroll, EmployeePayroll } from '../../services/payrollService';
+import { generateMonthlyPayroll, EmployeePayroll } from '../../../services/payrollService';
 import PayrollSummaryCards from './PayrollSummaryCards';
 import PayrollTable from './PayrollTable';
 

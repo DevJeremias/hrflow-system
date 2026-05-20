@@ -7,7 +7,7 @@ import {
   getRoles, 
   Department, 
   Role 
-} from '../../services/departmentsRolesService';
+} from '../../../services/departmentsRolesService';
 import DepartmentCard from './DepartmentCard';
 import RolesTable from './RolesTable';
 import FormModal from './FormModal';

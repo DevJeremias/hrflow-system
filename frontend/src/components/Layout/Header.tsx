@@ -9,6 +9,11 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const { user } = useAuth();
 
+  // Define dinamicamente o título do cabeçalho
+  const ambienteLabel = user?.role === 'ADMIN' 
+    ? "Ambiente Administrativo" 
+    : "Portal do Colaborador";
+
   return (
     <header className="bg-white border-b border-slate-200 h-20 px-4 md:px-8 flex items-center justify-between shrink-0 z-10 sticky top-0">
       
@@ -22,13 +27,14 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
         
         <div className="hidden lg:block">
           <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">
-            Ambiente Administrativo
+            {ambienteLabel}
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-3 md:gap-6">
         
+        {/* A barra de busca só faz sentido para o Admin no momento, mas podemos mantê-la genérica */}
         <div className="hidden md:flex items-center relative">
           <Search className="absolute left-4 text-slate-400" size={18} />
           <input
@@ -38,13 +44,11 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
           />
         </div>
 
-        {/* Ícone de Notificações com Alerta */}
         <button className="relative p-2.5 rounded-full text-slate-500 hover:bg-slate-100 transition-colors">
           <Bell size={22} />
           <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
         </button>
 
-        {/* Separador Visual */}
         <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
         <div className="flex items-center gap-3 cursor-pointer group">
@@ -52,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
             <p className="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors">
               {user?.name?.split(' ')[0]} 
             </p>
-            <p className="text-xs font-medium text-slate-500">{user?.role}</p>
+            <p className="text-xs font-medium text-slate-500">{user?.role === 'ADMIN' ? 'Gestor' : 'Colaborador'}</p>
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all">
             {user?.name?.charAt(0) || 'U'}

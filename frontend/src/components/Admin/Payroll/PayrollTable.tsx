@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, PlusCircle } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { EmployeePayroll } from '../../../services/payrollService';
 import HoleriteModal from './HoleriteModal'; 
 
 interface Props { payrolls: EmployeePayroll[]; }

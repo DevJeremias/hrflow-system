@@ -1,4 +1,3 @@
-// src/components/Landing/Footer.tsx
 import React from 'react';
 import { Command, Instagram, Linkedin, Twitter, Github } from 'lucide-react';
 

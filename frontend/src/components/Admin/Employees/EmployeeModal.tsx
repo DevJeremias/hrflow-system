@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Briefcase, CreditCard } from 'lucide-react';
-import { Employee } from '../../services/employeeService';
-import { getRoles, getDepartments } from '../../services/departmentsRolesService'
+import { Employee } from '../../../services/employeeService';
+import { getRoles, getDepartments } from '../../../services/departmentsRolesService'
 import PersonalTab from './PersonalTab';
 import WorkTab from './WorkTab';
 import FinancialTab from './FinancialTab';

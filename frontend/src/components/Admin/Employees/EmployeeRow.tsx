@@ -1,6 +1,6 @@
 import React from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
-import { Employee } from '../../services/employeeService';
+import { Employee } from '../../../services/employeeService';
 
 interface Props {
   employee: Employee;

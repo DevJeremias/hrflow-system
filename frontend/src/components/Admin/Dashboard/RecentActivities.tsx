@@ -1,5 +1,5 @@
 import React from 'react';
-import { DashboardData } from '../../services/dashboardService';
+import { DashboardData } from '../../../services/dashboardService';
 
 interface Props {
   activities?: DashboardData['recentActivities'];

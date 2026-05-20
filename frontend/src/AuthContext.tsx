@@ -1,3 +1,5 @@
+// src/AuthContext.tsx
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService, User } from './services/authService';
@@ -17,24 +19,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Verifica se a pessoa já estava logada ao dar F5
   useEffect(() => {
-    const recoveredToken = localStorage.getItem('token');
-    if (recoveredToken) {
-      setUser({ name: 'Marcos Brigida', email: 'admin@mpt.gov.br', role: 'ADMIN' });
+    const recoveredUser = localStorage.getItem('user');
+    if (recoveredUser) {
+      setUser(JSON.parse(recoveredUser));
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, senha: string) => {
     const response = await authService.login(email, senha);
+    
+    // Guardamos o token e os dados do utilizador (incluindo o role)
     localStorage.setItem('token', response.token);
+    localStorage.setItem('user', JSON.stringify(response.user));
+    
     setUser(response.user);
-    navigate('/admin');
+
+    // Redirecionamento baseado no perfil (RBAC)
+    if (response.user.role === 'ADMIN') {
+      navigate('/admin');
+    } else {
+      navigate('/portal');
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     navigate('/login');
   };

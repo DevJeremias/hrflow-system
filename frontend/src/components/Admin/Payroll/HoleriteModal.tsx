@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Printer, Mail, Building } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { EmployeePayroll } from '../../../services/payrollService';
 
 interface Props {
   isOpen: boolean;

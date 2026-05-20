@@ -4,9 +4,13 @@ import {
   LayoutDashboard, 
   Users, 
   Calculator,  
+  Calendar,
   LogOut,
   X, 
-  Building2
+  Building2,
+  Clock,     
+  FileText,  
+  User as UserIcon 
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
@@ -19,15 +23,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
 
-  const menuItems = [
+  // Menus do Administrador
+  const adminMenu = [
     { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { path: '/admin/colaboradores', icon: <Users size={20} />, label: 'Colaboradores' },
     { path: '/admin/estrutura', icon: <Building2 size={20} />, label: 'Depto & Cargos' },
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
   ];
 
+  // Menus do Colaborador (Portal)
+  const employeeMenu = [
+    { path: '/portal', icon: <Clock size={20} />, label: 'Bater Ponto' },
+    { path: '/portal/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
+    { path: '/portal/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' },
+    { path: '/portal/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
+  ];
+
+  // Define qual menu renderizar com base no perfil
+  const menuItems = user?.role === 'ADMIN' ? adminMenu : employeeMenu;
+
   return (
-    <>      {isOpen && (
+    <>      
+      {isOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 lg:hidden" 
           onClick={onClose}

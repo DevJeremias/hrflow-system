@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pencil, Trash2, Briefcase, Users } from 'lucide-react';
-import { Role } from '../../services/departmentsRolesService';
+import { Role } from '../../../services/departmentsRolesService';
 
 interface Props {
   roles: Role[];

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Building2, Briefcase, Clock, TrendingUp, ArrowRight, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../AuthContext';
-import { dashboardService, DashboardData } from '../../services/dashboardService';
+import { useAuth } from '../../../AuthContext';
+import { dashboardService, DashboardData } from '../../../services/dashboardService';
 import StatCard from './StatCard';
 import RecentActivities from './RecentActivities';
 

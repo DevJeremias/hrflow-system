@@ -6,17 +6,33 @@ export interface User {
 
 export const authService = {
   login: async (email: string, senha: string): Promise<{ user: User, token: string }> => {
-    // Simula a lentidão da internet (1 segundo)
+    // Simula a latência da rede (1 segundo)
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Validação estática
+    // Simulação de Admin
     if (email === 'admin@gmail.com' && senha === '123456') {
       return {
-        user: { name: 'Marcos Brigida', email, role: 'ADMIN' },
-        token: 'token-jwt-simulado-aqui'
+        user: { 
+          name: 'Marcos Brigida', 
+          email, 
+          role: 'ADMIN' 
+        },
+        token: 'token-admin-jwt-simulado'
       };
     }
     
-    throw new Error('Credenciais inválidas. Use admin@gmail.com e 123456.');
+    // Simulação de Colaborador (User) - NOVO
+    if (email === 'user@gmail.com' && senha === '123456') {
+      return {
+        user: { 
+          name: 'João Silva', 
+          email, 
+          role: 'USER' 
+        },
+        token: 'token-user-jwt-simulado'
+      };
+    }
+    
+    throw new Error('Credenciais inválidas. Tente admin@gmail.com ou user@gmail.com com a senha 123456.');
   }
 };
