@@ -6,6 +6,7 @@ const db = require('./config/db');
 // Importação das Rotas
 const authRoutes = require('./routes/authRoutes');
 const funcionarioRoutes = require('./routes/funcionarioRoutes');
+const pontoRoutes = require('./routes/pontoRoutes'); // Importamos a rota de ponto nova
 
 // Importação do Middleware de Proteção
 const authMiddleware = require('./middlewares/authMiddleware');
@@ -29,6 +30,7 @@ app.use('/api/auth', authRoutes);
 // Rotas Protegidas (Exigem Token JWT)
 // Aqui o authMiddleware verifica o "crachá" antes de liberar o acesso
 app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
+app.use('/api/pontos', authMiddleware, pontoRoutes); // Nova rota de ponto ativada e protegida
 
 // Rota padrão da API
 app.get('/api', (req, res) => {

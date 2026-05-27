@@ -15,8 +15,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // bate na porta do seu backend
-      // TODO: se a sua rota no backend for diferente, ajuste a URL abaixo
+      // bate na porta do teu backend
       const resposta = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: {
@@ -28,14 +27,29 @@ export default function Login() {
       const dados = await resposta.json();
 
       if (!resposta.ok) {
-        throw new Error(dados.mensagem || 'E-mail ou senha incorretos.');
+        throw new Error(dados.mensagem || dados.erro || 'E-mail ou senha incorretos.');
       }
 
       // deu bom! salva o token no cofre
       localStorage.setItem('token', dados.token);
 
-      // manda o usuário direto pra tela de colaboradores
-      navigate('/admin/colaboradores');
+      // Descodifica o Token JWT para descobrir o perfil do utilizador
+      const base64Url = dados.token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(window.atob(base64));
+
+      // Guarda os dados cruciais para o Relógio de Ponto e para o Dashboard funcionarem
+      localStorage.setItem('nomeUsuario', payload.nome || 'Utilizador');
+      localStorage.setItem('funcionarioId', payload.id);
+      localStorage.setItem('perfil', payload.perfil);
+
+      // O "Polícia de Trânsito" do sistema:
+      // Se for colaborador, vai para a tela de bater o ponto. Senão, vai para o painel de RH.
+      if (payload.perfil === 'Colaborador') {
+        navigate('/meu-painel');
+      } else {
+        navigate('/admin');
+      }
 
     } catch (err) {
       setErro(err.message);
@@ -48,7 +62,7 @@ export default function Login() {
     <div className="login-container">
       <div className="login-box">
         <h2>Acesso ao Sistema</h2>
-        <p>Insira suas credenciais para continuar.</p>
+        <p>Insira as suas credenciais para continuar.</p>
 
         {erro && <div className="erro-msg">{erro}</div>}
 

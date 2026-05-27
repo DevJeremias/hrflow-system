@@ -5,10 +5,11 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 // Importação das páginas
 import Home from './components/Home/Home';
 import Login from './components/Login/Login';
-import Register from './components/Register/Register'; // A nossa tela nova aqui!
+import Register from './components/Register/Register'; 
 import Dashboard from './components/Dashboard/Dashboard';
 import Employees from './components/Employees/Employees';
 import EmConstrucao from './components/EmConstrucao/EmConstrucao';
+import DashboardColaborador from './components/DashboardColaborador/DashboardColaborador'; // A nossa nova tela do colaborador!
 
 // Nosso segurança de rotas
 const RotaProtegida = ({ children }) => {
@@ -54,6 +55,15 @@ const router = createBrowserRouter([
     element: (
       <RotaProtegida>
         <EmConstrucao />
+      </RotaProtegida>
+    ),
+  },
+  // Nova rota dedicada exclusivamente ao Colaborador
+  {
+    path: "/meu-painel",
+    element: (
+      <RotaProtegida>
+        <DashboardColaborador />
       </RotaProtegida>
     ),
   },
