@@ -11,11 +11,11 @@ export default function Login() {
 
   const fazerLogin = async (e) => {
     e.preventDefault();
-    setErro(''); // limpa mensagens de erro antigas
     setLoading(true);
 
     try {
       // bate na porta do teu backend
+      // Comunicação com a nossa API Node.js
       const resposta = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: {
@@ -30,7 +30,6 @@ export default function Login() {
         throw new Error(dados.mensagem || dados.erro || 'E-mail ou senha incorretos.');
       }
 
-      // deu bom! salva o token no cofre
       localStorage.setItem('token', dados.token);
 
       // Descodifica o Token JWT para descobrir o perfil do utilizador
