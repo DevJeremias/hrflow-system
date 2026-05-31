@@ -2,7 +2,7 @@
 
 export interface PointRecord {
   id: string;
-  type: 'Entrada' | 'Pausa Almoço' | 'Retorno Almoço' | 'Saída';
+  type: 'Entrada' | 'Pausa Almoço' | 'Retorno Almoço' | 'Saída' | string;
   time: string; 
   date: string; 
 }
@@ -14,72 +14,101 @@ export interface HistoryDay {
   lunchOut: string;
   lunchIn: string;
   exit: string;
-  totalHours: string; // Agora representará o "Tempo Presença"
+  totalHours: string;
   status: 'OK' | 'Atraso' | 'Falta' | 'Incompleto';
   note: string;
-  negativeAdjust: string; // Ex: "00:17"
-  positiveAdjust: string; // Ex: "00:18"
+  negativeAdjust: string;
+  positiveAdjust: string;
 }
 
 export interface WeeklyTotal {
   id: string;
   weekLabel: string;
-  workloadLimit: string;     // Carga Horária de Trabalho
-  workloadPreset: string;    // Carga Horária Preestabelecida
-  workloadDone: string;      // Carga Horária Cumprida
-  presenceTime: string;      // Tempo Presença
-  pendingTime: string;       // Tempo Pendente
-  excessTime: string;        // Excedente
-  hoursBank: string;         // Banco de Horas
-  dailyAdjustBalance: string;// Saldo Ajuste Diário
+  workloadLimit: string;
+  workloadPreset: string;
+  workloadDone: string;
+  presenceTime: string;
+  pendingTime: string;
+  excessTime: string;
+  hoursBank: string;
+  dailyAdjustBalance: string;
 }
 
+// Utilitário para montar o cabeçalho com o Token do usuário logado
+const getAuthHeaders = () => ({
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${localStorage.getItem('token')}`
+});
+
+// A rota correta (no singular) do seu Back-end
+const API_URL = 'http://localhost:3000/api/ponto'; 
+
 export const pontoService = {
+  
   getRegistrosHoje: async (): Promise<PointRecord[]> => {
-    /* ... seu código existente ... */
-    return [];
+    const funcionarioId = localStorage.getItem('funcionarioId');
+    try {
+      const res = await fetch(`${API_URL}/hoje/${funcionarioId}`, { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   },
 
-  registrar: async (type: PointRecord['type']): Promise<PointRecord> => {
-     /* ... seu código existente ... */
-     return {} as PointRecord;
+  registrar: async (type: string, localizacao?: { lat: number, lng: number }): Promise<PointRecord> => {
+    const id = localStorage.getItem('funcionarioId');
+    
+    const res = await fetch(`${API_URL}/registrar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ 
+        funcionario_id: id, // A variável exatamente como o seu Node.js pede
+        tipo: type, 
+        localizacao 
+      })
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.mensagem || err.erro || 'Erro ao registrar o ponto.');
+    }
+    
+    return await res.json();
   },
 
   getHistoricoMes: async (month: string): Promise<HistoryDay[]> => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    return [
-      { id: '1', date: `${month}-15`, entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'OK', note: '', negativeAdjust: '00:00', positiveAdjust: '00:00' },
-      { id: '2', date: `${month}-16`, entry: '08:17', lunchOut: '12:00', lunchIn: '13:00', exit: '17:18', totalHours: '08:01', status: 'Atraso', note: 'Trânsito.', negativeAdjust: '00:17', positiveAdjust: '00:18' },
-      { id: '3', date: `${month}-17`, entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:29', totalHours: '08:29', status: 'OK', note: '', negativeAdjust: '00:00', positiveAdjust: '00:29' },
-    ];
+    const funcionarioId = localStorage.getItem('funcionarioId');
+    try {
+      const res = await fetch(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { headers: getAuthHeaders() });
+      if (!res.ok) return [];
+      return await res.json();
+    } catch {
+      return []; 
+    }
   },
 
   salvarJustificativa: async (id: string, note: string): Promise<void> => {
-    /* ... seu código existente ... */
+    await fetch(`${API_URL}/justificativa/${id}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ note })
+    });
   },
 
-  // NOVO MÉTODO PARA A TABELA SEMANAL
   getTotaisSemanais: async (month: string): Promise<{ totals: WeeklyTotal[], monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> }> => {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    const mockTotals: WeeklyTotal[] = [
-      { id: 'w1', weekLabel: 'Semana 1', workloadLimit: '00:00', workloadPreset: '00:00', workloadDone: '00:00', presenceTime: '00:00', pendingTime: '00:00', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '00:00' },
-      { id: 'w2', weekLabel: 'Semana 2', workloadLimit: '40:00', workloadPreset: '20:00', workloadDone: '21:00', presenceTime: '21:00', pendingTime: '00:00', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '01:00' },
-      { id: 'w3', weekLabel: 'Semana 3', workloadLimit: '40:00', workloadPreset: '20:00', workloadDone: '19:58', presenceTime: '22:15', pendingTime: '00:00', excessTime: '02:17', hoursBank: '00:00', dailyAdjustBalance: '-00:02' },
-      { id: 'w4', weekLabel: 'Semana 4', workloadLimit: '40:00', workloadPreset: '20:00', workloadDone: '00:00', presenceTime: '00:00', pendingTime: '00:00', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '00:00' },
-    ];
-
-    const monthlySummary = {
-      workloadLimit: '120:00',
-      workloadPreset: '60:00',
-      workloadDone: '40:58',
-      presenceTime: '43:15',
-      pendingTime: '00:00',
-      excessTime: '02:17',
-      hoursBank: '00:00',
-      dailyAdjustBalance: '00:58'
-    };
-
-    return { totals: mockTotals, monthlySummary };
+    const funcionarioId = localStorage.getItem('funcionarioId');
+    try {
+      const res = await fetch(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error();
+      return await res.json();
+    } catch {
+      // Fallback seguro caso a rota falhe
+      return { 
+        totals: [], 
+        monthlySummary: { workloadLimit: '00:00', workloadPreset: '00:00', workloadDone: '00:00', presenceTime: '00:00', pendingTime: '00:00', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '00:00' } 
+      };
+    }
   }
 };

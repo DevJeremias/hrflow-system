@@ -30,7 +30,7 @@ app.use('/api/auth', authRoutes);
 // Rotas Protegidas (Exigem Token JWT)
 // Aqui o authMiddleware verifica o "crachá" antes de liberar o acesso
 app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
-app.use('/api/pontos', authMiddleware, pontoRoutes); // Nova rota de ponto ativada e protegida
+app.use('/api/ponto', authMiddleware, pontoRoutes); // Nova rota de ponto ativada e protegida
 
 // Rota padrão da API
 app.get('/api', (req, res) => {
