@@ -7,6 +7,8 @@ const db = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const pontoRoutes = require('./routes/pontoRoutes'); // Importamos a rota de ponto nova
+const estruturaRoutes = require('./routes/estruturaRoutes');
+const folhaRoutes = require('./routes/folhaRoutes');
 
 // Importação do Middleware de Proteção
 const authMiddleware = require('./middlewares/authMiddleware');
@@ -31,6 +33,8 @@ app.use('/api/auth', authRoutes);
 // Aqui o authMiddleware verifica o "crachá" antes de liberar o acesso
 app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
 app.use('/api/ponto', authMiddleware, pontoRoutes); // Nova rota de ponto ativada e protegida
+app.use('/api/estrutura', authMiddleware, estruturaRoutes); // Rota de estrutura protegida
+app.use('/api/folha', authMiddleware, folhaRoutes); // Rota de folha protegida
 
 // Rota padrão da API
 app.get('/api', (req, res) => {
