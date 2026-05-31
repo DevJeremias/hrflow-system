@@ -1,3 +1,5 @@
+// src/components/Portal/EmployeeHome/EmployeeHome.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../AuthContext';
 import { pontoService, PointRecord, HistoryDay, WeeklyTotal } from '../../../services/pontoService';
@@ -21,32 +23,60 @@ const EmployeeHome: React.FC = () => {
   const [weeklyData, setWeeklyData] = useState<WeeklyTotal[]>([]);
   const [monthlySummary, setMonthlySummary] = useState<any>(null);
 
+  // Busca os registros reais que já estão no Banco de Dados para hoje
   useEffect(() => {
     pontoService.getRegistrosHoje().then(setDailyRecords);
   }, []);
 
+  // Busca os históricos reais do mês selecionado
   useEffect(() => {
-    // Carrega a tabela de espelho diário
     pontoService.getHistoricoMes(historyMonth).then(setHistoryData);
-    
     pontoService.getTotaisSemanais(historyMonth).then((res) => {
       setWeeklyData(res.totals);
       setMonthlySummary(res.monthlySummary);
     });
   }, [historyMonth]);
 
+  // A FUNÇÃO REAL DE BATER O PONTO COM GPS
   const handlePunchClock = async () => {
     setIsRegistering(true);
-    try {
-      const types: PointRecord['type'][] = ['Entrada', 'Pausa Almoço', 'Retorno Almoço', 'Saída'];
-      const nextType = types[dailyRecords.length] || 'Entrada';
-      const newRecord = await pontoService.registrar(nextType);
-      setDailyRecords([...dailyRecords, newRecord]);
-    } catch (error) {
-      alert("Erro ao registrar o ponto.");
-    } finally {
+
+    if (!navigator.geolocation) {
+      alert("O seu navegador não suporta geolocalização.");
       setIsRegistering(false);
+      return;
     }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const types: string[] = ['Entrada', 'Pausa Almoço', 'Retorno Almoço', 'Saída'];
+          // Se já bateu 4 vezes, ele começa a marcar como 'Extra' ou usa o último
+          const nextType = types[dailyRecords.length] || 'Extra'; 
+          
+          const localizacao = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+
+          // Dispara para o seu Node.js
+          const newRecord = await pontoService.registrar(nextType, localizacao);
+          
+          // Atualiza a tela com a resposta do Back-end
+          setDailyRecords([...dailyRecords, newRecord]);
+          
+        } catch (error: any) {
+          alert(error.message || "Erro ao comunicar com o servidor.");
+        } finally {
+          setIsRegistering(false);
+        }
+      },
+      (error) => {
+        alert("Por favor, permita o acesso à sua localização para registrar o ponto.");
+        setIsRegistering(false);
+      },
+      { enableHighAccuracy: true } // Força a precisão máxima do GPS
+    );
   };
 
   const handleSaveNote = async (id: string, note: string) => {
@@ -58,7 +88,7 @@ const EmployeeHome: React.FC = () => {
     }
   };
 
-  const firstName = user?.name?.split(' ')[0] || 'Colaborador';
+  const firstName = user?.nome?.split(' ')[0] || 'Utilizador';
   const formattedDate = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
   return (

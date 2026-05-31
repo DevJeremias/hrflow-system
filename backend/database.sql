@@ -59,6 +59,21 @@ CREATE TABLE IF NOT EXISTS funcionarios (
     FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
 );
 
+-- 6. Tabela de Ponto Eletrônico
+-- Registra a jornada de trabalho com captura de localização
+CREATE TABLE IF NOT EXISTS registro_pontos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    funcionario_id INT NOT NULL,
+    empresa_id INT NOT NULL,
+    tipo_registro ENUM('Entrada', 'Pausa Almoço', 'Retorno Almoço', 'Saída') NOT NULL,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    data_hora_oficial TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    observacao VARCHAR(255),
+    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
+);
+
 -- =========================================================================
 -- TRIGGER (Gatilho) DE AUTOMATIZAÇÃO (BÔNUS SAAS)
 -- =========================================================================
