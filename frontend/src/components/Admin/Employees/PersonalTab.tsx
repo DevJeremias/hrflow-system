@@ -25,19 +25,19 @@ const PersonalTab: React.FC<Props> = ({ formData, handleChange }) => {
           <input type="tel" name="telefone" value={formData.telefone} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="(11) 98765-4321" />
         </div>
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">CPF *</label>
-          <input type="text" name="cpf" required value={formData.cpf} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="123.456.789-00" />
+          <label className="block text-sm font-bold text-slate-700 mb-2">CPF</label>
+          <input type="text" name="cpf" value={formData.cpf} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="123.456.789-00" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Data de Nascimento *</label>
-          <input type="date" name="dataNascimento" required value={formData.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" />
+          <label className="block text-sm font-bold text-slate-700 mb-2">Data de Nascimento</label>
+          <input type="date" name="dataNascimento" value={formData.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" />
         </div>
         <div>
           <label className="block text-sm font-bold text-slate-700 mb-2">Senha de Acesso *</label>
-          <input type="password" name="senhaAcesso" value={formData.senhaAcesso} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="........" />
+          <input type="password" name="senhaAcesso" required value={formData.senhaAcesso} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="........" />
         </div>
       </div>
 

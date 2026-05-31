@@ -9,8 +9,8 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const { user } = useAuth();
 
-  // Define dinamicamente o título do cabeçalho
-  const ambienteLabel = user?.role === 'ADMIN' 
+  // Lendo o perfil correto do Back-end
+  const ambienteLabel = user?.role === 'Administrador' 
     ? "Ambiente Administrativo" 
     : "Portal do Colaborador";
 
@@ -34,7 +34,6 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
 
       <div className="flex items-center gap-3 md:gap-6">
         
-        {/* A barra de busca só faz sentido para o Admin no momento, mas podemos mantê-la genérica */}
         <div className="hidden md:flex items-center relative">
           <Search className="absolute left-4 text-slate-400" size={18} />
           <input
@@ -53,13 +52,14 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
 
         <div className="flex items-center gap-3 cursor-pointer group">
           <div className="text-right hidden sm:block">
+            {/* Trocando user.name por user.nome */}
             <p className="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors">
-              {user?.name?.split(' ')[0]} 
+              {user?.nome?.split(' ')[0] || 'Utilizador'} 
             </p>
-            <p className="text-xs font-medium text-slate-500">{user?.role === 'ADMIN' ? 'Gestor' : 'Colaborador'}</p>
+            <p className="text-xs font-medium text-slate-500">{user?.role === 'Administrador' ? 'Gestor' : 'Colaborador'}</p>
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all">
-            {user?.name?.charAt(0) || 'U'}
+            {user?.nome?.charAt(0) || 'U'}
           </div>
         </div>
 

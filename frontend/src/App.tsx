@@ -18,7 +18,7 @@ import EmployeeHome from './components/Portal/EmployeeHome/EmployeeHome';
 import Payslips from './components/Portal/Payslips/Payslips';
 import Requests from './components/Portal/Request/Requests';
 
-// Proteção de Rota com verificação de Perfil
+// Proteção de Rota com verificação de Perfil alinhada com o Banco de Dados
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -26,8 +26,8 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
   if (allowedRole && user?.role !== allowedRole) {
-    // Se tentar aceder a algo que não deve, volta para o seu início
-    return <Navigate to={user?.role === 'ADMIN' ? '/admin' : '/portal'} replace />;
+    // O "Polícia de Trânsito": Se tentar acessar algo que não deve, volta para o seu painel correto
+    return <Navigate to={user?.role === 'Administrador' ? '/admin' : '/meu-painel'} replace />;
   }
 
   return <>{children}</>;
@@ -43,7 +43,7 @@ function App() {
       <Route 
         path="/admin" 
         element={
-          <ProtectedRoute allowedRole="ADMIN">
+          <ProtectedRoute allowedRole="Administrador">
             <Layout /> 
           </ProtectedRoute>
         }
@@ -54,15 +54,16 @@ function App() {
         <Route path="folha" element={<Payroll />} />
       </Route>
 
-      {/* ÁREA DO COLABORADOR (NOVO) */}
+      {/* ÁREA DO COLABORADOR (COM A ROTA ALINHADA) */}
       <Route 
-        path="/portal" 
+        path="/meu-painel" 
         element={
-          <ProtectedRoute allowedRole="USER">
+          <ProtectedRoute allowedRole="Colaborador">
             <Layout /> 
           </ProtectedRoute>
         }
       >
+        {/* Aqui é onde o seu Relógio de Ponto vai brilhar */}
         <Route index element={<EmployeeHome />} />
         <Route path="holerites" element={<Payslips />} />
         <Route path="solicitacoes" element={<Requests />} />

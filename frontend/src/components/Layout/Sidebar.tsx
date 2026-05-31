@@ -31,16 +31,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
   ];
 
-  // Menus do Colaborador (Portal)
+  // Menus do Colaborador (Ajustados para a nossa rota correta)
   const employeeMenu = [
-    { path: '/portal', icon: <Clock size={20} />, label: 'Bater Ponto' },
-    { path: '/portal/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
-    { path: '/portal/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' },
-    { path: '/portal/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
+    { path: '/meu-painel', icon: <Clock size={20} />, label: 'Bater Ponto' },
+    { path: '/meu-painel/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
+    { path: '/meu-painel/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' },
+    { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
   ];
 
-  // Define qual menu renderizar com base no perfil
-  const menuItems = user?.role === 'ADMIN' ? adminMenu : employeeMenu;
+  // Define qual menu renderizar lendo do nosso MySQL
+  const menuItems = user?.role === 'Administrador' ? adminMenu : employeeMenu;
 
   return (
     <>      
@@ -100,10 +100,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="p-5 border-t border-slate-800/50">
           <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-2xl bg-white/5 border border-white/10">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-inner uppercase">
-              {user?.name?.charAt(0) || 'U'}
+              {/* Lendo o user.nome em vez de user.name */}
+              {user?.nome?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-white truncate">{user?.name || 'Carregando...'}</p>
+              <p className="text-sm font-bold text-white truncate">{user?.nome || 'Carregando...'}</p>
               <p className="text-xs text-slate-500 font-medium truncate">{user?.email}</p>
             </div>
           </div>
