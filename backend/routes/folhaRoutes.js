@@ -3,7 +3,7 @@ const router = express.Router();
 const folhaController = require('../controllers/folhaController');
 const verificarPerfil = require('../middlewares/roleMiddleware');
 
-// Apenas o Administrador e o RH podem processar e ver a folha de pagamento de todos
-router.get('/processar', verificarPerfil(['Administrador', 'RH']), folhaController.gerarFolha);
+// Rota de processamento (Protegida)
+router.get('/processar', verificarPerfil(['Administrador', 'RH']), folhaController.processarFolha);
 
 module.exports = router;
