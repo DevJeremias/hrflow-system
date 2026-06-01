@@ -1,6 +1,6 @@
 
 
-```markdown
+
 # HRFlow 🚀
 
 <div align="center">
@@ -225,7 +225,5 @@ Sistema desenvolvido e arquitetado por:
 * **Breno**
 * **Caique**
 * **Henri**
-
-```
 
 ```
