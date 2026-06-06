@@ -35,7 +35,17 @@ export const getDepartments = async (): Promise<Department[]> => {
   try {
     const res = await fetch(`${API_URL}/departamentos`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Erro ao buscar departamentos');
-    return await res.json();
+    const data = await res.json();
+    return data.map((d: any) => ({
+      id: d.id.toString(),
+      name: d.nome,
+      sigla: d.sigla,
+      description: d.descricao || '',
+      manager: d.gestor || 'Não definido',
+      collaborators: 0,
+      active: 0,
+      rolesCount: 0
+    }));
   } catch (error) {
     console.error(error);
     return [];
@@ -43,19 +53,54 @@ export const getDepartments = async (): Promise<Department[]> => {
 };
 
 export const saveDepartment = async (data: any): Promise<void> => {
-  const res = await fetch(`${API_URL}/departamentos`, {
-    method: 'POST',
+  const isEditing = !!data.id;
+  const url = isEditing ? `${API_URL}/departamentos/${data.id}` : `${API_URL}/departamentos`;
+  
+  const payload = { 
+    nome: data.name, 
+    sigla: data.sigla, 
+    descricao: data.description, 
+    gestor: data.manager 
+  };
+  
+  const res = await fetch(url, {
+    method: isEditing ? 'PUT' : 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify(data)
+    body: JSON.stringify(payload)
   });
-  if (!res.ok) throw new Error('Erro ao salvar departamento');
+  
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.erro || 'Erro ao salvar departamento');
+  }
+};
+
+export const deleteDepartment = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_URL}/departamentos/${id}`, { 
+    method: 'DELETE', 
+    headers: getAuthHeaders() 
+  });
+  
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.erro || 'Erro ao deletar departamento');
+  }
 };
 
 export const getRoles = async (): Promise<Role[]> => {
   try {
     const res = await fetch(`${API_URL}/cargos`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Erro ao buscar cargos');
-    return await res.json();
+    const data = await res.json();
+    return data.map((c: any) => ({
+      id: c.id.toString(),
+      title: c.nome,
+      department: c.departamento_nome,
+      deptSigla: c.departamento_nome,
+      level: c.nivel || 'Júnior',
+      salary: parseFloat(c.salario_base) || 0,
+      occupants: 0
+    }));
   } catch (error) {
     console.error(error);
     return [];
@@ -63,27 +108,42 @@ export const getRoles = async (): Promise<Role[]> => {
 };
 
 export const saveRole = async (data: any): Promise<void> => {
-  // Como o formulário envia apenas o nome do departamento, fazemos uma busca
-  // rápida para encontrar qual é o ID correspondente antes de enviar para o Node.js
   const deptsRes = await fetch(`${API_URL}/departamentos`, { headers: getAuthHeaders() });
   const depts = await deptsRes.json();
-  const deptFound = depts.find((d: any) => d.name === data.department);
+  const deptFound = depts.find((d: any) => d.nome === data.department || d.sigla === data.department);
 
   const payload = {
-    id: data.id,
-    title: data.title,
-    level: data.level,
-    salary: parseFloat(data.salary) || 0,
+    nome: data.title,
+    nivel: data.level,
+    salario_base: parseFloat(data.salary) || 0,
     departamento_id: deptFound ? deptFound.id : null
   };
 
-  const res = await fetch(`${API_URL}/cargos`, {
-    method: 'POST',
+  const isEditing = !!data.id;
+  const url = isEditing ? `${API_URL}/cargos/${data.id}` : `${API_URL}/cargos`;
+
+  const res = await fetch(url, {
+    method: isEditing ? 'PUT' : 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload)
   });
   
-  if (!res.ok) throw new Error('Erro ao salvar cargo');
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.erro || 'Erro ao salvar cargo');
+  }
+};
+
+export const deleteRole = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_URL}/cargos/${id}`, { 
+    method: 'DELETE', 
+    headers: getAuthHeaders() 
+  });
+  
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.erro || 'Erro ao deletar cargo');
+  }
 };
 
 // Mantemos este dicionário fixo para já. Na Fase 3 (Folha), 

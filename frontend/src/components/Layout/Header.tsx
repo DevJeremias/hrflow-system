@@ -1,5 +1,5 @@
-import React from 'react';
-import { Menu, Bell, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, Bell, Search, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
 interface HeaderProps {
@@ -8,11 +8,15 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const { user } = useAuth();
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  // Lendo o perfil correto do Back-end
   const ambienteLabel = user?.role === 'Administrador' 
     ? "Ambiente Administrativo" 
     : "Portal do Colaborador";
+
+  // Tratamento seguro para pegar o primeiro nome
+  const primeiroNome = user?.nome ? user.nome.split(' ')[0] : 'Utilizador';
+  const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : 'U';
 
   return (
     <header className="bg-white border-b border-slate-200 h-20 px-4 md:px-8 flex items-center justify-between shrink-0 z-10 sticky top-0">
@@ -43,23 +47,45 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
           />
         </div>
 
-        <button className="relative p-2.5 rounded-full text-slate-500 hover:bg-slate-100 transition-colors">
-          <Bell size={22} />
-          <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
-        </button>
+        {/* Componente do Sino de Notificações com Pop-over */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2.5 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+          >
+            <Bell size={22} />
+          </button>
+          
+          {showNotifications && (
+            <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
+              <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+                <h3 className="font-black text-slate-800">Notificações</h3>
+                <span className="text-xs font-bold text-slate-400">0 Não lidas</span>
+              </div>
+              <div className="p-8 flex flex-col items-center justify-center text-center gap-3">
+                <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-600">Tudo limpo por aqui!</p>
+                  <p className="text-xs text-slate-400 font-medium">Você não possui notificações pendentes no momento.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
         <div className="flex items-center gap-3 cursor-pointer group">
           <div className="text-right hidden sm:block">
-            {/* Trocando user.name por user.nome */}
             <p className="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors">
-              {user?.nome?.split(' ')[0] || 'Utilizador'} 
+              {primeiroNome}
             </p>
             <p className="text-xs font-medium text-slate-500">{user?.role === 'Administrador' ? 'Gestor' : 'Colaborador'}</p>
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-md group-hover:shadow-lg transition-all">
-            {user?.nome?.charAt(0) || 'U'}
+            {inicial}
           </div>
         </div>
 

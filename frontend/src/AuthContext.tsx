@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 export interface User {
   id: string | number;
   nome: string;
+  email: string; // Resolvido o erro do TypeScript na Sidebar
   role: string; // O front-end dele espera 'role'
 }
 
@@ -57,6 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const usuarioFormatado: User = {
       id: payload.id,
       nome: payload.nome || 'Utilizador',
+      email: email, // Captura o e-mail diretamente do input do utilizador
       role: payload.perfil // O Node envia 'perfil', o Front lê 'role'
     };
     
@@ -81,7 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    // Limpa a casa na hora de sair[cite: 2]
+    // Limpa a casa na hora de sair
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('nomeUsuario');

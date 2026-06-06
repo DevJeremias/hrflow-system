@@ -5,6 +5,7 @@ import {
   saveRole,
   getDepartments, 
   getRoles, 
+  deleteRole,
   Department, 
   Role 
 } from '../../../services/departmentsRolesService';
@@ -59,8 +60,6 @@ const DepartmentsRoles: React.FC = () => {
 
   const handleSave = async (data: any) => {
     try {
-      console.log(`A guardar ${modalConfig.type}:`, data);
-      
       if (modalConfig.type === 'department') {
         await saveDepartment(data);
       } else {
@@ -68,19 +67,22 @@ const DepartmentsRoles: React.FC = () => {
       }
       
       await loadData();
-      
       setModalConfig({ ...modalConfig, isOpen: false });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Erro ao processar a operação. Verifique o console.");
+      alert(error.message || "Erro ao processar a operação.");
     }
   };
 
   const handleDeleteRole = async (role: Role) => {
     if (window.confirm(`Tem a certeza que deseja excluir o cargo "${role.title}"?`)) {
-      console.log("A excluir cargo:", role.id);
-      await loadData();
+      try {
+        await deleteRole(role.id);
+        await loadData();
+      } catch (error: any) {
+        alert(error.message || "Erro ao excluir cargo.");
+      }
     }
   };
 

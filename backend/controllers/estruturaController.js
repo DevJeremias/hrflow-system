@@ -1,97 +1,145 @@
 const db = require('../config/db');
 
 // ==========================================
-// DEPARTAMENTOS
+// CRUD DE DEPARTAMENTOS
 // ==========================================
+
 exports.listarDepartamentos = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;
-        
-        // Esta query traz os departamentos e já conta os cargos e colaboradores de cada um!
-        const sql = `
-            SELECT d.id, d.nome as name, d.sigla, d.descricao as description, d.gestor as manager,
-            (SELECT COUNT(*) FROM cargos c WHERE c.departamento_id = d.id) as rolesCount,
-            (SELECT COUNT(*) FROM funcionarios f WHERE f.departamento_id = d.id) as collaborators,
-            (SELECT COUNT(*) FROM funcionarios f WHERE f.departamento_id = d.id AND f.status = 'Ativo') as active
-            FROM departamentos d
-            WHERE d.empresa_id = ?
-        `;
-        const [rows] = await db.query(sql, [empresa_id]);
+        const [rows] = await db.query('SELECT * FROM departamentos WHERE empresa_id = ?', [empresa_id]);
         res.json(rows);
-    } catch (erro) {
-        console.error(erro);
-        res.status(500).json({ erro: 'Erro ao buscar departamentos.' });
+    } catch (error) {
+        console.error("Erro ao listar departamentos:", error);
+        res.status(500).json({ erro: "Erro ao buscar departamentos." });
     }
 };
 
-exports.salvarDepartamento = async (req, res) => {
+exports.criarDepartamento = async (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    const { nome, sigla, descricao, gestor } = req.body;
+
+    if (!nome || !sigla) {
+        return res.status(400).json({ erro: "Nome e sigla são campos obrigatórios." });
+    }
+
     try {
-        const empresa_id = req.usuario.empresa_id;
-        const { id, name, sigla, description, manager } = req.body;
+        const sql = 'INSERT INTO departamentos (nome, sigla, descricao, gestor, empresa_id) VALUES (?, ?, ?, ?, ?)';
+        await db.query(sql, [nome, sigla, descricao || null, gestor || null, empresa_id]);
+        res.status(201).json({ mensagem: "Departamento criado com sucesso!" });
+    } catch (error) {
+        console.error("Erro ao criar departamento:", error);
+        res.status(500).json({ erro: "Erro ao salvar o departamento." });
+    }
+};
 
-        if (id) {
-            await db.query(
-                'UPDATE departamentos SET nome=?, sigla=?, descricao=?, gestor=? WHERE id=? AND empresa_id=?',
-                [name, sigla || '', description || '', manager || '', id, empresa_id]
-            );
-            return res.json({ id, name, sigla, description, manager });
-        } else {
-            const [result] = await db.query(
-                'INSERT INTO departamentos (nome, sigla, descricao, gestor, empresa_id) VALUES (?, ?, ?, ?, ?)',
-                [name, sigla || '', description || '', manager || '', empresa_id]
-            );
-            return res.status(201).json({ id: result.insertId.toString(), name, sigla, description, manager });
+exports.atualizarDepartamento = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    const { nome, sigla, descricao, gestor } = req.body;
+
+    try {
+        const sql = `
+            UPDATE departamentos 
+            SET nome = ?, sigla = ?, descricao = ?, gestor = ? 
+            WHERE id = ? AND empresa_id = ?
+        `;
+        await db.query(sql, [nome, sigla, descricao || null, gestor || null, id, empresa_id]);
+        res.json({ mensagem: "Departamento atualizado com sucesso!" });
+    } catch (error) {
+        console.error("Erro ao atualizar departamento:", error);
+        res.status(500).json({ erro: "Erro ao modificar o departamento." });
+    }
+};
+
+exports.deletarDepartamento = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+
+    try {
+        const [cargos] = await db.query('SELECT id FROM cargos WHERE departamento_id = ?', [id]);
+        if (cargos.length > 0) {
+            return res.status(400).json({ erro: "Não é possível excluir um departamento que possui cargos associados." });
         }
-    } catch (erro) {
-        console.error(erro);
-        res.status(500).json({ erro: 'Erro ao salvar departamento.' });
+
+        const [result] = await db.query('DELETE FROM departamentos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        if (result.affectedRows === 0) return res.status(404).json({ erro: "Departamento não encontrado." });
+
+        res.json({ mensagem: "Departamento removido com sucesso!" });
+    } catch (error) {
+        console.error("Erro ao deletar departamento:", error);
+        res.status(500).json({ erro: "Erro ao remover o departamento." });
     }
 };
 
 // ==========================================
-// CARGOS
+// CRUD DE CARGOS
 // ==========================================
+
 exports.listarCargos = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;
-        
         const sql = `
-            SELECT c.id, c.nome as title, c.nivel as level, c.salario_base as salary,
-            d.sigla as deptSigla, d.id as departamento_id,
-            (SELECT COUNT(*) FROM funcionarios f WHERE f.cargo_id = c.id) as occupants
+            SELECT c.*, d.nome as departamento_nome 
             FROM cargos c
             LEFT JOIN departamentos d ON c.departamento_id = d.id
             WHERE c.empresa_id = ?
         `;
         const [rows] = await db.query(sql, [empresa_id]);
         res.json(rows);
-    } catch (erro) {
-        console.error(erro);
-        res.status(500).json({ erro: 'Erro ao buscar cargos.' });
+    } catch (error) {
+        console.error("Erro ao listar cargos:", error);
+        res.status(500).json({ erro: "Erro ao buscar cargos." });
     }
 };
 
-exports.salvarCargo = async (req, res) => {
+exports.criarCargo = async (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    const { nome, departamento_id, nivel, salario_base } = req.body;
+
+    if (!nome || !departamento_id) {
+        return res.status(400).json({ erro: "Nome do cargo e departamento são obrigatórios." });
+    }
+
     try {
-        const empresa_id = req.usuario.empresa_id;
-        // O Front-end manda 'title', nós guardamos como 'nome'
-        const { id, title, level, salary, departamento_id } = req.body;
-        
-        if (id) {
-            await db.query(
-                'UPDATE cargos SET nome=?, nivel=?, salario_base=?, departamento_id=? WHERE id=? AND empresa_id=?',
-                [title, level, salary, departamento_id, id, empresa_id]
-            );
-            return res.json({ id, title });
-        } else {
-            const [result] = await db.query(
-                'INSERT INTO cargos (nome, nivel, salario_base, departamento_id, empresa_id) VALUES (?, ?, ?, ?, ?)',
-                [title, level, salary, departamento_id, empresa_id]
-            );
-            return res.status(201).json({ id: result.insertId.toString(), title });
+        const sql = 'INSERT INTO cargos (nome, departamento_id, nivel, salario_base, empresa_id) VALUES (?, ?, ?, ?, ?)';
+        await db.query(sql, [nome, departamento_id, nivel || null, salario_base || 0, empresa_id]);
+        res.status(201).json({ mensagem: "Cargo estruturado com sucesso!" });
+    } catch (error) {
+        console.error("Erro ao criar cargo:", error);
+        res.status(500).json({ erro: "Erro ao salvar o cargo." });
+    }
+};
+
+exports.atualizarCargo = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    const { nome, departamento_id, nivel, salario_base } = req.body;
+
+    try {
+        const sql = 'UPDATE cargos SET nome = ?, departamento_id = ?, nivel = ?, salario_base = ? WHERE id = ? AND empresa_id = ?';
+        await db.query(sql, [nome, departamento_id, nivel || null, salario_base || 0, id, empresa_id]);
+        res.json({ mensagem: "Cargo modificado com sucesso!" });
+    } catch (error) {
+        console.error("Erro ao atualizar cargo:", error);
+        res.status(500).json({ erro: "Erro ao modificar o cargo." });
+    }
+};
+
+exports.deletarCargo = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+
+    try {
+        const [funcs] = await db.query('SELECT id FROM funcionarios WHERE cargo_id = ? AND status = "Ativo"', [id]);
+        if (funcs.length > 0) {
+            return res.status(400).json({ erro: "Não é possível remover este cargo porque existem colaboradores ativos alocados nele." });
         }
-    } catch (erro) {
-        console.error(erro);
-        res.status(500).json({ erro: 'Erro ao salvar cargo.' });
+
+        await db.query('DELETE FROM cargos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        res.json({ mensagem: "Cargo removido com sucesso!" });
+    } catch (error) {
+        console.error("Erro ao deletar cargo:", error);
+        res.status(500).json({ erro: "Erro ao remover o cargo." });
     }
 };

@@ -81,10 +81,10 @@ export const employeeService = {
     const depts = await deptsRes.json();
     const roles = await rolesRes.json();
     
-    const deptFound = depts.find((d: any) => d.name === data.departamento);
-    const roleFound = roles.find((r: any) => r.title === data.cargo);
+    const deptFound = depts.find((d: any) => d.nome === data.departamento);
+    const roleFound = roles.find((r: any) => r.nome === data.cargo);
 
-    // Adicionando os campos de contrato no envio para a API
+    // Adicionando os campos de contrato e a senha no envio para a API
     const payload = {
       nome: data.nomeCompleto,
       cpf: data.cpf,
@@ -102,7 +102,8 @@ export const employeeService = {
       salario_base: data.salarioBase,
       cargo_id: roleFound ? roleFound.id : null,
       departamento_id: deptFound ? deptFound.id : null,
-      status: data.status || 'Ativo'
+      status: data.status || 'Ativo',
+      senha: data.senha // Necessário para a criação do login
     };
 
     const url = data.id ? `${API_URL}/${data.id}` : API_URL;
@@ -112,7 +113,10 @@ export const employeeService = {
       body: JSON.stringify(payload)
     });
     
-    if (!res.ok) throw new Error('Erro ao salvar colaborador');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.erro || 'Erro ao salvar colaborador');
+    }
   },
 
   delete: async (id: string): Promise<void> => {

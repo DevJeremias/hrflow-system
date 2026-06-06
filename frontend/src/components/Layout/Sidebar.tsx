@@ -10,7 +10,8 @@ import {
   Building2,
   Clock,     
   FileText,  
-  User as UserIcon 
+  User as UserIcon,
+  Command
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
@@ -23,7 +24,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
 
-  // Menus do Administrador
   const adminMenu = [
     { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { path: '/admin/colaboradores', icon: <Users size={20} />, label: 'Colaboradores' },
@@ -31,7 +31,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
   ];
 
-  // Menus do Colaborador (Ajustados para a nossa rota correta)
   const employeeMenu = [
     { path: '/meu-painel', icon: <Clock size={20} />, label: 'Bater Ponto' },
     { path: '/meu-painel/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
@@ -39,8 +38,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
   ];
 
-  // Define qual menu renderizar lendo do nosso MySQL
   const menuItems = user?.role === 'Administrador' ? adminMenu : employeeMenu;
+  const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : 'U';
 
   return (
     <>      
@@ -58,11 +57,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       `}>
         
         <div className="h-24 flex items-center justify-between px-8 border-b border-slate-800/50">
+          {/* Logo Atualizado */}
           <div className="flex items-center gap-3">
-            <div className="bg-primary p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-              <span className="text-white font-black text-xl leading-none">HR</span>
+            <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-500/20">
+              <Command size={20} />
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">Sistema RH</span>
+            <span className="text-white font-black text-xl tracking-tight">HR<span className="text-indigo-500">Flow</span></span>
           </div>
           
           <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
@@ -100,8 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="p-5 border-t border-slate-800/50">
           <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-2xl bg-white/5 border border-white/10">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-inner uppercase">
-              {/* Lendo o user.nome em vez de user.name */}
-              {user?.nome?.charAt(0) || 'U'}
+              {inicial}
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-bold text-white truncate">{user?.nome || 'Carregando...'}</p>
