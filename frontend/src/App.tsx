@@ -17,6 +17,7 @@ import Payroll from './components/Admin/Payroll/Payroll';
 import EmployeeHome from './components/Portal/EmployeeHome/EmployeeHome'; 
 import Payslips from './components/Portal/Payslips/Payslips';
 import Requests from './components/Portal/Request/Requests';
+import Profile from './components/Portal/Profile/Profile';
 
 // Proteção de Rota com verificação de Perfil alinhada com o Banco de Dados
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
@@ -67,6 +68,7 @@ function App() {
         <Route index element={<EmployeeHome />} />
         <Route path="holerites" element={<Payslips />} />
         <Route path="solicitacoes" element={<Requests />} />
+        <Route path="/meu-painel/perfil" element={<Profile />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

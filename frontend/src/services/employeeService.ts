@@ -12,17 +12,14 @@ export interface Employee {
   dataAdmissao: string;
   avatar?: string;
   
-  // Dados Pessoais
   dataNascimento?: string;
   enderecoCompleto?: string;
   
-  // Dados Bancários
   banco?: string;
   agencia?: string;
   conta?: string;
   tipoConta?: string;
   
-  // Dados de Contrato
   nivel?: string;
   tipoContrato?: string;
   salarioBase?: string | number;
@@ -63,7 +60,6 @@ export const employeeService = {
       conta: d.conta || '',
       tipoConta: d.tipo_conta || '',
       
-      // Lendo os dados de contrato do banco
       nivel: d.nivel || '',
       tipoContrato: d.tipo_contrato || 'CLT',
       salarioBase: d.salario_base || ''
@@ -81,10 +77,10 @@ export const employeeService = {
     const depts = await deptsRes.json();
     const roles = await rolesRes.json();
     
-    const deptFound = depts.find((d: any) => d.nome === data.departamento);
+    // Correção do mapeamento: O backend devolve 'nome' e 'sigla', não 'name' e 'title'
+    const deptFound = depts.find((d: any) => d.nome === data.departamento || d.sigla === data.departamento);
     const roleFound = roles.find((r: any) => r.nome === data.cargo);
 
-    // Adicionando os campos de contrato e a senha no envio para a API
     const payload = {
       nome: data.nomeCompleto,
       cpf: data.cpf,
@@ -103,7 +99,7 @@ export const employeeService = {
       cargo_id: roleFound ? roleFound.id : null,
       departamento_id: deptFound ? deptFound.id : null,
       status: data.status || 'Ativo',
-      senha: data.senha // Necessário para a criação do login
+      senha: data.senha // Campo obrigatório
     };
 
     const url = data.id ? `${API_URL}/${data.id}` : API_URL;
@@ -124,6 +120,9 @@ export const employeeService = {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
-    if (!res.ok) throw new Error('Erro ao excluir colaborador');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.erro || 'Erro ao excluir colaborador');
+    }
   }
 };

@@ -3,12 +3,10 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// 1. Definimos a interface do Usuário aqui para não depender do authService do Marcos
 export interface User {
   id: string | number;
   nome: string;
-  email: string; // Resolvido o erro do TypeScript na Sidebar
-  role: string; // O front-end dele espera 'role'
+  role: string;
 }
 
 interface AuthContextType {
@@ -27,7 +25,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Quando der F5, o sistema tenta recuperar a sessão
     const recoveredUser = localStorage.getItem('user');
     if (recoveredUser) {
       setUser(JSON.parse(recoveredUser));
@@ -36,7 +33,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, senha: string) => {
-    // 2. Substituímos o authService pela nossa chamada real na API
     const resposta = await fetch('http://localhost:3000/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -49,32 +45,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw new Error(dados.mensagem || dados.erro || 'E-mail ou senha incorretos.');
     }
 
-    // 3. Descodificamos o Token JWT (A mágica que fizemos antes)
+    // A mágica moderna para decodificar JWT com UTF-8 (resolve o bug do JoÃ£o)
     const base64Url = dados.token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(window.atob(base64));
+    const binString = window.atob(base64);
+    const bytes = new Uint8Array(binString.length);
+    for (let i = 0; i < binString.length; i++) {
+        bytes[i] = binString.charCodeAt(i);
+    }
+    const payload = JSON.parse(new TextDecoder().decode(bytes));
 
-    // 4. Adaptamos o banco de dados para a linguagem do Front do Marcos
     const usuarioFormatado: User = {
       id: payload.id,
       nome: payload.nome || 'Utilizador',
-      email: email, // Captura o e-mail diretamente do input do utilizador
-      role: payload.perfil // O Node envia 'perfil', o Front lê 'role'
+      role: payload.perfil 
     };
     
-    // Guardamos tudo no cofre do navegador
     localStorage.setItem('token', dados.token);
     localStorage.setItem('user', JSON.stringify(usuarioFormatado));
     
-    // Mantemos os dados soltos para a sua tela de Ponto Eletrônico achar fácil
     localStorage.setItem('nomeUsuario', usuarioFormatado.nome);
     localStorage.setItem('funcionarioId', String(usuarioFormatado.id));
     localStorage.setItem('perfil', usuarioFormatado.role);
 
-    // Atualiza o estado global da aplicação
     setUser(usuarioFormatado);
 
-    // Redirecionamento blindado
     if (usuarioFormatado.role === 'Administrador') {
       navigate('/admin');
     } else {
@@ -83,7 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    // Limpa a casa na hora de sair
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('nomeUsuario');
