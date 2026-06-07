@@ -16,7 +16,7 @@ exports.registrarConta = async (req, res) => {
         if (users.length > 0) return res.status(400).json({ erro: "E-mail já cadastrado." });
 
         // 2. Cria a Empresa no banco
-        const sqlEmpresa = `INSERT INTO empresas (nome_fantasia) VALUES (?)`;
+        const sqlEmpresa = `INSERT INTO empresas (nome) VALUES (?)`;
         const [resultEmpresa] = await db.query(sqlEmpresa, [nomeEmpresa]);
         const empresaId = resultEmpresa.insertId; // Pega o ID da empresa que acabou de nascer
 
