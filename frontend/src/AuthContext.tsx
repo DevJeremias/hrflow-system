@@ -1,5 +1,3 @@
-// src/AuthContext.tsx
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,6 +5,7 @@ export interface User {
   id: string | number;
   nome: string;
   role: string;
+  avatar?: string | null;
 }
 
 interface AuthContextType {
@@ -15,6 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<User>) => void; // Função nova
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw new Error(dados.mensagem || dados.erro || 'E-mail ou senha incorretos.');
     }
 
-    // A mágica moderna para decodificar JWT com UTF-8 (resolve o bug do JoÃ£o)
     const base64Url = dados.token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const binString = window.atob(base64);
@@ -58,16 +57,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const usuarioFormatado: User = {
       id: payload.id,
       nome: payload.nome || 'Utilizador',
-      role: payload.perfil 
+      role: payload.perfil,
+      avatar: null // O avatar será lido na tela de perfil posteriormente
     };
     
     localStorage.setItem('token', dados.token);
     localStorage.setItem('user', JSON.stringify(usuarioFormatado));
-    
-    localStorage.setItem('nomeUsuario', usuarioFormatado.nome);
-    localStorage.setItem('funcionarioId', String(usuarioFormatado.id));
-    localStorage.setItem('perfil', usuarioFormatado.role);
-
     setUser(usuarioFormatado);
 
     if (usuarioFormatado.role === 'Administrador') {
@@ -77,18 +72,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateUser = (data: Partial<User>) => {
+    if (user) {
+      const updated = { ...user, ...data };
+      setUser(updated);
+      localStorage.setItem('user', JSON.stringify(updated));
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    localStorage.removeItem('nomeUsuario');
-    localStorage.removeItem('funcionarioId');
-    localStorage.removeItem('perfil');
     setUser(null);
     navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );

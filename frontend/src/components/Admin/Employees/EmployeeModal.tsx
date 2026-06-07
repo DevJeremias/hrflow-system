@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Briefcase, CreditCard, Lock } from 'lucide-react';
+import { X, User, Briefcase, CreditCard } from 'lucide-react';
 import { Employee } from '../../../services/employeeService';
 import { getRoles, getDepartments } from '../../../services/departmentsRolesService'
 import PersonalTab from './PersonalTab';
@@ -13,9 +13,8 @@ interface Props {
   employeeToEdit?: Employee | null;
 }
 
-// Alteramos senhaAcesso para senha para alinhar com o Backend
 const initialState = {
-  nomeCompleto: '', emailPessoal: '', telefone: '', cpf: '', dataNascimento: '', enderecoCompleto: '', senha: '',
+  nomeCompleto: '', emailPessoal: '', telefone: '', cpf: '', dataNascimento: '', enderecoCompleto: '', senhaAcesso: '',
   matricula: '', cargo: '', nivel: '', departamento: '', dataAdmissao: '', tipoContrato: 'CLT', salarioBase: '', status: 'Ativo',
   banco: '', agencia: '', conta: '', tipoConta: '',
   cargoEarnings: [], cargoDeductions: []
@@ -113,25 +112,6 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
           )}
           
           {activeTab === 'financial' && <FinancialTab formData={formData} handleChange={handleChange} />}
-
-          {/* INJEÇÃO DE SEGURANÇA: Senha provisória apenas na criação e na aba Pessoal */}
-          {!employeeToEdit && activeTab === 'personal' && (
-            <div className="mt-8 p-6 bg-indigo-50 border border-indigo-100 rounded-2xl animate-in fade-in">
-              <label className="text-[10px] font-black text-indigo-800 uppercase tracking-widest flex items-center gap-2 mb-2">
-                <Lock size={14} /> Senha de Acesso Provisória *
-              </label>
-              <input
-                required
-                type="text"
-                name="senha"
-                placeholder="Ex: Mudar123"
-                value={formData.senha || ''}
-                onChange={handleChange}
-                className="w-full p-4 bg-white border border-indigo-200 rounded-xl outline-none focus:border-indigo-500 font-bold text-indigo-900 transition-all"
-              />
-              <p className="text-[10px] text-indigo-600 mt-2 font-bold">Esta credencial garantirá o acesso inicial do colaborador à plataforma.</p>
-            </div>
-          )}
 
           <div className="mt-12 pt-8 border-t border-slate-100 flex gap-4">
             <button type="button" onClick={onClose} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all">

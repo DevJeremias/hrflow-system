@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 exports.listarFuncionarios = async (req, res) => {
     try {
@@ -34,10 +34,8 @@ exports.criarFuncionario = async (req, res) => {
 
     const connection = await db.getConnection();
     try {
-        // Inicia Transação para não salvar dados incompletos em caso de erro
         await connection.beginTransaction();
 
-        // 1. Verifica se o e-mail já existe
         const [usuarioExistente] = await connection.query(
             'SELECT id FROM usuarios WHERE email = ?', [email]
         );
@@ -46,7 +44,6 @@ exports.criarFuncionario = async (req, res) => {
             return res.status(400).json({ erro: "Este e-mail já está registado no sistema." });
         }
 
-        // 2. Insere na tabela 'funcionarios'
         const sqlFuncionario = `
             INSERT INTO funcionarios (
                 nome, cpf, email, telefone, data_admissao, data_nascimento, 
@@ -64,16 +61,15 @@ exports.criarFuncionario = async (req, res) => {
 
         const funcionarioId = resultFunc.insertId;
 
-        // 3. Encripta a senha com Bcrypt
         const saltRounds = 10;
         const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
 
-        // 4. Cria o login na tabela 'usuarios'
+        // CORREÇÃO CRÍTICA: Inserindo o campo 'nome' na tabela usuarios
         const sqlUsuario = `
-            INSERT INTO usuarios (email, senha, perfil, empresa_id, funcionario_id)
-            VALUES (?, ?, 'Colaborador', ?, ?)
+            INSERT INTO usuarios (nome, email, senha, perfil, empresa_id, funcionario_id)
+            VALUES (?, ?, ?, 'Colaborador', ?, ?)
         `;
-        await connection.query(sqlUsuario, [email, senhaCriptografada, empresa_id, funcionarioId]);
+        await connection.query(sqlUsuario, [nome, email, senhaCriptografada, empresa_id, funcionarioId]);
 
         await connection.commit();
         res.status(201).json({ mensagem: "Colaborador e credenciais de acesso criados com sucesso!" });
@@ -115,8 +111,8 @@ exports.atualizarFuncionario = async (req, res) => {
             status || 'Ativo', id, empresa_id
         ]);
 
-        // Sincroniza o e-mail na tabela de login caso o RH o tenha alterado
-        await connection.query('UPDATE usuarios SET email = ? WHERE funcionario_id = ? AND empresa_id = ?', [email, id, empresa_id]);
+        // Sincroniza o e-mail e o nome atualizado na tabela de credenciais
+        await connection.query('UPDATE usuarios SET email = ?, nome = ? WHERE funcionario_id = ? AND empresa_id = ?', [email, nome, id, empresa_id]);
 
         await connection.commit();
         res.json({ mensagem: "Funcionário atualizado com sucesso!" });
@@ -137,10 +133,8 @@ exports.deletarFuncionario = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        // Elimina primeiro o acesso de login para não quebrar a Foreign Key
         await connection.query('DELETE FROM usuarios WHERE funcionario_id = ? AND empresa_id = ?', [id, empresa_id]);
 
-        // Elimina o funcionário
         const [result] = await connection.query('DELETE FROM funcionarios WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
         
         if (result.affectedRows === 0) {

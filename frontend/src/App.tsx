@@ -55,7 +55,7 @@ function App() {
         <Route path="folha" element={<Payroll />} />
       </Route>
 
-      {/* ÁREA DO COLABORADOR (COM A ROTA ALINHADA) */}
+      {/* ÁREA DO COLABORADOR (COM AS ROTAS RELATIVAS CORRIGIDAS) */}
       <Route 
         path="/meu-painel" 
         element={
@@ -68,9 +68,10 @@ function App() {
         <Route index element={<EmployeeHome />} />
         <Route path="holerites" element={<Payslips />} />
         <Route path="solicitacoes" element={<Requests />} />
-        <Route path="/meu-painel/perfil" element={<Profile />} />
+        <Route path="perfil" element={<Profile />} />
       </Route>
 
+      {/* Fallback para qualquer rota não existente */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

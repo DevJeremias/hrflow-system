@@ -77,7 +77,6 @@ export const employeeService = {
     const depts = await deptsRes.json();
     const roles = await rolesRes.json();
     
-    // Correção do mapeamento: O backend devolve 'nome' e 'sigla', não 'name' e 'title'
     const deptFound = depts.find((d: any) => d.nome === data.departamento || d.sigla === data.departamento);
     const roleFound = roles.find((r: any) => r.nome === data.cargo);
 
@@ -99,7 +98,7 @@ export const employeeService = {
       cargo_id: roleFound ? roleFound.id : null,
       departamento_id: deptFound ? deptFound.id : null,
       status: data.status || 'Ativo',
-      senha: data.senha // Campo obrigatório
+      senha: data.senhaAcesso // Mapeia exatamente o nome do seu campo em PersonalTab
     };
 
     const url = data.id ? `${API_URL}/${data.id}` : API_URL;
