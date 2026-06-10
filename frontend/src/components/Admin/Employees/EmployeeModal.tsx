@@ -28,7 +28,6 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
   const [cargosList, setCargosList] = useState<any[]>([]);
   const [departamentosList, setDepartamentosList] = useState<any[]>([]);
 
-  // Busca os dados assim que o modal abre
   useEffect(() => {
     if (isOpen) {
       getRoles().then(setCargosList);
@@ -74,10 +73,8 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose} />
       
-      {/* Container com estética Premium (rounded-[2.5rem]) */}
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
         
-        {/* Header Inovado */}
         <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">

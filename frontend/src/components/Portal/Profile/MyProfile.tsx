@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { userService, UserPersonalData } from '../../../services/userService'; 
 
 const MyProfile: React.FC = () => {
-  // Aplicando a tipagem ao estado
   const [profileData, setProfileData] = useState<UserPersonalData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -21,7 +20,6 @@ const MyProfile: React.FC = () => {
     fetchProfile();
   }, []);
 
-  // Tipando o parâmetro da data
   const formatarData = (dataString?: string | null): string => {
     if (!dataString) return '-';
     const data = new Date(dataString);
@@ -48,7 +46,6 @@ const MyProfile: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6 bg-gray-50 min-h-screen">
       
-      {/* Cabeçalho de Perfil */}
       <div className="bg-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-center gap-4 border border-gray-200">
         <div className="w-20 h-20 bg-blue-600 rounded-full flex justify-center items-center text-white text-3xl font-bold uppercase shadow-inner">
           {profileData.nome.substring(0, 2)}
@@ -64,7 +61,6 @@ const MyProfile: React.FC = () => {
         </div>
       </div>
 
-      {/* Secção 1: Dados Pessoais */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
         <h2 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
           👤 Informações Pessoais
@@ -93,7 +89,6 @@ const MyProfile: React.FC = () => {
         </div>
       </div>
 
-      {/* Secção 2: Dados de Contrato */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
         <h2 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
           💼 Vínculo Empregatício
@@ -114,7 +109,6 @@ const MyProfile: React.FC = () => {
         </div>
       </div>
 
-      {/* Secção 3: Dados Bancários */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
         <h2 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
           🏦 Dados Bancários

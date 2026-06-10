@@ -9,7 +9,6 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const { user } = useAuth();
 
-  // Lendo o perfil correto do Back-end
   const ambienteLabel = user?.role === 'Administrador' 
     ? "Ambiente Administrativo" 
     : "Portal do Colaborador";

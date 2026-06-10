@@ -7,8 +7,8 @@ const Login: React.FC = () => {
   const bgImage = new URL('../../assets/login_imagem2.png', import.meta.url).href;
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [erro, setErro] = useState(''); // Estado para mensagem de erro
-  const [isSubmitting, setIsSubmitting] = useState(false); // Estado para o botão carregando
+  const [erro, setErro] = useState(''); 
+  const [isSubmitting, setIsSubmitting] = useState(false); 
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -39,10 +39,16 @@ const Login: React.FC = () => {
         <div className="relative z-10 flex flex-col justify-between w-full h-full pt-12 pb-12 pl-10 pr-12 xl:pt-16 xl:pb-16 xl:pl-20">
           
           <div className="flex items-center gap-3">
-            <div className="bg-primary p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-              <span className="text-white font-black text-xl leading-none">HR</span>
+            <div className=" p-2.5 rounded-xl shadow-indigo-500/20">
+              <img 
+                src="./src/assets/logo.png" 
+                alt="Logo da Empresa" 
+                className="h-10 md:h-12 w-auto object-contain" 
+              />
             </div>
-            <span className="text-white font-bold text-2xl tracking-tight">Sistema RH</span>
+            <span className="text-2xl font-black text-white tracking-tight">
+                HR<span className="text-purple-500">flow</span>
+              </span>
           </div>
 
           <div className="max-w-xl">

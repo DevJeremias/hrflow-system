@@ -3,7 +3,6 @@ import { useAuth } from '../../../AuthContext';
 import { EmployeePayroll, getMyPayroll } from '../../../services/payrollService';
 import PayslipsSummaryCards from './PayslipsCards';
 import PayslipsHistoryTable from './PayslipsHistory';
-// Ajustado para buscar o modal lá na pasta do Administrador
 import HoleriteModal from '../../Admin/Payroll/HoleriteModal'; 
 
 const MyPayslips: React.FC = () => {
@@ -14,7 +13,6 @@ const MyPayslips: React.FC = () => {
   const [selectedPayslip, setSelectedPayslip] = useState<EmployeePayroll | null>(null);
   const [selectedMonthLabel, setSelectedMonthLabel] = useState('');
 
-  // Rótulos temporários até implementarmos o histórico de meses real
   const monthsLabels = ['Mês Atual'];
 
   useEffect(() => {

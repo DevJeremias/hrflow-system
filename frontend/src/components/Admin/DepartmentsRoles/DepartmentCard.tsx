@@ -19,7 +19,6 @@ interface Props {
 
 const DepartmentCard: React.FC<Props> = ({ department, onEdit }) => {
   
-  // A CORREÇÃO ESTÁ AQUI: Proteção contra valores nulos!
   const getInitials = (name: string) => {
     if (!name) return '--'; // Se não tiver gestor, mostra dois tracinhos
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
@@ -34,7 +33,6 @@ const DepartmentCard: React.FC<Props> = ({ department, onEdit }) => {
           </div>
           <div>
             <h3 className="text-lg font-black text-slate-900 leading-tight">{department.name}</h3>
-            {/* Proteção para a Sigla */}
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{department.sigla || 'S/S'}</span>
           </div>
         </div>
