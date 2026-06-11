@@ -37,7 +37,6 @@ const DailyTimeline: React.FC<Props> = ({ records }) => {
         </div>
       ) : (
         <div className="flex-1 relative">
-          {/* Linha vertical clara */}
           <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-slate-100"></div>
           
           <div className="space-y-6 relative">

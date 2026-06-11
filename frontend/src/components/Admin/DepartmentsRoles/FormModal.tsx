@@ -62,7 +62,6 @@ const FormModal: React.FC<Props> = ({ type, item, departments, onClose, onSave }
         {/* Corpo do Modal (Scrollável) */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           
-          {/* Chama o formulário correto baseado no tipo selecionado */}
           {isDept ? (
             <DepartmentForm item={item} />
           ) : (

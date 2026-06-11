@@ -10,6 +10,7 @@ const pontoRoutes = require('./routes/pontoRoutes');
 const estruturaRoutes = require('./routes/estruturaRoutes');
 const folhaRoutes = require('./routes/folhaRoutes');
 const perfilRoutes = require('./routes/perfilRoutes');
+const usuarioRoutes = require('./routes/usuarioRoutes');
 
 // Importação do Middleware de Proteção
 const authMiddleware = require('./middlewares/authMiddleware');
@@ -39,6 +40,7 @@ app.use('/api/ponto', authMiddleware, pontoRoutes);
 app.use('/api/estrutura', authMiddleware, estruturaRoutes); 
 app.use('/api/folha', authMiddleware, folhaRoutes); 
 app.use('/api/perfil', authMiddleware, perfilRoutes); 
+app.use('/api/usuarios', authMiddleware, usuarioRoutes);
 
 // Rota padrão da API
 app.get('/api', (req, res) => {

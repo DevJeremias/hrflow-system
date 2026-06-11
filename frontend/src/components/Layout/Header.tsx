@@ -10,6 +10,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const { user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // Mantida a versão da branch devi, pois o JSX abaixo exige estas variáveis
   const ambienteLabel = user?.role === 'Administrador' ? "Ambiente Administrativo" : "Portal do Colaborador";
   const primeiroNome = user?.nome ? user.nome.split(' ')[0] : 'Utilizador';
   const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : 'U';

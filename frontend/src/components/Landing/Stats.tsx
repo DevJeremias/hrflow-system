@@ -17,7 +17,7 @@ export default function Stats() {
               <h3 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-white/50 tracking-tighter mb-2">
                 {stat.value}
               </h3>
-              <p className="text-lg font-bold text-indigo-400 mb-1">{stat.label}</p>
+              <p className="text-lg font-bold text-orange-400 mb-1">{stat.label}</p>
               <p className="text-sm font-medium text-slate-400">{stat.desc}</p>
             </div>
           ))}

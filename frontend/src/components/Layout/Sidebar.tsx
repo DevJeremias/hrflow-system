@@ -1,6 +1,18 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Calculator, Calendar, LogOut, X, Building2, Clock, FileText, User as UserIcon, Command } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Users, 
+  Calculator,  
+  Calendar,
+  LogOut,
+  X, 
+  Building2,
+  Clock,     
+  FileText,  
+  User as UserIcon,
+  Command
+} from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
 interface SidebarProps {
@@ -17,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/admin/colaboradores', icon: <Users size={20} />, label: 'Colaboradores' },
     { path: '/admin/estrutura', icon: <Building2 size={20} />, label: 'Depto & Cargos' },
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
+    { path: '/admin/gestao-ponto', icon: <Clock size={20} />, label: 'Gestão de Ponto' }, // Funcionalidade protegida no merge
   ];
 
   const employeeMenu = [
@@ -42,7 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </div>
             <span className="text-white font-black text-xl tracking-tight">HR<span className="text-indigo-500">Flow</span></span>
           </div>
-          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white"><X size={24} /></button>
+          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
         </div>
 
         <nav className="flex-1 px-5 py-8 space-y-2 overflow-y-auto custom-scrollbar">
@@ -60,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         <div className="p-5 border-t border-slate-800/50">
           <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-2xl bg-white/5 border border-white/10">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-inner uppercase overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-inner uppercase overflow-hidden shrink-0">
               {user?.avatar ? <img src={user.avatar} alt="Foto" className="w-full h-full object-cover" /> : inicial}
             </div>
             <div className="flex-1 overflow-hidden">

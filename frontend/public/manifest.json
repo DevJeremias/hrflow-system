@@ -1,0 +1,20 @@
+{
+  "short_name": "HRFlow",
+  "name": "HRFlow - Gestão de RH",
+  "icons": [
+    {
+      "src": "icone-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icone-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone", 
+  "theme_color": "#2563EB",
+  "background_color": "#ffffff"
+}

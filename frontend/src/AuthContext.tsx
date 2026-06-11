@@ -63,6 +63,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     localStorage.setItem('token', dados.token);
     localStorage.setItem('user', JSON.stringify(usuarioFormatado));
+    
+    // Mantido da branch main: itens essenciais para o Relógio de Ponto e outros serviços
+    localStorage.setItem('nomeUsuario', usuarioFormatado.nome);
+    // Usa o funcionario_id do payload (se existir) para garantir a integridade do ponto do colaborador
+    localStorage.setItem('funcionarioId', String(payload.funcionario_id || usuarioFormatado.id));
+    localStorage.setItem('perfil', usuarioFormatado.role);
+
     setUser(usuarioFormatado);
 
     if (usuarioFormatado.role === 'Administrador') {
@@ -83,6 +90,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Limpeza das chaves adicionadas pela branch main
+    localStorage.removeItem('nomeUsuario');
+    localStorage.removeItem('funcionarioId');
+    localStorage.removeItem('perfil');
+    
     setUser(null);
     navigate('/login');
   };
