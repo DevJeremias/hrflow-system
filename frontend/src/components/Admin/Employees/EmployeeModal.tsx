@@ -24,14 +24,13 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
   const [activeTab, setActiveTab] = useState<'personal' | 'work' | 'financial'>('personal');
   const [formData, setFormData] = useState<any>(initialState);
   
-  // Estados para as listas do banco (Evita a tela branca!)
   const [cargosList, setCargosList] = useState<any[]>([]);
   const [departamentosList, setDepartamentosList] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen) {
-      getRoles().then(setCargosList);
-      getDepartments().then(setDepartamentosList);
+      getRoles().then(setCargosList).catch(console.error);
+      getDepartments().then(setDepartamentosList).catch(console.error);
     }
   }, [isOpen]);
 
@@ -54,7 +53,7 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
           ...updatedData,
           salarioBase: cargoSelecionado.salary.toString(),
           departamento: cargoSelecionado.department,
-          nivel: cargoSelecionado.level || '', // <-- PUXA O NÍVEL AUTOMATICAMENTE DO CARGO!
+          nivel: cargoSelecionado.level || '', 
           cargoEarnings: cargoSelecionado.earnings || [],
           cargoDeductions: cargoSelecionado.deductions || []
         };

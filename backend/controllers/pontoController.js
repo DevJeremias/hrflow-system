@@ -1,24 +1,15 @@
 const db = require('../config/db');
 
-// 1. Rota que grava o ponto e devolve a hora exata para a Timeline
 exports.registrarPonto = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;
+        // SEGURANÇA: O ID vem do token criptografado, não do req.body
+        const funcionario_id = req.usuario.funcionario_id; 
         
-        // CORREÇÃO APLICADA: Lendo "tipo" enviado pelo React
-        const { funcionario_id, latitude, longitude, tipo, observacao } = req.body;
+        const { latitude, longitude, tipo, observacao } = req.body;
 
         if (!funcionario_id) {
-            return res.status(400).json({ erro: 'O ID do funcionário é obrigatório.' });
-        }
-
-        const [verificacao] = await db.query(
-            'SELECT id FROM funcionarios WHERE id = ? AND empresa_id = ?',
-            [funcionario_id, empresa_id]
-        );
-
-        if (verificacao.length === 0) {
-            return res.status(403).json({ erro: 'Acesso negado. Este funcionário não pertence à sua empresa.' });
+            return res.status(403).json({ erro: 'Acesso negado. Apenas colaboradores vinculados podem registrar ponto.' });
         }
 
         const [resultado] = await db.query(
@@ -49,10 +40,9 @@ exports.registrarPonto = async (req, res) => {
     }
 };
 
-// 2. Busca apenas os pontos batidos no dia atual para preencher a lateral direita
 exports.listarPontosHoje = async (req, res) => {
     try {
-        const { funcionarioId } = req.params;
+        const funcionario_id = req.usuario.funcionario_id;
         const empresa_id = req.usuario.empresa_id;
 
         const [pontos] = await db.query(
@@ -60,7 +50,7 @@ exports.listarPontosHoje = async (req, res) => {
              FROM registro_pontos 
              WHERE funcionario_id = ? AND empresa_id = ? AND DATE(data_hora_oficial) = CURDATE()
              ORDER BY data_hora_oficial ASC`,
-            [funcionarioId, empresa_id]
+            [funcionario_id, empresa_id]
         );
 
         const formatados = pontos.map(p => {
@@ -80,10 +70,9 @@ exports.listarPontosHoje = async (req, res) => {
     }
 };
 
-// 3. Agrupa os pontos do mês por dia (Entrada, Pausa, Retorno, Saída) para o Espelho
 exports.listarHistorico = async (req, res) => {
     try {
-        const { funcionarioId } = req.params;
+        const funcionario_id = req.usuario.funcionario_id;
         const { mes } = req.query; 
         const empresa_id = req.usuario.empresa_id;
 
@@ -92,7 +81,7 @@ exports.listarHistorico = async (req, res) => {
              FROM registro_pontos 
              WHERE funcionario_id = ? AND empresa_id = ? AND DATE_FORMAT(data_hora_oficial, '%Y-%m') = ?
              ORDER BY data_hora_oficial ASC`,
-            [funcionarioId, empresa_id, mes]
+            [funcionario_id, empresa_id, mes]
         );
 
         const dias = {};
@@ -122,7 +111,6 @@ exports.listarHistorico = async (req, res) => {
     }
 };
 
-// 4. Entrega a estrutura para a tabela de Totais não quebrar
 exports.listarTotais = async (req, res) => {
     res.json({
         totals: [
@@ -132,7 +120,6 @@ exports.listarTotais = async (req, res) => {
     });
 };
 
-// 5. Rota antiga do Admin / RH
 exports.listarPontos = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;

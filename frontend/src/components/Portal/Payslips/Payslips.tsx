@@ -4,6 +4,7 @@ import { EmployeePayroll, getMyPayroll } from '../../../services/payrollService'
 import PayslipsSummaryCards from './PayslipsCards';
 import PayslipsHistoryTable from './PayslipsHistory';
 import HoleriteModal from '../../Admin/Payroll/HoleriteModal'; 
+import { FileText } from 'lucide-react';
 
 const MyPayslips: React.FC = () => {
   const { user } = useAuth();
@@ -66,8 +67,14 @@ const MyPayslips: React.FC = () => {
           />
         </>
       ) : (
-        <div className="py-20 text-center text-slate-500 font-bold">
-          Nenhum holerite processado até ao momento.
+        <div className="py-20 text-center flex flex-col items-center gap-4 bg-white rounded-3xl border border-slate-100 shadow-sm">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300">
+            <FileText size={32} />
+          </div>
+          <div>
+            <p className="text-slate-600 font-bold text-lg">Nenhum holerite disponível</p>
+            <p className="text-slate-400 font-medium text-sm">O seu primeiro recibo de vencimento aparecerá aqui após o processamento da folha.</p>
+          </div>
         </div>
       )}
 

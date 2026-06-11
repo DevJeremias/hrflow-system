@@ -13,7 +13,7 @@ import Payroll from './components/Admin/Payroll/Payroll';
 import EmployeeHome from './components/Portal/EmployeeHome/EmployeeHome'; 
 import Payslips from './components/Portal/Payslips/Payslips';
 import Requests from './components/Portal/Request/Requests';
-import Profile from './components/Portal/Profile/MyProfile';
+import Profile from './components/Portal/Profile/Profile';
 
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -48,6 +48,7 @@ function App() {
         <Route path="folha" element={<Payroll />} />
       </Route>
 
+      {/* ÁREA DO COLABORADOR (COM AS ROTAS RELATIVAS CORRIGIDAS) */}
       <Route 
         path="/meu-painel" 
         element={
@@ -62,6 +63,7 @@ function App() {
         <Route path="perfil" element={<Profile />} />
       </Route>
 
+      {/* Fallback para qualquer rota não existente */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

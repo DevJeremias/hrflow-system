@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 exports.listarFuncionarios = async (req, res) => {
     try {
@@ -13,85 +14,141 @@ exports.listarFuncionarios = async (req, res) => {
         const [rows] = await db.query(sql, [empresa_id]);
         res.json(rows);
     } catch (error) {
-        console.error("Erro ao listar:", error);
-        res.status(500).json({ erro: "Erro ao buscar funcionários" });
+        console.error("Erro ao listar funcionários:", error);
+        res.status(500).json({ erro: "Erro ao buscar funcionários." });
     }
 };
 
 exports.criarFuncionario = async (req, res) => {
+    const empresa_id = req.usuario.empresa_id; 
+    
+    const { 
+        nome, cpf, email, telefone, data_admissao, data_nascimento, 
+        endereco, banco, agencia, conta, tipo_conta, 
+        cargo_id, departamento_id, tipo_contrato, salario_base, senha 
+    } = req.body;
+
+    if (!nome || !email || !senha) {
+        return res.status(400).json({ erro: "Nome, e-mail e senha são campos obrigatórios." });
+    }
+
+    const connection = await db.getConnection();
     try {
-        const empresa_id = req.usuario.empresa_id;
-        let { 
-            nome, cpf, email, telefone, data_admissao, data_nascimento, 
-            endereco, banco, agencia, conta, tipo_conta, 
-            nivel, tipo_contrato, salario_base,
-            cargo_id, departamento_id, status 
-        } = req.body;
-        
-        const admissaoFormatada = (data_admissao && data_admissao !== '') ? data_admissao : null;
-        const nascimentoFormatado = (data_nascimento && data_nascimento !== '') ? data_nascimento : null;
-        const salarioFormatado = (salario_base && !isNaN(salario_base)) ? parseFloat(salario_base) : null;
+        await connection.beginTransaction();
 
-        const sql = `INSERT INTO funcionarios 
-            (nome, cpf, email, telefone, data_admissao, data_nascimento, endereco, banco, agencia, conta, tipo_conta, nivel, tipo_contrato, salario_base, cargo_id, departamento_id, status, empresa_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const [usuarioExistente] = await connection.query(
+            'SELECT id FROM usuarios WHERE email = ?', [email]
+        );
+        if (usuarioExistente.length > 0) {
+            await connection.rollback();
+            return res.status(400).json({ erro: "Este e-mail já está registado no sistema." });
+        }
 
-        await db.query(sql, [nome, cpf, email, telefone, admissaoFormatada, nascimentoFormatado, endereco, banco, agencia, conta, tipo_conta, nivel, tipo_contrato, salarioFormatado, cargo_id, departamento_id, status, empresa_id]);
+        const sqlFuncionario = `
+            INSERT INTO funcionarios (
+                nome, cpf, email, telefone, data_admissao, data_nascimento, 
+                endereco, banco, agencia, conta, tipo_conta, cargo_id, 
+                departamento_id, tipo_contrato, salario_base, status, empresa_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo', ?)
+        `;
         
-        res.status(201).json({ mensagem: "Colaborador criado com sucesso" });
+        const [resultFunc] = await connection.query(sqlFuncionario, [
+            nome, cpf || null, email, telefone || null, data_admissao || null, 
+            data_nascimento || null, endereco || null, banco || null, agencia || null, 
+            conta || null, tipo_conta || null, cargo_id || null, departamento_id || null, 
+            tipo_contrato || null, salario_base || null, empresa_id
+        ]);
+
+        const funcionarioId = resultFunc.insertId;
+
+        const saltRounds = 10;
+        const senhaCriptografada = await bcrypt.hash(senha, saltRounds);
+
+        // CORREÇÃO CRÍTICA: Inserindo o campo 'nome' na tabela usuarios
+        const sqlUsuario = `
+            INSERT INTO usuarios (nome, email, senha, perfil, empresa_id, funcionario_id)
+            VALUES (?, ?, ?, 'Colaborador', ?, ?)
+        `;
+        await connection.query(sqlUsuario, [nome, email, senhaCriptografada, empresa_id, funcionarioId]);
+
+        await connection.commit();
+        res.status(201).json({ mensagem: "Colaborador e credenciais de acesso criados com sucesso!" });
+
     } catch (error) {
-        console.error("Erro ao criar:", error);
-        res.status(500).json({ erro: "Erro ao criar funcionário" });
+        await connection.rollback();
+        console.error("Erro ao criar colaborador:", error);
+        res.status(500).json({ erro: "Erro interno ao processar o cadastro." });
+    } finally {
+        connection.release();
     }
 };
 
 exports.atualizarFuncionario = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    const { 
+        nome, cpf, email, telefone, data_admissao, data_nascimento, 
+        endereco, banco, agencia, conta, tipo_conta,
+        cargo_id, departamento_id, tipo_contrato, salario_base, status 
+    } = req.body;
+
+    const connection = await db.getConnection();
     try {
-        const { id } = req.params;
-        let { 
-            nome, cpf, email, telefone, data_admissao, data_nascimento, 
-            endereco, banco, agencia, conta, tipo_conta, 
-            nivel, tipo_contrato, salario_base,
-            cargo_id, departamento_id, status 
-        } = req.body;
+        await connection.beginTransaction();
 
-        const admissaoFormatada = (data_admissao && data_admissao !== '') ? data_admissao : null;
-        const nascimentoFormatado = (data_nascimento && data_nascimento !== '') ? data_nascimento : null;
-        const salarioFormatado = (salario_base && !isNaN(salario_base)) ? parseFloat(salario_base) : null;
-
-        if (isNaN(cargo_id) && cargo_id) {
-            const [cargos] = await db.query('SELECT id FROM cargos WHERE nome = ? LIMIT 1', [cargo_id]);
-            cargo_id = cargos.length > 0 ? cargos[0].id : null;
-        }
-        if (isNaN(departamento_id) && departamento_id) {
-            const [depts] = await db.query('SELECT id FROM departamentos WHERE nome = ? LIMIT 1', [departamento_id]);
-            departamento_id = depts.length > 0 ? depts[0].id : null;
-        }
-
-        const sql = `UPDATE funcionarios 
+        const sql = `
+            UPDATE funcionarios 
             SET nome = ?, cpf = ?, email = ?, telefone = ?, data_admissao = ?, data_nascimento = ?, 
-            endereco = ?, banco = ?, agencia = ?, conta = ?, tipo_conta = ?, 
-            nivel = ?, tipo_contrato = ?, salario_base = ?,
-            cargo_id = ?, departamento_id = ?, status = ? 
-            WHERE id = ?`;
-            
-        const [result] = await db.query(sql, [nome, cpf, email, telefone, admissaoFormatada, nascimentoFormatado, endereco, banco, agencia, conta, tipo_conta, nivel, tipo_contrato, salarioFormatado, cargo_id, departamento_id, status, id]);
+                endereco = ?, banco = ?, agencia = ?, conta = ?, tipo_conta = ?, cargo_id = ?, 
+                departamento_id = ?, tipo_contrato = ?, salario_base = ?, status = ?
+            WHERE id = ? AND empresa_id = ?
+        `;
+        
+        await connection.query(sql, [
+            nome, cpf || null, email, telefone || null, data_admissao || null, data_nascimento || null, 
+            endereco || null, banco || null, agencia || null, conta || null, tipo_conta || null,
+            cargo_id || null, departamento_id || null, tipo_contrato || null, salario_base || null, 
+            status || 'Ativo', id, empresa_id
+        ]);
 
-        if (result.affectedRows === 0) return res.status(404).json({ erro: "Funcionário não encontrado." });
-        res.status(200).json({ mensagem: "Funcionário atualizado!" });
+        // Sincroniza o e-mail e o nome atualizado na tabela de credenciais
+        await connection.query('UPDATE usuarios SET email = ?, nome = ? WHERE funcionario_id = ? AND empresa_id = ?', [email, nome, id, empresa_id]);
+
+        await connection.commit();
+        res.json({ mensagem: "Funcionário atualizado com sucesso!" });
     } catch (error) {
-        console.error("Erro ao atualizar:", error);
-        res.status(500).json({ erro: "Erro ao atualizar funcionário." });
+        await connection.rollback();
+        console.error("Erro ao atualizar funcionário:", error);
+        res.status(500).json({ erro: "Erro ao modificar o funcionário." });
+    } finally {
+        connection.release();
     }
 };
 
 exports.deletarFuncionario = async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+
+    const connection = await db.getConnection();
     try {
-        const { id } = req.params;
-        await db.query('DELETE FROM funcionarios WHERE id = ?', [id]);
-        res.status(200).json({ mensagem: "Funcionário excluído." });
+        await connection.beginTransaction();
+
+        await connection.query('DELETE FROM usuarios WHERE funcionario_id = ? AND empresa_id = ?', [id, empresa_id]);
+
+        const [result] = await connection.query('DELETE FROM funcionarios WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        
+        if (result.affectedRows === 0) {
+            await connection.rollback();
+            return res.status(404).json({ erro: "Funcionário não encontrado." });
+        }
+
+        await connection.commit();
+        res.json({ mensagem: "Funcionário removido com sucesso!" });
     } catch (error) {
-        console.error("Erro ao excluir:", error);
-        res.status(500).json({ erro: "Erro ao excluir." });
+        await connection.rollback();
+        console.error("Erro ao deletar funcionário:", error);
+        res.status(500).json({ erro: "Erro ao remover o funcionário." });
+    } finally {
+        connection.release();
     }
 };

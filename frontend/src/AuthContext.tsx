@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 export interface User {
   id: string | number;
   nome: string;
-  role: string; 
+  role: string;
+  avatar?: string | null;
 }
 
 interface AuthContextType {
@@ -13,6 +14,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
+  updateUser: (data: Partial<User>) => void; // Função nova
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,19 +47,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const base64Url = dados.token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const payload = JSON.parse(window.atob(base64));
+    const binString = window.atob(base64);
+    const bytes = new Uint8Array(binString.length);
+    for (let i = 0; i < binString.length; i++) {
+        bytes[i] = binString.charCodeAt(i);
+    }
+    const payload = JSON.parse(new TextDecoder().decode(bytes));
 
     const usuarioFormatado: User = {
       id: payload.id,
       nome: payload.nome || 'Utilizador',
-      role: payload.perfil 
+      role: payload.perfil,
+      avatar: null // O avatar será lido na tela de perfil posteriormente
     };
     
     localStorage.setItem('token', dados.token);
     localStorage.setItem('user', JSON.stringify(usuarioFormatado));
     
+    // Mantido da branch main: itens essenciais para o Relógio de Ponto e outros serviços
     localStorage.setItem('nomeUsuario', usuarioFormatado.nome);
-    localStorage.setItem('funcionarioId', String(usuarioFormatado.id));
+    // Usa o funcionario_id do payload (se existir) para garantir a integridade do ponto do colaborador
+    localStorage.setItem('funcionarioId', String(payload.funcionario_id || usuarioFormatado.id));
     localStorage.setItem('perfil', usuarioFormatado.role);
 
     setUser(usuarioFormatado);
@@ -69,18 +79,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateUser = (data: Partial<User>) => {
+    if (user) {
+      const updated = { ...user, ...data };
+      setUser(updated);
+      localStorage.setItem('user', JSON.stringify(updated));
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    // Limpeza das chaves adicionadas pela branch main
     localStorage.removeItem('nomeUsuario');
     localStorage.removeItem('funcionarioId');
     localStorage.removeItem('perfil');
+    
     setUser(null);
     navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );

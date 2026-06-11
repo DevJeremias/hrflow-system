@@ -8,7 +8,9 @@ import RecentActivities from './RecentActivities';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const firstName = user?.name?.split(' ')[0] || 'Gestor';
+  
+  // Correção: O nosso AuthContext guarda a propriedade como "nome" e não "name"
+  const firstName = user?.nome?.split(' ')[0] || 'Gestor';
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,7 +22,7 @@ const Dashboard: React.FC = () => {
         const dashboardData = await dashboardService.getDashboardData();
         setData(dashboardData);
       } catch (error) {
-        console.error("Erro ao buscar dados:", error);
+        console.error("Erro ao buscar dados do dashboard:", error);
       } finally {
         setIsLoading(false);
       }
@@ -28,11 +30,12 @@ const Dashboard: React.FC = () => {
     fetchDashboardData();
   }, []);
 
+  // Blindagem Total: Adicionado '?.stats?.' para evitar a quebra na renderização inicial
   const statConfig = [
-    { label: 'Colaboradores', value: data?.stats.totalEmployees || 0, icon: <Users size={24} className="text-white" />, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    { label: 'Departamentos', value: data?.stats.totalDepartments || 0, icon: <Building2 size={24} className="text-white" />, color: 'bg-indigo-500', shadow: 'shadow-indigo-500/30' },
-    { label: 'Cargos Cadastrados', value: data?.stats.totalRoles || 0, icon: <Briefcase size={24} className="text-white" />, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
-    { label: 'Aprovações Pendentes', value: data?.stats.pendingApprovals || 0, icon: <Clock size={24} className="text-white" />, color: 'bg-orange-500', shadow: 'shadow-orange-500/30', alert: true },
+    { label: 'Colaboradores', value: data?.stats?.totalEmployees || 0, icon: <Users size={24} className="text-white" />, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
+    { label: 'Departamentos', value: data?.stats?.totalDepartments || 0, icon: <Building2 size={24} className="text-white" />, color: 'bg-indigo-500', shadow: 'shadow-indigo-500/30' },
+    { label: 'Cargos Cadastrados', value: data?.stats?.totalRoles || 0, icon: <Briefcase size={24} className="text-white" />, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+    { label: 'Aprovações Pendentes', value: data?.stats?.pendingApprovals || 0, icon: <Clock size={24} className="text-white" />, color: 'bg-orange-500', shadow: 'shadow-orange-500/30', alert: true },
   ];
 
   return (
@@ -47,7 +50,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid de Cards */}
+      {/* Grid de Cards com Skeleton Loading */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {isLoading 
           ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 bg-slate-100 rounded-3xl animate-pulse" />)
@@ -61,8 +64,8 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-xl p-8">
           <h2 className="text-xl font-black text-slate-900 mb-8">Crescimento da Equipe</h2>
           <div className="h-64 w-full bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
-            {isLoading ? <Loader2 size={32} className="animate-spin" /> : <TrendingUp size={32} />}
-            <span className="mt-2 text-sm font-semibold">Dados carregados via DashboardService</span>
+            {isLoading ? <Loader2 size={32} className="animate-spin text-primary" /> : <TrendingUp size={32} />}
+            <span className="mt-4 text-sm font-semibold">Os gráficos em tempo real serão conectados na próxima fase.</span>
           </div>
         </div>
 
@@ -73,4 +76,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

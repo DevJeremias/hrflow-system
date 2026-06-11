@@ -3,13 +3,19 @@ const router = express.Router();
 const estruturaController = require('../controllers/estruturaController');
 const verificarPerfil = require('../middlewares/roleMiddleware');
 
-// Proteção extra: Somente Admin e RH podem mexer na estrutura da empresa
+// Protege todas as rotas de estrutura. Apenas Administrador e RH podem gerir.
 router.use(verificarPerfil(['Administrador', 'RH']));
 
+// Rotas de Departamentos
 router.get('/departamentos', estruturaController.listarDepartamentos);
-router.post('/departamentos', estruturaController.salvarDepartamento);
+router.post('/departamentos', estruturaController.criarDepartamento);
+router.put('/departamentos/:id', estruturaController.atualizarDepartamento);
+router.delete('/departamentos/:id', estruturaController.deletarDepartamento);
 
+// Rotas de Cargos
 router.get('/cargos', estruturaController.listarCargos);
-router.post('/cargos', estruturaController.salvarCargo);
+router.post('/cargos', estruturaController.criarCargo);
+router.put('/cargos/:id', estruturaController.atualizarCargo);
+router.delete('/cargos/:id', estruturaController.deletarCargo);
 
 module.exports = router;
