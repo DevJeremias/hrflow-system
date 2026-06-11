@@ -31,11 +31,11 @@ export default function Home() {
     <div className="Home">
       <Navbar />
       <Hero />
-      <AnatomySection />
+      <Benefits />
       <Stats />
       <Features />
       <Contact />
-      <Benefits />
+      <AnatomySection />
       <CommandCenter />
       <Footer />
     </div>

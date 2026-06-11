@@ -1,10 +1,7 @@
-// src/App.tsx
-
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-// Importação dos Componentes
 import Landing from './components/Landing/Home';
 import Login from './components/Auth/Login';
 import Layout from './components/Layout/Layout';
@@ -13,12 +10,11 @@ import Employees from './components/Admin/Employees/Employees';
 import DepartmentsRoles from './components/Admin/DepartmentsRoles/DepartmentsRoles';
 import Payroll from './components/Admin/Payroll/Payroll';
 
-// Novo componente do Portal
 import EmployeeHome from './components/Portal/EmployeeHome/EmployeeHome'; 
 import Payslips from './components/Portal/Payslips/Payslips';
 import Requests from './components/Portal/Request/Requests';
+import Profile from './components/Portal/Profile/MyProfile';
 
-// Proteção de Rota com verificação de Perfil alinhada com o Banco de Dados
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -26,7 +22,6 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
   if (allowedRole && user?.role !== allowedRole) {
-    // O "Polícia de Trânsito": Se tentar acessar algo que não deve, volta para o seu painel correto
     return <Navigate to={user?.role === 'Administrador' ? '/admin' : '/meu-painel'} replace />;
   }
 
@@ -39,7 +34,6 @@ function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
 
-      {/* ÁREA DO ADMINISTRADOR */}
       <Route 
         path="/admin" 
         element={
@@ -54,7 +48,6 @@ function App() {
         <Route path="folha" element={<Payroll />} />
       </Route>
 
-      {/* ÁREA DO COLABORADOR (COM A ROTA ALINHADA) */}
       <Route 
         path="/meu-painel" 
         element={
@@ -63,10 +56,10 @@ function App() {
           </ProtectedRoute>
         }
       >
-        {/* Aqui é onde o seu Relógio de Ponto vai brilhar */}
         <Route index element={<EmployeeHome />} />
         <Route path="holerites" element={<Payslips />} />
         <Route path="solicitacoes" element={<Requests />} />
+        <Route path="perfil" element={<Profile />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -10,7 +10,7 @@ import {
   Building2,
   Clock,     
   FileText,  
-  User as UserIcon 
+  User as UserIcon,
 } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 
@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
   ];
 
-  // Menus do Colaborador (Ajustados para a nossa rota correta)
+  // Menus do Colaborador
   const employeeMenu = [
     { path: '/meu-painel', icon: <Clock size={20} />, label: 'Bater Ponto' },
     { path: '/meu-painel/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
@@ -39,7 +39,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
   ];
 
-  // Define qual menu renderizar lendo do nosso MySQL
   const menuItems = user?.role === 'Administrador' ? adminMenu : employeeMenu;
 
   return (
@@ -52,26 +51,32 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       )}
 
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-72 bg-[#0a0f1d] text-slate-300 flex flex-col h-screen transition-transform duration-300 ease-in-out shadow-2xl
-        lg:translate-x-0 lg:static lg:inset-0
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-72 bg-zinc-950 text-slate-300 flex flex-col h-screen transition-transform duration-300 ease-in-out shadow-2xl shrink-0 border-r border-zinc-800/50
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         
-        <div className="h-24 flex items-center justify-between px-8 border-b border-slate-800/50">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-              <span className="text-white font-black text-xl leading-none">HR</span>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">Sistema RH</span>
+        <div className="h-24 flex items-center justify-between px-8 border-b border-zinc-800/50">
+          <div className="flex items-center gap-3 cursor-pointer">
+            
+            <img 
+              src="./src/assets/logo.png" 
+              alt="Ícone do Sistema" 
+              className="h-10 w-auto object-contain shrink-0" 
+            />
+            
+            <span className="text-2xl font-black text-white tracking-tight">
+              HR<span className="text-purple-500">flow</span>
+            </span>
+
           </div>
           
-          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
+          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
         </div>
 
         <nav className="flex-1 px-5 py-8 space-y-2 overflow-y-auto custom-scrollbar">
-          <div className="px-3 mb-4 text-xs font-bold tracking-widest text-slate-500 uppercase">
+          <div className="px-3 mb-6 text-xs font-black tracking-widest text-zinc-500 uppercase">
             Menu Principal
           </div>
           
@@ -84,34 +89,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 to={item.path}
                 onClick={onClose} 
                 className={`
-                  flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold
+                  group flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-semibold
                   ${isActive 
-                    ? 'bg-primary text-white shadow-lg shadow-indigo-500/20' 
-                    : 'hover:bg-white/5 hover:text-white text-slate-400'}
+                    ? 'bg-purple-600/10 text-purple-400 shadow-sm border border-purple-500/20' 
+                    : 'hover:bg-white/5 hover:text-white text-zinc-400 border border-transparent'}
                 `}
               >
-                {item.icon}
+                <div className={`${isActive ? 'text-purple-400' : 'group-hover:text-purple-400'} transition-colors`}>
+                  {item.icon}
+                </div>
                 <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-5 border-t border-slate-800/50">
-          <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-2xl bg-white/5 border border-white/10">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-primary flex items-center justify-center text-white font-bold shadow-inner uppercase">
-              {/* Lendo o user.nome em vez de user.name */}
+        <div className="p-5 border-t border-zinc-800/50 bg-zinc-900/30">
+          
+          <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-2xl bg-zinc-900 border border-zinc-800/50 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-500 to-purple-600 flex items-center justify-center text-white font-black shadow-inner uppercase shrink-0">
               {user?.nome?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-bold text-white truncate">{user?.nome || 'Carregando...'}</p>
-              <p className="text-xs text-slate-500 font-medium truncate">{user?.email}</p>
+              <p className="text-[11px] text-green-400 font-bold truncate uppercase tracking-wider mt-0.5">{user?.role || 'Usuário'}</p>
             </div>
           </div>
           
           <button 
             onClick={logout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors font-bold text-sm"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors font-bold text-sm"
           >
             <LogOut size={18} />
             <span>Sair do Sistema</span>
