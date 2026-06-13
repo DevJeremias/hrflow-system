@@ -9,6 +9,7 @@ import Dashboard from './components/Admin/Dashboard/Dashboard';
 import Employees from './components/Admin/Employees/Employees';
 import DepartmentsRoles from './components/Admin/DepartmentsRoles/DepartmentsRoles';
 import Payroll from './components/Admin/Payroll/Payroll';
+import TimeTracking from './components/Admin/TimeTracking/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
 
 import EmployeeHome from './components/Portal/EmployeeHome/EmployeeHome'; 
 import Payslips from './components/Portal/Payslips/Payslips';
@@ -46,9 +47,10 @@ function App() {
         <Route path="colaboradores" element={<Employees />} />
         <Route path="estrutura" element={<DepartmentsRoles />} />
         <Route path="folha" element={<Payroll />} />
+        <Route path="gestao-ponto" element={<TimeTracking />} /> {/* ROTA OFICIALIZADA */}
       </Route>
 
-      {/* ÁREA DO COLABORADOR (COM AS ROTAS RELATIVAS CORRIGIDAS) */}
+      {/* ÁREA DO COLABORADOR */}
       <Route 
         path="/meu-painel" 
         element={
