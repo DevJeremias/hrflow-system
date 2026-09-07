@@ -18,6 +18,7 @@ export interface UserPersonalData {
   nivel: string | null;
   cargo_nome: string | null;
   departamento_nome: string | null;
+  avatar?: string; 
 }
 
 export const userService = {

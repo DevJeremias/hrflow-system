@@ -1,20 +1,20 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth } from './contexts/AuthContext';
 
-import Landing from './components/Landing/Home';
-import Login from './components/Auth/Login';
-import Layout from './components/Layout/Layout';
-import Dashboard from './components/Admin/Dashboard/Dashboard';
-import Employees from './components/Admin/Employees/Employees';
-import DepartmentsRoles from './components/Admin/DepartmentsRoles/DepartmentsRoles';
-import Payroll from './components/Admin/Payroll/Payroll';
-import TimeTracking from './components/Admin/TimeTracking/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
+import Landing from './pages/Landing/Home';
+import Login from './pages/Auth/Login';
+import Layout from './layouts/Layout';
+import Dashboard from './pages/Admin/Dashboard';
+import Employees from './pages/Admin/Employees';
+import DepartmentsRoles from './pages/Admin/OrgStructure';
+import Payroll from './pages/Admin/Payroll';
+import TimeTracking from './pages/Admin/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
 
-import EmployeeHome from './components/Portal/EmployeeHome/EmployeeHome'; 
-import Payslips from './components/Portal/Payslips/Payslips';
-import Requests from './components/Portal/Request/Requests';
-import Profile from './components/Portal/Profile/Profile';
+import EmployeeHome from './pages/Portal/EmployeeDashboard'; 
+import Payslips from './pages/Portal/Payslips';
+import Requests from './pages/Portal/Requests';
+import Profile from './pages/Portal/Profile';
 
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
   const { isAuthenticated, user, loading } = useAuth();
