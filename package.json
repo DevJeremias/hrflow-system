@@ -10,9 +10,9 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "npm run dev --workspace frontend & npm run dev --workspace backend",
-    "build": "npm run build --workspace frontend",
-    "lint": "npm run lint --workspace frontend",
+    "dev": "node scripts/dev.mjs",
+    "build": "cd frontend && npm run build",
+    "lint": "cd frontend && npm run lint",
     "verify": "npm run build && npm run lint"
   }
 }
