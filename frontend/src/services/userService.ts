@@ -1,3 +1,5 @@
+import httpClient from './httpClient';
+
 // Reparou? Apagámos a linha do "import { api }" porque não precisamos dela!
 
 export interface UserPersonalData {
@@ -29,12 +31,10 @@ export const userService = {
       const token = localStorage.getItem('token'); 
 
       // 2. Faz o pedido direto ao seu backend na porta 3000 usando o fetch nativo
-      const response = await fetch('http://localhost:3000/api/usuarios/perfil', {
+      const response = await httpClient('/usuarios/perfil', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Entrega o "crachá" ao backend
-        }
+        auth: true,
+        errorMessage: (data, status) => `Erro na requisição: ${status}`
       });
 
       // 3. Verifica se o backend devolveu algum erro (ex: 401 ou 404)

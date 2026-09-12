@@ -1,3 +1,5 @@
+import httpClient from './httpClient';
+
 // src/services/pontoService.ts
 
 export interface PointRecord {
@@ -34,23 +36,15 @@ export interface WeeklyTotal {
   dailyAdjustBalance: string;
 }
 
-// Utilitário para montar o cabeçalho com o Token do usuário logado
-const getAuthHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
-});
-
 // A rota correta (no singular) do seu Back-end
-const API_URL = 'http://localhost:3000/api/ponto'; 
+const API_URL = '/ponto'; 
 
 export const pontoService = {
   
   getRegistrosHoje: async (): Promise<PointRecord[]> => {
     const funcionarioId = localStorage.getItem('funcionarioId');
     try {
-      const res = await fetch(`${API_URL}/hoje/${funcionarioId}`, { headers: getAuthHeaders() });
-      if (!res.ok) return [];
-      const data = await res.json();
+      const data = await httpClient(`${API_URL}/hoje/${funcionarioId}`, { auth: true });
       return Array.isArray(data) ? data : [];
     } catch {
       return [];
@@ -60,9 +54,9 @@ export const pontoService = {
   registrar: async (type: string, localizacao?: { lat: number, lng: number }): Promise<PointRecord> => {
     const id = localStorage.getItem('funcionarioId');
     
-    const res = await fetch(`${API_URL}/registrar`, {
+    const res = await httpClient(`${API_URL}/registrar`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      auth: true,
       body: JSON.stringify({ 
         funcionario_id: id, // A variável exatamente como o seu Node.js pede
         tipo: type, 
@@ -70,29 +64,22 @@ export const pontoService = {
       })
     });
     
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.mensagem || err.erro || 'Erro ao registrar o ponto.');
-    }
-    
-    return await res.json();
+    return res;
   },
 
   getHistoricoMes: async (month: string): Promise<HistoryDay[]> => {
     const funcionarioId = localStorage.getItem('funcionarioId');
     try {
-      const res = await fetch(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { headers: getAuthHeaders() });
-      if (!res.ok) return [];
-      return await res.json();
+      return await httpClient(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true });
     } catch {
       return []; 
     }
   },
 
   salvarJustificativa: async (id: string, note: string): Promise<void> => {
-    await fetch(`${API_URL}/justificativa/${id}`, {
+    await httpClient(`${API_URL}/justificativa/${id}`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      auth: true,
       body: JSON.stringify({ note })
     });
   },
@@ -100,9 +87,7 @@ export const pontoService = {
   getTotaisSemanais: async (month: string): Promise<{ totals: WeeklyTotal[], monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> }> => {
     const funcionarioId = localStorage.getItem('funcionarioId');
     try {
-      const res = await fetch(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error();
-      return await res.json();
+      return await httpClient(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true });
     } catch {
       // Fallback seguro caso a rota falhe
       return { 
