@@ -1,0 +1,18 @@
+{
+  "name": "hrflow-system",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace frontend & npm run dev --workspace backend",
+    "build": "npm run build --workspace frontend",
+    "lint": "npm run lint --workspace frontend",
+    "verify": "npm run build && npm run lint"
+  }
+}
