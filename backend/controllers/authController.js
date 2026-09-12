@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const jwtSecret = require('../config/jwtSecret');
 
 // NOVA FUNÇÃO: Cria a Empresa e o Usuário Admin ao mesmo tempo
 exports.registrarConta = async (req, res) => {
@@ -77,7 +78,7 @@ exports.login = async (req, res) => {
                 funcionario_id: usuario.funcionario_id || null, // Essencial para a tela de Perfil
                 nome: nomeUsuario // Essencial para o cabeçalho e menu lateral não mostrarem "Utilizador"
             },
-            process.env.JWT_SECRET || 'chave_secreta_hrflow',
+            jwtSecret,
             { expiresIn: '1d' }
         );
 
