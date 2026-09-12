@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const jwtSecret = require('../config/jwtSecret');
 
 module.exports = (req, res, next) => {
     // 1. Procura o crachá no cabeçalho da requisição
@@ -17,9 +18,8 @@ module.exports = (req, res, next) => {
     const token = parts[1];
 
     try {
-        // 3. Valida o crachá usando a chave secreta do seu .env (ou a padrão, caso o .env falhe)
-        const secret = process.env.JWT_SECRET || 'chave_secreta_padrao'; 
-        const verified = jwt.verify(token, secret);
+        // 3. Valida o crachá usando a chave secreta validada na subida
+        const verified = jwt.verify(token, jwtSecret);
         
         // 4. Se for válido, guarda os dados do utilizador e deixa passar para a rota
         req.usuario = verified;

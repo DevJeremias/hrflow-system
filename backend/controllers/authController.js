@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const jwtSecret = require('../config/jwtSecret');
 
 // NOVA FUNÇÃO: Cria a Empresa e o Usuário Admin ao mesmo tempo
 exports.registrarConta = async (req, res) => {
@@ -40,21 +41,18 @@ exports.registrarConta = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, senha } = req.body;
+
+        if (!email || !senha || typeof email !== 'string' || typeof senha !== 'string') {
+            return res.status(401).json({ erro: "E-mail ou senha inválidos." });
+        }
+
         const [users] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 
         if (users.length === 0) return res.status(401).json({ erro: "E-mail ou senha inválidos." });
 
         const usuario = users[0];
         
-        // Verifica a senha (tenta bcrypt, se falhar tenta texto puro para manter compatibilidade com testes antigos)
-        let senhaValida = false;
-        try {
-            senhaValida = await bcrypt.compare(senha, usuario.senha);
-        } catch (e) {}
-
-        if (!senhaValida) {
-            senhaValida = (senha === usuario.senha);
-        }
+        const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
         if (!senhaValida) return res.status(401).json({ erro: "E-mail ou senha inválidos." });
 
@@ -77,7 +75,7 @@ exports.login = async (req, res) => {
                 funcionario_id: usuario.funcionario_id || null, // Essencial para a tela de Perfil
                 nome: nomeUsuario // Essencial para o cabeçalho e menu lateral não mostrarem "Utilizador"
             },
-            process.env.JWT_SECRET || 'chave_secreta_hrflow',
+            jwtSecret,
             { expiresIn: '1d' }
         );
 
