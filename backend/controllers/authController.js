@@ -41,21 +41,18 @@ exports.registrarConta = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, senha } = req.body;
+
+        if (!email || !senha || typeof email !== 'string' || typeof senha !== 'string') {
+            return res.status(401).json({ erro: "E-mail ou senha inválidos." });
+        }
+
         const [users] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 
         if (users.length === 0) return res.status(401).json({ erro: "E-mail ou senha inválidos." });
 
         const usuario = users[0];
         
-        // Verifica a senha (tenta bcrypt, se falhar tenta texto puro para manter compatibilidade com testes antigos)
-        let senhaValida = false;
-        try {
-            senhaValida = await bcrypt.compare(senha, usuario.senha);
-        } catch (e) {}
-
-        if (!senhaValida) {
-            senhaValida = (senha === usuario.senha);
-        }
+        const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
         if (!senhaValida) return res.status(401).json({ erro: "E-mail ou senha inválidos." });
 
