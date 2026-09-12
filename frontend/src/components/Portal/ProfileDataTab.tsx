@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Mail, Phone, Building2, Lock, User as UserIcon, Camera, X, Save } from 'lucide-react';
+import httpClient from '../../services/httpClient';
 
 interface Props {
   perfil: any;
@@ -31,12 +32,12 @@ const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate, getToken }) => {
   const handleSalvar = async () => {
     setStatus({ loading: true, erro: '', sucesso: '' });
     try {
-      const res = await fetch('http://localhost:3000/api/perfil/meus-dados', {
+      await httpClient('/perfil/meus-dados', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` },
-        body: JSON.stringify(editForm)
+        auth: true,
+        body: JSON.stringify(editForm),
+        errorMessage: 'Erro ao atualizar dados'
       });
-      if (!res.ok) throw new Error('Erro ao atualizar dados');
       setStatus({ loading: false, erro: '', sucesso: 'Dados atualizados!' });
       setIsEditing(false);
       onUpdate(editForm);

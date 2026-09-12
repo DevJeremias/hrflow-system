@@ -1,3 +1,5 @@
+import httpClient from './httpClient';
+
 // src/services/requestService.ts
 
 export type RequestType = 
@@ -23,14 +25,7 @@ export interface EmployeeRequest {
 
 const getMyRequests = async (): Promise<EmployeeRequest[]> => {
   // Confirme se a URL abaixo bate com a rota de solicitações do seu backend
-  const res = await fetch('http://localhost:3000/api/solicitacoes/minhas', { 
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    } 
-  });
-  if (!res.ok) throw new Error('Erro ao buscar minhas solicitações');
-  return await res.json();
+  return await httpClient('/solicitacoes/minhas', { auth: true, errorMessage: 'Erro ao buscar minhas solicitações' });
 };
 
 export const requestService = {
