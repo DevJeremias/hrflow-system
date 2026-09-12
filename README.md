@@ -161,11 +161,11 @@ O npm também continua disponível:
 npm install --workspaces
 ```
 
-Crie `backend/.env` a partir de [`backend/.env.example`](backend/.env.example) e preencha as credenciais do seu MySQL. O banco continua obrigatório: execute o SQL do passo 1 antes de usar as rotas que acessam dados.
+Crie `backend/.env` a partir de [`backend/.env.example`](backend/.env.example), preenchendo as credenciais do seu MySQL e uma chave JWT. Gere uma chave com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Deixar `JWT_SECRET` vazio quebra as requisições autenticadas atualmente. O banco continua obrigatório: execute o SQL do passo 1 antes de usar as rotas que acessam dados.
 
 ### Passo 3: Execução
 
-Os comandos abaixo são executados na raiz e controlam os dois workspaces:
+Os comandos abaixo são executados na raiz. `dev` sobe os dois workspaces; `build`, `lint` e `verify` executam as verificações disponíveis atualmente no front-end:
 
 ```bash
 # Front-end Vite e API Express em modo desenvolvimento
