@@ -6,8 +6,7 @@ const verificarPerfil = require('../middlewares/roleMiddleware');
 // O POST agora exige que o usuário seja 'Administrador' ou 'RH'
 router.post('/', verificarPerfil(['Administrador', 'RH']), funcionarioController.criarFuncionario);
 
-// O GET continua liberado para qualquer um que esteja logado (Colaboradores podem ver a lista)
-router.get('/', funcionarioController.listarFuncionarios);
+router.get('/', verificarPerfil(['Administrador', 'RH']), funcionarioController.listarFuncionarios);
 
 // Rota DELETE para excluir funcionário (Apenas Admin e RH)
 router.delete('/:id', verificarPerfil(['Administrador', 'RH']), funcionarioController.deletarFuncionario);
