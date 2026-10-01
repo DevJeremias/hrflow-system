@@ -1,5 +1,10 @@
-// Requer MySQL com o schema de database.sql. Defina DB_HOST, DB_USER, DB_PASS e
-// DB_NAME; sem DB_HOST os testes são marcados como ignorados, nunca como aprovados.
+// Requer um MySQL de teste descartável. Defina DB_HOST, DB_USER, DB_PASS e DB_NAME;
+// sem DB_HOST os testes são marcados como ignorados, nunca como aprovados. As tabelas
+// vêm de database.sql (sem o trigger) e outros testes podem recriá-las, por isso a
+// suíte roda em série.
+const fs = require('node:fs');
+const path = require('node:path');
+const mysql = require('mysql2/promise');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
@@ -51,8 +56,24 @@ const get = async (caminho, usuario) => {
     return { status: resposta.status, corpo: await resposta.json() };
 };
 
+const garantirSchema = async () => {
+    const sql = fs.readFileSync(path.join(__dirname, '../database.sql'), 'utf8')
+        .split('-- TRIGGER')[0]
+        .replace(/^(CREATE DATABASE|USE) .*$/gm, '');
+    const conexao = await mysql.createConnection({
+        host: process.env.DB_HOST, user: process.env.DB_USER, password: process.env.DB_PASS,
+        database: process.env.DB_NAME, multipleStatements: true,
+    });
+    try {
+        await conexao.query(sql);
+    } finally {
+        await conexao.end();
+    }
+};
+
 test.before(async () => {
     if (semBanco) return;
+    await garantirSchema();
 
     const sufixo = `${process.pid}-${Date.now()}`;
     ctx.empresaA = await novaEmpresa(`Empresa Ficticia A ${sufixo}`);
