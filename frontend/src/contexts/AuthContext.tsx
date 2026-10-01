@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import httpClient from '../services/httpClient';
 
 export interface User {
   id: string | number;
@@ -33,17 +34,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, senha: string) => {
-    const resposta = await fetch('http://localhost:3000/api/auth/login', {
+    const dados = await httpClient<any>('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, senha })
+      body: JSON.stringify({ email, senha }),
+      errorMessage: (data) => data?.mensagem || data?.erro || 'E-mail ou senha incorretos.'
     });
-
-    const dados = await resposta.json();
-
-    if (!resposta.ok) {
-      throw new Error(dados.mensagem || dados.erro || 'E-mail ou senha incorretos.');
-    }
 
     const base64Url = dados.token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');

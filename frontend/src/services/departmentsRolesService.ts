@@ -1,3 +1,5 @@
+import httpClient from './httpClient';
+
 // src/services/departmentsRolesService.ts
 
 export interface Department {
@@ -23,19 +25,11 @@ export interface Role {
   deductions?: any[];
 }
 
-const API_URL = 'http://localhost:3000/api/estrutura';
-
-// Utilitário para montar o cabeçalho com o Token do usuário logado
-const getAuthHeaders = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
-});
+const API_URL = '/estrutura';
 
 export const getDepartments = async (): Promise<Department[]> => {
   try {
-    const res = await fetch(`${API_URL}/departamentos`, { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Erro ao buscar departamentos');
-    const data = await res.json();
+    const data = await httpClient<any[]>(`${API_URL}/departamentos`, { auth: true, errorMessage: 'Erro ao buscar departamentos' });
     return data.map((d: any) => ({
       id: d.id.toString(),
       name: d.nome,
@@ -63,35 +57,25 @@ export const saveDepartment = async (data: any): Promise<void> => {
     gestor: data.manager 
   };
   
-  const res = await fetch(url, {
+  await httpClient(url, {
     method: isEditing ? 'PUT' : 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload)
+    auth: true,
+    body: JSON.stringify(payload),
+    errorMessage: (err) => err?.erro || 'Erro ao salvar departamento'
   });
-  
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.erro || 'Erro ao salvar departamento');
-  }
 };
 
 export const deleteDepartment = async (id: string): Promise<void> => {
-  const res = await fetch(`${API_URL}/departamentos/${id}`, { 
+  await httpClient(`${API_URL}/departamentos/${id}`, { 
     method: 'DELETE', 
-    headers: getAuthHeaders() 
+    auth: true,
+    errorMessage: (err) => err?.erro || 'Erro ao deletar departamento'
   });
-  
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.erro || 'Erro ao deletar departamento');
-  }
 };
 
 export const getRoles = async (): Promise<Role[]> => {
   try {
-    const res = await fetch(`${API_URL}/cargos`, { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Erro ao buscar cargos');
-    const data = await res.json();
+    const data = await httpClient<any[]>(`${API_URL}/cargos`, { auth: true, errorMessage: 'Erro ao buscar cargos' });
     return data.map((c: any) => ({
       id: c.id.toString(),
       title: c.nome,
@@ -108,8 +92,7 @@ export const getRoles = async (): Promise<Role[]> => {
 };
 
 export const saveRole = async (data: any): Promise<void> => {
-  const deptsRes = await fetch(`${API_URL}/departamentos`, { headers: getAuthHeaders() });
-  const depts = await deptsRes.json();
+  const depts = await httpClient<any[]>(`${API_URL}/departamentos`, { auth: true });
   const deptFound = depts.find((d: any) => d.nome === data.department || d.sigla === data.department);
 
   const payload = {
@@ -122,28 +105,20 @@ export const saveRole = async (data: any): Promise<void> => {
   const isEditing = !!data.id;
   const url = isEditing ? `${API_URL}/cargos/${data.id}` : `${API_URL}/cargos`;
 
-  const res = await fetch(url, {
+  await httpClient(url, {
     method: isEditing ? 'PUT' : 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(payload)
+    auth: true,
+    body: JSON.stringify(payload),
+    errorMessage: (err) => err?.erro || 'Erro ao salvar cargo'
   });
-  
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.erro || 'Erro ao salvar cargo');
-  }
 };
 
 export const deleteRole = async (id: string): Promise<void> => {
-  const res = await fetch(`${API_URL}/cargos/${id}`, { 
+  await httpClient(`${API_URL}/cargos/${id}`, { 
     method: 'DELETE', 
-    headers: getAuthHeaders() 
+    auth: true,
+    errorMessage: (err) => err?.erro || 'Erro ao deletar cargo'
   });
-  
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.erro || 'Erro ao deletar cargo');
-  }
 };
 
 // Mantemos este dicionário fixo para já. Na Fase 3 (Folha), 

@@ -1,3 +1,5 @@
+import httpClient from './httpClient';
+
 // frontend/src/services/employeeService.ts
 
 export interface Employee {
@@ -25,21 +27,11 @@ export interface Employee {
   salarioBase?: string | number;
 }
 
-const API_URL = 'http://localhost:3000/api/funcionarios';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  };
-};
+const API_URL = '/funcionarios';
 
 export const employeeService = {
   getAll: async (): Promise<Employee[]> => {
-    const res = await fetch(API_URL, { headers: getAuthHeaders() });
-    if (!res.ok) throw new Error('Erro ao buscar colaboradores');
-    const data = await res.json();
+    const data = await httpClient<any[]>(API_URL, { auth: true, errorMessage: 'Erro ao buscar colaboradores' });
     
     return data.map((d: any) => ({
       id: d.id?.toString() || '',
@@ -67,15 +59,13 @@ export const employeeService = {
   },
 
   save: async (data: any): Promise<void> => {
-    const headers = getAuthHeaders();
-    
     const [deptsRes, rolesRes] = await Promise.all([
-      fetch('http://localhost:3000/api/estrutura/departamentos', { headers }),
-      fetch('http://localhost:3000/api/estrutura/cargos', { headers })
+      httpClient('/estrutura/departamentos', { auth: true }),
+      httpClient('/estrutura/cargos', { auth: true })
     ]);
     
-    const depts = await deptsRes.json();
-    const roles = await rolesRes.json();
+    const depts = deptsRes;
+    const roles = rolesRes;
     
     const deptFound = depts.find((d: any) => d.nome === data.departamento || d.sigla === data.departamento);
     const roleFound = roles.find((r: any) => r.nome === data.cargo);
@@ -102,26 +92,19 @@ export const employeeService = {
     };
 
     const url = data.id ? `${API_URL}/${data.id}` : API_URL;
-    const res = await fetch(url, {
+    await httpClient(url, {
       method: data.id ? 'PUT' : 'POST',
-      headers,
-      body: JSON.stringify(payload)
+      auth: true,
+      body: JSON.stringify(payload),
+      errorMessage: (err) => err?.erro || 'Erro ao salvar colaborador'
     });
-    
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.erro || 'Erro ao salvar colaborador');
-    }
   },
 
   delete: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_URL}/${id}`, {
+    await httpClient(`${API_URL}/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      auth: true,
+      errorMessage: (err) => err?.erro || 'Erro ao excluir colaborador'
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.erro || 'Erro ao excluir colaborador');
-    }
   }
 };

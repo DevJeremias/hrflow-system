@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { SendHorizontal, ShieldCheck, Zap, Sparkles } from "lucide-react";
+import httpClient from '../../services/httpClient';
 
 export default function Contact() {
   const navigate = useNavigate();
@@ -25,17 +26,11 @@ export default function Contact() {
     setLoading(true);
 
     try {
-      const resposta = await fetch('http://localhost:3000/api/auth/registrar', {
+      await httpClient('/auth/registrar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        errorMessage: (data) => data?.erro || 'Erro ao criar conta'
       });
-
-      const dados = await resposta.json();
-
-      if (!resposta.ok) {
-        throw new Error(dados.erro || 'Erro ao criar conta');
-      }
 
       setSucesso(true);
       setTimeout(() => {
