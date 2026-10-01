@@ -77,7 +77,8 @@ Siga os passos abaixo para preparar o ambiente de desenvolvimento sem margem par
 
 ### Pré-requisitos
 
-* [Node.js](https://nodejs.org/) (v18 ou superior)
+* [Node.js](https://nodejs.org/) 22.12.0 ou superior, conforme `.node-version` e a exigência do Vite 8
+* [Bun](https://bun.sh/) para a instalação recomendada (o npm continua suportado)
 * [MySQL](https://www.mysql.com/) (v8 ou superior) instalado e a rodar na máquina local.
 
 ### Passo 1: Preparação da Base de Dados (Crucial)
@@ -146,71 +147,37 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 ```
 
-### Passo 2: Configuração do Back-end
+### Passo 2: Instalação e configuração
 
-1. Navegue até a pasta do servidor:
-
-```bash
-   cd hrflow-system/backend
-
-```
-
-2. Instale as dependências:
+Na raiz do repositório, instale as dependências dos dois workspaces. O caminho recomendado usa Bun:
 
 ```bash
-   npm install
-
+bun install
 ```
 
-3. Crie um ficheiro `.env` na raiz da pasta `backend/` seguindo exatamente este formato:
-
-```env
-   # Configurações do Servidor
-   PORT=3000
-
-   # Conexão com o MySQL
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASS=sua_senha_do_mysql_aqui
-   DB_NAME=hrflow_db
-
-   # Chave de Segurança JWT
-   JWT_SECRET=super_secret_hrflow_key_2026
-
-```
-
-4. Inicie o servidor:
+O npm também continua disponível:
 
 ```bash
-   node server.js
-   # Você deverá ver: "🚀 Servidor rodando na porta 3000" e "✅ Banco de Dados: Conexão testada e funcionando!"
-
+npm install --workspaces
 ```
 
-### Passo 3: Configuração do Front-end
+Crie `backend/.env` a partir de [`backend/.env.example`](backend/.env.example), preenchendo as credenciais do seu MySQL e uma chave JWT. Gere uma chave com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Deixar `JWT_SECRET` vazio quebra as requisições autenticadas atualmente. O banco continua obrigatório: execute o SQL do passo 1 antes de usar as rotas que acessam dados.
 
-1. Abra um novo terminal e navegue até a pasta cliente:
+### Passo 3: Execução
+
+Os comandos abaixo são executados na raiz. `dev` sobe os dois workspaces; `build`, `lint` e `verify` executam as verificações disponíveis atualmente no front-end:
 
 ```bash
-   cd hrflow-system/frontend
+# Front-end Vite e API Express em modo desenvolvimento
+bun run dev
 
+# Verificações do projeto
+bun run build
+bun run lint
+bun run verify
 ```
 
-2. Instale as dependências:
-
-```bash
-   npm install
-
-```
-
-3. Inicie o ambiente de desenvolvimento do Vite:
-
-```bash
-   npm run dev
-
-```
-
-4. Aceda à aplicação através do link gerado no terminal (geralmente `http://localhost:5173`).
+Para usar npm, substitua `bun run` por `npm run`. A API fica em `http://localhost:3000/api` e o Vite informa a URL do front-end no terminal. Também é possível iniciar apenas um workspace com `npm run dev --workspace frontend` ou `npm run dev --workspace backend`.
 
 ---
 
