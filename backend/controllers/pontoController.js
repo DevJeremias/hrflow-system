@@ -42,7 +42,8 @@ exports.registrarPonto = async (req, res) => {
 
 exports.listarPontosHoje = async (req, res) => {
     try {
-        const funcionario_id = req.usuario.funcionario_id;
+        // O middleware já autorizou este id para o perfil; a empresa continua vindo do token
+        const funcionario_id = req.params.funcionarioId;
         const empresa_id = req.usuario.empresa_id;
 
         const [pontos] = await db.query(
@@ -72,7 +73,7 @@ exports.listarPontosHoje = async (req, res) => {
 
 exports.listarHistorico = async (req, res) => {
     try {
-        const funcionario_id = req.usuario.funcionario_id;
+        const funcionario_id = req.params.funcionarioId;
         const { mes } = req.query; 
         const empresa_id = req.usuario.empresa_id;
 
