@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
 
 // ==========================================
 // CRUD DE DEPARTAMENTOS
@@ -82,7 +83,7 @@ exports.listarCargos = async (req, res) => {
         const sql = `
             SELECT c.*, d.nome as departamento_nome 
             FROM cargos c
-            LEFT JOIN departamentos d ON c.departamento_id = d.id
+            LEFT JOIN departamentos d ON c.departamento_id = d.id AND d.empresa_id = c.empresa_id
             WHERE c.empresa_id = ?
         `;
         const [rows] = await db.query(sql, [empresa_id]);
@@ -102,6 +103,10 @@ exports.criarCargo = async (req, res) => {
     }
 
     try {
+        if (!(await departamentoDaEmpresa(db, departamento_id, empresa_id))) {
+            return res.status(400).json({ erro: "Departamento não encontrado nesta empresa." });
+        }
+
         const sql = 'INSERT INTO cargos (nome, departamento_id, nivel, salario_base, empresa_id) VALUES (?, ?, ?, ?, ?)';
         await db.query(sql, [nome, departamento_id, nivel || null, salario_base || 0, empresa_id]);
         res.status(201).json({ mensagem: "Cargo estruturado com sucesso!" });
@@ -117,6 +122,10 @@ exports.atualizarCargo = async (req, res) => {
     const { nome, departamento_id, nivel, salario_base } = req.body;
 
     try {
+        if (departamento_id != null && !(await departamentoDaEmpresa(db, departamento_id, empresa_id))) {
+            return res.status(400).json({ erro: "Departamento não encontrado nesta empresa." });
+        }
+
         const sql = 'UPDATE cargos SET nome = ?, departamento_id = ?, nivel = ?, salario_base = ? WHERE id = ? AND empresa_id = ?';
         await db.query(sql, [nome, departamento_id, nivel || null, salario_base || 0, id, empresa_id]);
         res.json({ mensagem: "Cargo modificado com sucesso!" });
