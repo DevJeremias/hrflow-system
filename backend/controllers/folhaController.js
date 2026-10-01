@@ -46,12 +46,14 @@ exports.meuHolerite = async (req, res) => {
         const id_usuario = req.usuario.id;
         const empresa_id = req.usuario.empresa_id;
 
+        // usuarios.id e funcionarios.id são sequências independentes: a identidade vem do vínculo usuarios.funcionario_id
         const sql = `
-            SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome 
-            FROM funcionarios f
+            SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome
+            FROM usuarios u
+            JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
             LEFT JOIN cargos c ON f.cargo_id = c.id
             LEFT JOIN departamentos d ON f.departamento_id = d.id
-            WHERE f.id = ? AND f.empresa_id = ?
+            WHERE u.id = ? AND u.empresa_id = ? AND f.status = 'Ativo'
         `;
         const [funcionarios] = await db.query(sql, [id_usuario, empresa_id]);
 
