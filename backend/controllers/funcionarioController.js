@@ -1,5 +1,17 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const { cargoDaEmpresa, departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
+
+// Devolve a mensagem de erro quando cargo ou departamento informado não é da empresa.
+const validarReferencias = async (executor, cargo_id, departamento_id, empresa_id) => {
+    if (cargo_id && !(await cargoDaEmpresa(executor, cargo_id, empresa_id))) {
+        return "Cargo não encontrado nesta empresa.";
+    }
+    if (departamento_id && !(await departamentoDaEmpresa(executor, departamento_id, empresa_id))) {
+        return "Departamento não encontrado nesta empresa.";
+    }
+    return null;
+};
 
 exports.listarFuncionarios = async (req, res) => {
     try {
@@ -7,8 +19,8 @@ exports.listarFuncionarios = async (req, res) => {
         const sql = `
             SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome 
             FROM funcionarios f
-            LEFT JOIN cargos c ON f.cargo_id = c.id
-            LEFT JOIN departamentos d ON f.departamento_id = d.id
+            LEFT JOIN cargos c ON f.cargo_id = c.id AND c.empresa_id = f.empresa_id
+            LEFT JOIN departamentos d ON f.departamento_id = d.id AND d.empresa_id = f.empresa_id
             WHERE f.empresa_id = ?
         `;
         const [rows] = await db.query(sql, [empresa_id]);
@@ -35,6 +47,12 @@ exports.criarFuncionario = async (req, res) => {
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
+
+        const erroReferencia = await validarReferencias(connection, cargo_id, departamento_id, empresa_id);
+        if (erroReferencia) {
+            await connection.rollback();
+            return res.status(400).json({ erro: erroReferencia });
+        }
 
         const [usuarioExistente] = await connection.query(
             'SELECT id FROM usuarios WHERE email = ?', [email]
@@ -95,6 +113,12 @@ exports.atualizarFuncionario = async (req, res) => {
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
+
+        const erroReferencia = await validarReferencias(connection, cargo_id, departamento_id, empresa_id);
+        if (erroReferencia) {
+            await connection.rollback();
+            return res.status(400).json({ erro: erroReferencia });
+        }
 
         const sql = `
             UPDATE funcionarios 
