@@ -51,9 +51,11 @@ hrflow-system/
 │   ├── db/                # Aplicador de migrations
 │   ├── middlewares/       # Proteções JWT e validação de perfis (Admin/Colaborador)
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
+│   ├── modules/           # Módulos em TypeScript, um por área (ponto); padrão em backend/README.md
 │   ├── routes/            # Endpoints da API REST
 │   ├── seeds/             # Fixtures sintéticas de desenvolvimento
 │   ├── tests/             # Testes de integração (MySQL descartável)
+│   ├── types/             # Declarações de tipos que só o tsc usa (express.d.ts)
 │   └── server.js          # Ponto de entrada do Node.js
 └── frontend/
     ├── src/
