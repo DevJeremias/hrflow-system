@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
+import mosaico1 from '../../assets/mosaico_image1.png';
+import mosaico2 from '../../assets/mosaico_image2.jpg';
+import mosaico3 from '../../assets/mosaico_image3.jpg';
+import mosaico4 from '../../assets/mosaico_image4.png';
+import mosaico5 from '../../assets/mosaico_image5.png';
 
 export default function Hero() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -114,18 +119,18 @@ export default function Hero() {
                   <div className={`grid grid-cols-2 gap-4 w-full max-w-md h-[450px] transition-all duration-1000 delay-500 ${currentSlide === index ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
                     
                     <div className="bg-zinc-800 rounded-3xl row-span-2 overflow-hidden border border-zinc-700/50 shadow-2xl relative group">
-                      <img src="./src/assets/mosaico_image1.png" alt="Equipe" className="absolute inset-0 w-full h-full object-cover" />
+                      <img src={mosaico1} alt="Equipe" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 to-transparent z-10"></div>
                       <p className="absolute bottom-4 left-4 z-20 text-white font-bold text-sm">Talentos Retidos</p>
                     </div>
 
                     <div className="bg-zinc-800 rounded-3xl overflow-hidden border border-zinc-700/50 shadow-xl relative">
-                      <img src="./src/assets/mosaico_image2.jpg" alt="Dashboard" className="absolute inset-0 w-full h-full object-cover" />
+                      <img src={mosaico2} alt="Dashboard" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/30 to-transparent"></div>
                     </div>
 
                     <div className="bg-purple-900/40 rounded-3xl overflow-hidden border border-purple-500/30 relative flex items-center justify-center">
-                      <img src="./src/assets/mosaico_image3.jpg" alt="Gráficos" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                      <img src={mosaico3} alt="Gráficos" className="absolute inset-0 w-full h-full object-cover opacity-60" />
                     </div>
                   </div>
                 )}
@@ -141,7 +146,7 @@ export default function Hero() {
                     <div className="relative z-10 w-full max-w-[550px] h-[500px] bg-white/40 backdrop-blur-xl border border-white/60 rounded-[3rem] shadow-[0_30px_70px_-15px_rgba(0,0,0,0.2)] flex items-center justify-center overflow-hidden p-3 transform hover:scale-[1.02] transition-transform duration-700">
                       
                       <img 
-                        src="./src/assets/mosaico_image4.png" 
+                        src={mosaico4} 
                         alt="Dashboard YouRH" 
                         className="w-full h-full object-cover rounded-[2.2rem] shadow-inner" 
                       />
@@ -155,7 +160,7 @@ export default function Hero() {
                   <div className={`relative w-full max-w-3xl h-[600px] flex items-center justify-center transition-all duration-1000 delay-500 ${currentSlide === index ? 'opacity-100 scale-100' : 'opacity-0 scale-110'}`}>
                     <div className="relative z-10 w-full max-w-[1200px] h-[400px]">
                       <img 
-                        src="./src/assets/mosaico_image5.png" 
+                        src={mosaico5} 
                         alt="Interface youRH" 
                         className="w-full h-full object-cover" 
                       />
