@@ -3,48 +3,45 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const jwtSecret = require('../config/jwtSecret');
 
-// NOVA FUNÇÃO: Cria a Empresa e o Usuário Admin ao mesmo tempo
+// Cria a Empresa e o Usuário Admin ao mesmo tempo. A entrada já chegou validada pela rota.
 exports.registrarConta = async (req, res) => {
+    const { nomeEmpresa, nomeAdmin, email, senha } = req.dadosValidados;
+    let connection;
+
     try {
-        const { nomeEmpresa, nomeAdmin, email, senha } = req.body;
-
-        if (!nomeEmpresa || !nomeAdmin || !email || !senha) {
-            return res.status(400).json({ erro: "Preencha todos os campos." });
-        }
-
-        // 1. Verifica se o email já existe para evitar duplicidade
+        // Evita o custo do hash quando o e-mail já existe. A corrida entre dois cadastros
+        // iguais é resolvida pela chave única de usuarios.email, dentro da transação.
         const [users] = await db.query('SELECT id FROM usuarios WHERE email = ?', [email]);
-        if (users.length > 0) return res.status(400).json({ erro: "E-mail já cadastrado." });
+        if (users.length > 0) return res.status(409).json({ erro: "E-mail já cadastrado." });
 
-        // 2. Cria a Empresa no banco
-        const sqlEmpresa = `INSERT INTO empresas (nome) VALUES (?)`;
-        const [resultEmpresa] = await db.query(sqlEmpresa, [nomeEmpresa]);
-        const empresaId = resultEmpresa.insertId;
-
-        // 3. Criptografa a senha
         const salt = await bcrypt.genSalt(10);
         const senhaCripto = await bcrypt.hash(senha, salt);
 
-        // 4. Cria o Usuário Admin vinculado a essa nova empresa
-        const sqlUsuario = `INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)`;
-        
-        await db.query(sqlUsuario, [nomeAdmin, email, senhaCripto, 'Administrador', empresaId]);
+        connection = await db.getConnection();
+        await connection.beginTransaction();
 
+        const [resultEmpresa] = await connection.query('INSERT INTO empresas (nome) VALUES (?)', [nomeEmpresa]);
+        await connection.query(
+            'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
+            [nomeAdmin, email, senhaCripto, 'Administrador', resultEmpresa.insertId]
+        );
+
+        await connection.commit();
         res.status(201).json({ mensagem: "Conta criada com sucesso!" });
     } catch (error) {
+        if (connection) await connection.rollback().catch(() => {});
+        if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ erro: "E-mail já cadastrado." });
         console.error("Erro ao registrar conta:", error);
         res.status(500).json({ erro: "Erro ao criar conta." });
+    } finally {
+        if (connection) connection.release();
     }
 };
 
 // ATUALIZADO: Login inteligente que injeta empresa_id, funcionario_id e o Nome correto no Token
 exports.login = async (req, res) => {
     try {
-        const { email, senha } = req.body;
-
-        if (!email || !senha || typeof email !== 'string' || typeof senha !== 'string') {
-            return res.status(401).json({ erro: "E-mail ou senha inválidos." });
-        }
+        const { email, senha } = req.dadosValidados;
 
         const [users] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 
