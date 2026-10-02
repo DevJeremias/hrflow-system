@@ -88,7 +88,8 @@ export const employeeService = {
       cargo_id: roleFound ? roleFound.id : null,
       departamento_id: deptFound ? deptFound.id : null,
       status: data.status || 'Ativo',
-      senha: data.senhaAcesso // Mapeia exatamente o nome do seu campo em PersonalTab
+      // A API só usa a senha no cadastro; na edição o campo nem é exibido.
+      ...(data.id ? {} : { senha: data.senhaAcesso })
     };
 
     const url = data.id ? `${API_URL}/${data.id}` : API_URL;

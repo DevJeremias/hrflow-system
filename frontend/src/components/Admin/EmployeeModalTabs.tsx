@@ -37,10 +37,13 @@ export const PersonalTab: React.FC<TabProps> = ({ formData, handleChange }) => (
         <label className="block text-sm font-bold text-slate-700 mb-2">Data de Nascimento</label>
         <input type="date" name="dataNascimento" value={formData.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" />
       </div>
-      <div>
-        <label className="block text-sm font-bold text-slate-700 mb-2">Senha de Acesso *</label>
-        <input type="password" name="senhaAcesso" required value={formData.senhaAcesso} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="........" />
-      </div>
+      {/* A API só grava a senha no cadastro; depois dele, quem troca a senha é o próprio usuário no perfil. */}
+      {!formData.id && (
+        <div>
+          <label className="block text-sm font-bold text-slate-700 mb-2">Senha de Acesso *</label>
+          <input type="password" name="senhaAcesso" required value={formData.senhaAcesso} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="........" />
+        </div>
+      )}
     </div>
 
     <div>
