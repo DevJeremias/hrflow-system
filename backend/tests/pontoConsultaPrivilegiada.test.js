@@ -1,22 +1,17 @@
-// Requer um MySQL de teste descartável. Defina DB_HOST, DB_USER, DB_PASS e DB_NAME;
-// sem DB_HOST os testes são marcados como ignorados, nunca como aprovados. As tabelas
-// vêm de database.sql (sem o trigger) e outros testes podem recriá-las, por isso a
-// suíte roda em série.
-const fs = require('node:fs');
-const path = require('node:path');
-const mysql = require('mysql2/promise');
+// Requer MySQL real: o banco é criado e migrado por tests/support/bancoDeTeste.js
+// (variáveis HRFLOW_TEST_DB_*). Sem HRFLOW_TEST_DB_HOST os testes são marcados como
+// ignorados, nunca como aprovados.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const jwt = require('jsonwebtoken');
-
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'segredo-apenas-para-teste';
+const banco = require('./support/bancoDeTeste');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
 const pontoRoutes = require('../routes/pontoRoutes');
 
-const semBanco = process.env.DB_HOST ? false : 'DB_HOST não definido: MySQL indisponível, teste não executado';
+const semBanco = banco.skip;
 const MES = '2026-03';
 const DIA = '2026-03-10';
 
@@ -31,8 +26,8 @@ const novaEmpresa = async (nome) => {
 
 const novoFuncionario = async (empresaId, nome, indice) => {
     const [r] = await db.query(
-        `INSERT INTO funcionarios (nome, cpf, data_admissao, empresa_id) VALUES (?, ?, '2024-01-02', ?)`,
-        [nome, `000.000.000-0${indice}`, empresaId]
+        `INSERT INTO funcionarios (nome, cpf, email, data_admissao, empresa_id) VALUES (?, ?, ?, '2024-01-02', ?)`,
+        [nome, `000.000.000-0${indice}`, `funcionario${indice}@exemplo.invalid`, empresaId]
     );
     return r.insertId;
 };
@@ -56,24 +51,9 @@ const get = async (caminho, usuario) => {
     return { status: resposta.status, corpo: await resposta.json() };
 };
 
-const garantirSchema = async () => {
-    const sql = fs.readFileSync(path.join(__dirname, '../database.sql'), 'utf8')
-        .split('-- TRIGGER')[0]
-        .replace(/^(CREATE DATABASE|USE) .*$/gm, '');
-    const conexao = await mysql.createConnection({
-        host: process.env.DB_HOST, user: process.env.DB_USER, password: process.env.DB_PASS,
-        database: process.env.DB_NAME, multipleStatements: true,
-    });
-    try {
-        await conexao.query(sql);
-    } finally {
-        await conexao.end();
-    }
-};
-
 test.before(async () => {
     if (semBanco) return;
-    await garantirSchema();
+    await banco.preparar();
 
     const sufixo = `${process.pid}-${Date.now()}`;
     ctx.empresaA = await novaEmpresa(`Empresa Ficticia A ${sufixo}`);
@@ -104,10 +84,8 @@ test.before(async () => {
 
 test.after(async () => {
     if (servidor) await new Promise((resolve) => servidor.close(resolve));
-    if (!semBanco && ctx.empresaA) {
-        await db.query('DELETE FROM empresas WHERE id IN (?, ?)', [ctx.empresaA, ctx.empresaB]);
-    }
     await db.end();
+    if (!semBanco) await banco.encerrar();
 });
 
 const tipos = (lista) => lista.map((p) => p.type).sort();

@@ -44,11 +44,16 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 
 ```text
 hrflow-system/
+├── scripts/               # dev.mjs, run-workspace.mjs e db.mjs (comandos db:*)
 ├── backend/
 │   ├── config/            # Conexões de banco de dados (db.js)
 │   ├── controllers/       # Lógica de negócio (folhaController, funcionarioController)
+│   ├── db/                # Aplicador de migrations
 │   ├── middlewares/       # Proteções JWT e validação de perfis (Admin/Colaborador)
+│   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
 │   ├── routes/            # Endpoints da API REST
+│   ├── seeds/             # Fixtures sintéticas de desenvolvimento
+│   ├── tests/             # Testes de integração (MySQL descartável)
 │   └── server.js          # Ponto de entrada do Node.js
 └── frontend/
     ├── src/
@@ -73,81 +78,15 @@ hrflow-system/
 
 ## 🛠️ Guia de Configuração e Instalação (Ambiente Local)
 
-Siga os passos abaixo para preparar o ambiente de desenvolvimento sem margem para erros.
+Primeira execução em menos de 15 minutos, a partir de um clone novo e sem nenhum arquivo SQL enviado por fora: o banco é criado pelas migrations versionadas em `backend/migrations`.
 
 ### Pré-requisitos
 
 * [Node.js](https://nodejs.org/) 22.12.0 ou superior, conforme `.node-version` e a exigência do Vite 8
 * [Bun](https://bun.sh/) para a instalação recomendada (o npm continua suportado)
-* [MySQL](https://www.mysql.com/) (v8 ou superior) instalado e a rodar na máquina local.
+* MySQL 8 ou superior. Se não houver um instalado, o caminho mais curto é o [Docker](https://docs.docker.com/get-docker/), usado no passo 2.
 
-### Passo 1: Preparação da Base de Dados (Crucial)
-
-Abra o seu gestor de base de dados (ex: DBeaver, MySQL Workbench) e execute o script SQL abaixo para criar o esquema relacional completo com os tipos de dados exatos suportados pela API:
-
-```sql
-CREATE DATABASE IF NOT EXISTS hrflow_db;
-USE hrflow_db;
-
--- 1. Estrutura Organizacional
-CREATE TABLE IF NOT EXISTS departamentos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    sigla VARCHAR(10) NOT NULL,
-    descricao TEXT,
-    gestor VARCHAR(100),
-    empresa_id INT DEFAULT 1
-);
-
-CREATE TABLE IF NOT EXISTS cargos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    departamento_id INT,
-    nivel VARCHAR(50),
-    salario_base DECIMAL(10,2),
-    empresa_id INT DEFAULT 1,
-    FOREIGN KEY (departamento_id) REFERENCES departamentos(id)
-);
-
--- 2. Core de Recursos Humanos
-CREATE TABLE IF NOT EXISTS funcionarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    cpf VARCHAR(20),
-    email VARCHAR(100) NOT NULL,
-    telefone VARCHAR(20),
-    data_admissao DATE NULL,
-    data_nascimento DATE NULL,
-    endereco TEXT NULL,
-    banco VARCHAR(100) NULL,
-    agencia VARCHAR(20) NULL,
-    conta VARCHAR(20) NULL,
-    tipo_conta VARCHAR(50) NULL,
-    nivel VARCHAR(50) NULL,
-    tipo_contrato VARCHAR(50) NULL,
-    salario_base DECIMAL(10,2) NULL,
-    cargo_id INT NULL,
-    departamento_id INT NULL,
-    status VARCHAR(20) DEFAULT 'Ativo',
-    empresa_id INT DEFAULT 1,
-    FOREIGN KEY (cargo_id) REFERENCES cargos(id),
-    FOREIGN KEY (departamento_id) REFERENCES departamentos(id)
-);
-
--- 3. Autenticação e Perfis
-CREATE TABLE IF NOT EXISTS usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    senha VARCHAR(255) NOT NULL,
-    perfil VARCHAR(50) NOT NULL,
-    empresa_id INT DEFAULT 1,
-    funcionario_id INT NULL,
-    FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id)
-);
-
-```
-
-### Passo 2: Instalação e configuração
+### Passo 1: Dependências
 
 Na raiz do repositório, instale as dependências dos dois workspaces. O caminho recomendado usa Bun:
 
@@ -155,17 +94,56 @@ Na raiz do repositório, instale as dependências dos dois workspaces. O caminho
 bun install
 ```
 
-O npm também continua disponível:
+O npm também continua disponível: `npm install --workspaces`.
+
+### Passo 2: MySQL
+
+Com Docker, suba um MySQL local (troque `hrflow-dev` por outra senha se preferir; o primeiro boot leva cerca de 30 segundos):
 
 ```bash
-npm install --workspaces
+docker run -d --name hrflow-mysql -e MYSQL_ROOT_PASSWORD=hrflow-dev -p 127.0.0.1:3306:3306 mysql:8.0
 ```
 
-Crie `backend/.env` a partir de [`backend/.env.example`](backend/.env.example), preenchendo as credenciais do seu MySQL e uma chave JWT. Gere uma chave com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Deixar `JWT_SECRET` vazio quebra as requisições autenticadas atualmente. O banco continua obrigatório: execute o SQL do passo 1 antes de usar as rotas que acessam dados.
+Se a porta 3306 já estiver ocupada, troque o primeiro número do `-p` (por exemplo `-p 127.0.0.1:3307:3306`) e use o mesmo valor em `DB_PORT` no passo 3. Para usar um MySQL que já exista na máquina, pule este comando e aponte o passo 3 para ele; o usuário precisa poder criar bancos e triggers.
 
 Login e cadastro (`/api/auth`) têm corpo limitado a 4 KB e limite de tentativas por IP e por e-mail. Atrás de um proxy reverso, defina `TRUST_PROXY` com o número de proxies (veja `backend/.env.example`); sem isso, todos os clientes dividem o mesmo IP e o mesmo limite.
 
-### Passo 3: Execução
+### Passo 3: Variáveis de ambiente
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Edite `backend/.env`: preencha `DB_PASS` com a senha do passo 2 e `JWT_SECRET` com uma chave gerada por `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. `JWT_SECRET` vazio impede a API de subir. As demais variáveis já servem para o MySQL do passo 2.
+
+### Passo 4: Banco de dados
+
+```bash
+bun run db:setup
+```
+
+O comando cria o banco `DB_NAME`, aplica as migrations e carrega as fixtures sintéticas (duas empresas fictícias, com administrador, RH e colaboradores; todos os dados são inventados). A senha de todos os usuários de teste é `hrflow-dev-123`, ou o valor de `HRFLOW_SEED_PASSWORD` se você o definir antes de rodar. Usuários de teste da empresa Alfa: `admin@alfa.exemplo.invalid` (Administrador), `rita.rh@alfa.exemplo.invalid` (RH) e `caio@alfa.exemplo.invalid` (Colaborador). As fixtures se recusam a rodar com `NODE_ENV=production`.
+
+Os passos podem ser rodados separadamente:
+
+| Comando | O que faz |
+| --- | --- |
+| `bun run db:create` | cria o banco se ele não existir |
+| `bun run db:migrate` | aplica as migrations pendentes (pode rodar quantas vezes quiser) |
+| `bun run db:status` | mostra o estado de cada migration |
+| `bun run db:audit` | procura dados que violariam as constraints novas, sem alterar nada |
+| `bun run db:seed` | carrega as fixtures (não repete se já estiverem carregadas) |
+| `bun run db:reset --confirmar` | **apaga o banco inteiro** e refaz tudo; só para desenvolvimento |
+
+Regras das migrations:
+
+* Cada arquivo `backend/migrations/NNNN_nome.sql` roda uma vez, em ordem, e fica registrado em `schema_migrations` com um checksum. Uma migration já aplicada nunca é editada: mudanças entram em uma migration nova. Editar uma aplicada faz `db:migrate` recusar.
+* O MySQL não faz DDL transacional. Se uma migration falhar no meio de um banco de desenvolvimento, rode `db:reset`.
+* A migration `0003` (chaves por empresa para cargo e departamento) tem uma auditoria em `0003_referencias_por_empresa.audit.sql`. Se houver cargo ou colaborador apontando para cargo ou departamento de outra empresa, a migration não é aplicada e lista os ids a corrigir. `db:audit` roda a mesma checagem sem aplicar nada.
+* As migrations descrevem um banco criado do zero. Um banco que já existia, criado à mão por um dos SQLs antigos, deve ser auditado com `db:audit` e recriado em um banco novo com `db:setup`, migrando os dados.
+* `CREATE TRIGGER` (migration `0002`) exige o privilégio `TRIGGER` do usuário; com log binário ligado, também `SUPER` ou `log_bin_trust_function_creators=1`. O usuário `root` do Docker do passo 2 já tem tudo isso.
+
+### Passo 5: Execução
 
 Os comandos abaixo são executados na raiz. `dev` sobe os dois workspaces; `build`, `lint` e `verify` executam as verificações disponíveis atualmente no front-end:
 
@@ -179,7 +157,17 @@ bun run lint
 bun run verify
 ```
 
-Para usar npm, substitua `bun run` por `npm run`. A API fica em `http://localhost:3000/api` e o Vite informa a URL do front-end no terminal. Também é possível iniciar apenas um workspace com `npm run dev --workspace frontend` ou `npm run dev --workspace backend`.
+Para usar npm, substitua `bun run` por `npm run`. A API fica em `http://localhost:3000/api` e o Vite informa a URL do front-end no terminal. Também é possível iniciar apenas um workspace com `npm run dev --workspace frontend` ou `npm run dev --workspace backend`. Entre com um dos usuários de teste do passo 4.
+
+### Testes do back-end
+
+Os testes de integração usam um MySQL real e criam, migram e apagam um banco próprio (`hrflow_test_<pid>`), sem tocar em `DB_NAME`. Informe o servidor do passo 2 e rode na raiz:
+
+```bash
+HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflow-dev bun run test
+```
+
+`HRFLOW_TEST_DB_PORT` é opcional (padrão 3306). Sem `HRFLOW_TEST_DB_HOST` os testes são marcados como ignorados, nunca como aprovados.
 
 ---
 

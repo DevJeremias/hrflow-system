@@ -2,50 +2,18 @@
 // precisam pertencer à empresa de quem opera.
 //
 // Exige um MySQL real, porque o defeito está na combinação entre os controllers e os JOINs.
-// Informe o servidor (porta 3306, a única que o pool da API usa) com HRFLOW_TEST_DB_HOST,
-// HRFLOW_TEST_DB_USER e HRFLOW_TEST_DB_PASS. O teste cria e apaga um banco próprio (hrflow_test_<pid>), sem tocar em
-// DB_NAME. Sem HRFLOW_TEST_DB_HOST os testes são marcados como ignorados, nunca como aprovados.
+// O banco é criado e migrado por tests/support/bancoDeTeste.js (variáveis HRFLOW_TEST_DB_*).
 const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
 const http = require('node:http');
-const mysql = require('mysql2/promise');
+const banco = require('./support/bancoDeTeste');
 
-const host = process.env.HRFLOW_TEST_DB_HOST;
-const skip = host ? false : 'HRFLOW_TEST_DB_HOST não definido: sem MySQL, nada foi exercitado.';
-
-const SCHEMA = [
-    'CREATE TABLE empresas (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL)',
-    `CREATE TABLE departamentos (
-        id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, sigla VARCHAR(10) NOT NULL,
-        descricao TEXT, gestor VARCHAR(100), empresa_id INT NOT NULL)`,
-    `CREATE TABLE cargos (
-        id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, departamento_id INT,
-        nivel VARCHAR(50), salario_base DECIMAL(10,2), empresa_id INT NOT NULL,
-        FOREIGN KEY (departamento_id) REFERENCES departamentos(id))`,
-    `CREATE TABLE funcionarios (
-        id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, cpf VARCHAR(20),
-        email VARCHAR(100) NOT NULL, telefone VARCHAR(20), data_admissao DATE NULL,
-        data_nascimento DATE NULL, endereco TEXT NULL, banco VARCHAR(100) NULL,
-        agencia VARCHAR(20) NULL, conta VARCHAR(20) NULL, tipo_conta VARCHAR(50) NULL, tipo_contrato VARCHAR(50) NULL, salario_base DECIMAL(10,2) NULL,
-        cargo_id INT NULL, departamento_id INT NULL, status VARCHAR(20) DEFAULT 'Ativo',
-        empresa_id INT NOT NULL,
-        FOREIGN KEY (cargo_id) REFERENCES cargos(id),
-        FOREIGN KEY (departamento_id) REFERENCES departamentos(id))`,
-    `CREATE TABLE usuarios (
-        id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100), email VARCHAR(100) NOT NULL UNIQUE,
-        senha VARCHAR(255) NOT NULL, perfil VARCHAR(50) NOT NULL, empresa_id INT NOT NULL,
-        funcionario_id INT NULL, FOREIGN KEY (funcionario_id) REFERENCES funcionarios(id))`,
-];
-
-describe('referências de cargo e departamento entre empresas', { skip }, () => {
-    const dbName = `hrflow_test_${process.pid}`;
-    const jwtSecret = crypto.randomBytes(16).toString('hex');
-    let admin, server, baseUrl, pool;
+describe('referências de cargo e departamento entre empresas', { skip: banco.skip }, () => {
+    let server, baseUrl, pool;
     let empresaA, empresaB, deptoA, deptoB, cargoA, cargoB;
 
     const tokenDe = (empresa_id) => require('jsonwebtoken').sign(
-        { id: 1, perfil: 'Administrador', empresa_id }, jwtSecret
+        { id: 1, perfil: 'Administrador', empresa_id }, process.env.JWT_SECRET
     );
 
     const chamar = async (metodo, caminho, empresa_id, corpo) => {
@@ -59,22 +27,20 @@ describe('referências de cargo e departamento entre empresas', { skip }, () => 
 
     const inserir = async (sql, valores) => (await pool.query(sql, valores))[0].insertId;
 
-    before(async () => {
-        admin = await mysql.createConnection({
-            host,
-            user: process.env.HRFLOW_TEST_DB_USER,
-            password: process.env.HRFLOW_TEST_DB_PASS,
-        });
-        await admin.query(`CREATE DATABASE \`${dbName}\``);
-        await admin.query(`USE \`${dbName}\``);
-        for (const sql of SCHEMA) await admin.query(sql);
+    // Simula dado contaminado, que o banco migrado recusa: só entra com a checagem de chaves desligada.
+    const inserirLegado = async (sql, valores) => {
+        const conexao = await pool.getConnection();
+        try {
+            await conexao.query('SET FOREIGN_KEY_CHECKS = 0');
+            return (await conexao.query(sql, valores))[0].insertId;
+        } finally {
+            await conexao.query('SET FOREIGN_KEY_CHECKS = 1');
+            conexao.release();
+        }
+    };
 
-        // O pool dos controllers lê estas variáveis ao ser carregado.
-        process.env.DB_HOST = host;
-        process.env.DB_USER = process.env.HRFLOW_TEST_DB_USER;
-        process.env.DB_PASS = process.env.HRFLOW_TEST_DB_PASS;
-        process.env.DB_NAME = dbName;
-        process.env.JWT_SECRET = jwtSecret;
+    before(async () => {
+        await banco.preparar();
         pool = require('../config/db');
 
         const express = require('express');
@@ -109,10 +75,7 @@ describe('referências de cargo e departamento entre empresas', { skip }, () => 
     after(async () => {
         if (server) await new Promise((resolve) => server.close(resolve));
         if (pool) await pool.end();
-        if (admin) {
-            await admin.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
-            await admin.end();
-        }
+        await banco.encerrar();
     });
 
     const contar = async (tabela, empresa_id) =>
@@ -156,7 +119,7 @@ describe('referências de cargo e departamento entre empresas', { skip }, () => 
         });
 
         it('não expõe o nome de departamento de outra empresa em dado legado', async () => {
-            const legado = await inserir(
+            const legado = await inserirLegado(
                 'INSERT INTO cargos (nome, departamento_id, empresa_id) VALUES (?, ?, ?)', ['Cargo Legado', deptoB, empresaA]
             );
             const { corpo } = await chamar('GET', '/api/estrutura/cargos', empresaA);
@@ -226,7 +189,7 @@ describe('referências de cargo e departamento entre empresas', { skip }, () => 
         });
 
         it('não expõe nomes de outra empresa em dado legado', async () => {
-            await inserir(
+            await inserirLegado(
                 'INSERT INTO funcionarios (nome, email, cargo_id, departamento_id, empresa_id) VALUES (?, ?, ?, ?, ?)',
                 ['Pessoa Ficticia Legado', 'pessoa.legado@exemplo.invalid', cargoB, deptoB, empresaA]
             );
