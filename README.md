@@ -30,7 +30,7 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 
 *   **Front-end (SPA):** Desenvolvido em **React** com **TypeScript** e **Vite**, garantindo uma tipagem estática rigorosa (evitando erros de *runtime*) e um build extremamente rápido. A interface foi construída com **TailwindCSS** para uma estética limpa, responsiva e moderna.
 *   **Back-end (API REST):** Construído em **Node.js** com **Express**. Toda a lógica pesada e de negócios (como o cálculo de impostos e ordenados) foi isolada no servidor para evitar manipulações no lado do cliente.
-*   **Segurança:** A autenticação e a proteção das rotas são geridas via **JWT (JSON Web Tokens)**. O back-end extrai a identidade do utilizador diretamente do token, impedindo que um funcionário aceda ao holerite de outro.
+*   **Segurança:** A autenticação e a proteção das rotas são geridas via **JWT (JSON Web Tokens)**, guardado num cookie `HttpOnly` que o JavaScript da página não consegue ler, com proteção CSRF nas requisições que alteram dados. O back-end extrai a identidade do utilizador diretamente do token, impedindo que um funcionário aceda ao holerite de outro.
 *   **Base de Dados:** **MySQL** relacional. Estruturámos as tabelas de forma normalizada para garantir a integridade dos dados e implementámos proteções contra entradas vazias (ex: tratamento de datas `NULL` via código) para manter a base de dados blindada contra crashes.
 
 ## ✨ Funcionalidades Principais
@@ -111,6 +111,21 @@ docker run -d --name hrflow-mysql -e MYSQL_ROOT_PASSWORD=hrflow-dev -p 127.0.0.1
 Se a porta 3306 já estiver ocupada, troque o primeiro número do `-p` (por exemplo `-p 127.0.0.1:3307:3306`) e use o mesmo valor em `DB_PORT` no passo 3. Para usar um MySQL que já exista na máquina, pule este comando e aponte o passo 3 para ele; o usuário precisa poder criar bancos e triggers.
 
 Login e cadastro (`/api/auth`) têm corpo limitado a 4 KB e limite de tentativas por IP e por e-mail. Atrás de um proxy reverso, defina `TRUST_PROXY` com o número de proxies (veja `backend/.env.example`); sem isso, todos os clientes dividem o mesmo IP e o mesmo limite.
+
+### Sessão em cookie e proxy reverso
+
+A sessão (8 horas, revogada na troca de senha, na inativação e na exclusão) vive em dois cookies emitidos pelo login e apagados pelo logout (`POST /api/auth/logout`) e por qualquer resposta 401:
+
+| Cookie | Conteúdo | Atributos |
+| --- | --- | --- |
+| `hrflow_sessao` | o JWT da sessão | `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` fora de localhost |
+| `hrflow_csrf` | token CSRF derivado do JWT (HMAC com `JWT_SECRET`) | legível pelo front-end, `SameSite=Lax`, `Path=/`, `Secure` fora de localhost |
+
+* O token não vai mais no corpo do login nem no `localStorage`, e `Authorization: Bearer` deixou de ser aceito. O front-end só envia o token CSRF no cabeçalho `X-CSRF-Token` das requisições `POST`, `PUT`, `PATCH` e `DELETE`; sem ele a API responde 403. Leituras (`GET`) não o exigem.
+* Quem estava logado com o token antigo no `localStorage` cai uma vez na tela de login, sem erro: o front-end apaga a chave legada ao carregar.
+* O cookie é `Secure` quando a requisição chega por HTTPS e, com `NODE_ENV=production`, em qualquer host que não seja loopback. Atrás do Caddy, defina `TRUST_PROXY=1` (veja `backend/.env.example`) para a API enxergar o HTTPS informado em `X-Forwarded-Proto`, e `NODE_ENV=production`.
+* Front-end e API precisam ser servidos pela mesma origem, como já acontece: o Vite encaminha `/api` em desenvolvimento e o Caddy faz o mesmo em produção. Não há CORS com credenciais, de propósito.
+* `POST /api/auth/logout` é público para que uma sessão expirada também consiga limpar os cookies.
 
 ### Passo 3: Variáveis de ambiente
 
