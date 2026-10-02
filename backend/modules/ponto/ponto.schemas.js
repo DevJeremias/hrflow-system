@@ -1,5 +1,5 @@
-const { z, data, corpo, inteiroPositivo, opcional, campo, ausente } = require('./comum');
-const fuso = require('../utils/fusoPonto');
+const { z, data, corpo, inteiroPositivo, opcional, campo, ausente } = require('../../schemas/comum');
+const fuso = require('./ponto.fuso');
 
 const LIMITE_JUSTIFICATIVA = 1000;
 

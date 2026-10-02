@@ -1,7 +1,7 @@
-const db = require('../config/db');
-const fuso = require('../utils/fusoPonto');
-const regras = require('../utils/pontoRegras');
-const { responderErro } = require('../utils/erros');
+const db = require('../../config/db');
+const fuso = require('./ponto.fuso');
+const regras = require('./ponto.regras');
+const { responderErro } = require('../../utils/erros');
 
 // Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia em Belém.
 exports.relogio = { agora: () => Date.now() };

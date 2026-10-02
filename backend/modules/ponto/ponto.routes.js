@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const pontoController = require('../controllers/pontoController');
-const verificarPerfil = require('../middlewares/roleMiddleware');
-const verificarAcessoFuncionario = require('../middlewares/employeeAccessMiddleware');
-const validarEntrada = require('../middlewares/validarEntrada');
-const { diaDaJustificativa, enviarJustificativa, consultarJustificativas } = require('../schemas/pontoSchemas');
+const pontoController = require('./ponto.controller');
+const verificarPerfil = require('../../middlewares/roleMiddleware');
+const verificarAcessoFuncionario = require('../../middlewares/employeeAccessMiddleware');
+const validarEntrada = require('../../middlewares/validarEntrada');
+const { diaDaJustificativa, enviarJustificativa, consultarJustificativas } = require('./ponto.schemas');
 
 router.post('/registrar', pontoController.registrarPonto);
 router.get('/hoje/:funcionarioId', verificarAcessoFuncionario, pontoController.listarPontosHoje);

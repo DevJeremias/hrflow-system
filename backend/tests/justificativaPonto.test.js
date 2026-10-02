@@ -9,8 +9,8 @@ const { criarUsuario } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
-const pontoRoutes = require('../routes/pontoRoutes');
-const fuso = require('../utils/fusoPonto');
+const pontoRoutes = require('../modules/ponto/ponto.routes');
+const fuso = require('../modules/ponto/ponto.fuso');
 
 const semBanco = banco.skip;
 const MES = '2026-03';

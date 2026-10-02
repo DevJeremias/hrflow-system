@@ -37,7 +37,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         app.use(express.json({ limit: '10mb' }));
         app.use('/api/auth', require('../routes/authRoutes'));
         app.use('/api/funcionarios', authMiddleware, require('../routes/funcionarioRoutes'));
-        app.use('/api/ponto', authMiddleware, require('../routes/pontoRoutes'));
+        app.use('/api/ponto', authMiddleware, require('../modules/ponto/ponto.routes'));
         app.use('/api/estrutura', authMiddleware, require('../routes/estruturaRoutes'));
         app.use('/api/folha', authMiddleware, require('../routes/folhaRoutes'));
         app.use('/api/perfil', authMiddleware, require('../routes/perfilRoutes'));
@@ -156,7 +156,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         const hoje = await chamar('GET', `/api/ponto/hoje/${estado.funcionario}`, estado.colaborador);
         assert.deepEqual(hoje.corpo.map((p) => p.type), ['Entrada', 'Pausa Almoço', 'Retorno Almoço', 'Saída']);
 
-        const mes = require('../utils/fusoPonto').mesLocal(Math.floor(Date.now() / 1000));
+        const mes = require('../modules/ponto/ponto.fuso').mesLocal(Math.floor(Date.now() / 1000));
         const historico = await chamar('GET', `/api/ponto/historico/${estado.funcionario}?mes=${mes}`, estado.admin);
         assert.equal(historico.corpo.length, 1);
         assert.notEqual(historico.corpo[0].exit, '--:--');
