@@ -7,8 +7,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#6366f1', // O roxo que usas no design
-        secondary: '#26245c', // O fundo da tua Sidebar
+        primary: '#0f766e', // Verde escuro elegante (baseado na 2ª imagem)
+        primaryHover: '#0d9488',
+        secondary: '#1e293b', // Fundo da Sidebar (Slate 800)
       }
     },
   },
