@@ -30,7 +30,7 @@ const getMyRequests = async (): Promise<EmployeeRequest[]> => {
 
 export const requestService = {
   getAllRequests: async (): Promise<EmployeeRequest[]> => [],
-  createRequest: async (data: Omit<EmployeeRequest, 'id' | 'requestDate' | 'status'>) => {},
+  createRequest: async (_data: Omit<EmployeeRequest, 'id' | 'requestDate' | 'status'>) => {},
   getMyRequests,
   // Adicione qualquer outra função que a tela pedir aqui dentro
 };
