@@ -36,6 +36,7 @@ jobs:
       DB_USER: root
       DB_PASS: ci-mysql-descartavel
       DB_NAME: hrflow_ci
+      JWT_SECRET: ci-segredo-jwt-com-pelo-menos-trinta-e-dois-bytes
       HRFLOW_TEST_DB_HOST: 127.0.0.1
       HRFLOW_TEST_DB_USER: root
       HRFLOW_TEST_DB_PASS: ci-mysql-descartavel

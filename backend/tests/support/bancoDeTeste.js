@@ -26,7 +26,7 @@ if (host) {
     process.env.DB_PASS = config.password;
     process.env.DB_NAME = config.database;
 }
-process.env.JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(16).toString('hex');
+process.env.JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 // Banco novo e migrado até a versão mais recente.
 const preparar = async () => {
