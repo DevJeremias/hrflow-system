@@ -173,7 +173,7 @@ describe('migrations', { skip: banco.skip }, () => {
 
             await alvo.query('DELETE FROM funcionarios WHERE id = ?', [funcionarioContaminado]);
             await alvo.query('DELETE FROM cargos WHERE id = ?', [cargoContaminado]);
-            assert.deepEqual(await migrator.migrar(parcial), ['0003']);
+            assert.deepEqual(await migrator.migrar(parcial), ['0003', '0004']);
         });
     });
 

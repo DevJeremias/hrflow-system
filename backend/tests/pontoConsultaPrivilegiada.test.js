@@ -4,8 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const banco = require('./support/bancoDeTeste');
+const { criarUsuario } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -44,10 +44,8 @@ const novoPontoHoje = (funcionarioId, empresaId, tipo, hora) =>
         [funcionarioId, empresaId, tipo, hora]
     );
 
-const token = (usuario) => jwt.sign(usuario, process.env.JWT_SECRET);
-
-const get = async (caminho, usuario) => {
-    const resposta = await fetch(`${baseUrl}${caminho}`, { headers: { Authorization: `Bearer ${token(usuario)}` } });
+const get = async (caminho, token) => {
+    const resposta = await fetch(`${baseUrl}${caminho}`, { headers: { Authorization: `Bearer ${token}` } });
     return { status: resposta.status, corpo: await resposta.json() };
 };
 
@@ -75,6 +73,10 @@ test.before(async () => {
     await novoPonto(ctx.rh, ctx.empresaA, 'Pausa Almoço', `${MES}-11 12:00:00`);
     await novoPonto(ctx.deOutraEmpresa, ctx.empresaB, 'Entrada', `${MES}-12 09:00:00`);
 
+    ctx.tokenRH = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'RH', funcionarioId: ctx.rh })).token;
+    ctx.tokenAdmin = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Administrador' })).token;
+    ctx.tokenColaborador = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador', funcionarioId: ctx.alvo })).token;
+
     const app = express();
     app.use(express.json());
     app.use('/api/ponto', authMiddleware, pontoRoutes);
@@ -95,25 +97,19 @@ test('ids de teste são distintos por construção', { skip: semBanco }, () => {
 });
 
 test('RH consulta os pontos de hoje do colaborador pedido, não os próprios', { skip: semBanco }, async () => {
-    const { status, corpo } = await get(`/hoje/${ctx.alvo}`, {
-        perfil: 'RH', empresa_id: ctx.empresaA, funcionario_id: ctx.rh,
-    });
+    const { status, corpo } = await get(`/hoje/${ctx.alvo}`, ctx.tokenRH);
     assert.equal(status, 200);
     assert.deepEqual(tipos(corpo), ['Entrada', 'Saída']);
 });
 
 test('Administrador sem vínculo de funcionário consulta os pontos de hoje do colaborador', { skip: semBanco }, async () => {
-    const { status, corpo } = await get(`/hoje/${ctx.alvo}`, {
-        perfil: 'Administrador', empresa_id: ctx.empresaA, funcionario_id: null,
-    });
+    const { status, corpo } = await get(`/hoje/${ctx.alvo}`, ctx.tokenAdmin);
     assert.equal(status, 200);
     assert.deepEqual(tipos(corpo), ['Entrada', 'Saída']);
 });
 
 test('RH consulta o histórico do colaborador pedido, não o próprio', { skip: semBanco }, async () => {
-    const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, {
-        perfil: 'RH', empresa_id: ctx.empresaA, funcionario_id: ctx.rh,
-    });
+    const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, ctx.tokenRH);
     assert.equal(status, 200);
     assert.deepEqual(corpo.map((d) => d.date), [DIA]);
     assert.notEqual(corpo[0].entry, '--:--');
@@ -122,15 +118,13 @@ test('RH consulta o histórico do colaborador pedido, não o próprio', { skip: 
 });
 
 test('Administrador sem vínculo consulta o histórico do colaborador', { skip: semBanco }, async () => {
-    const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, {
-        perfil: 'Administrador', empresa_id: ctx.empresaA, funcionario_id: null,
-    });
+    const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, ctx.tokenAdmin);
     assert.equal(status, 200);
     assert.deepEqual(corpo.map((d) => d.date), [DIA]);
 });
 
 test('o filtro por empresa continua valendo para perfis privilegiados', { skip: semBanco }, async () => {
-    const usuario = { perfil: 'RH', empresa_id: ctx.empresaA, funcionario_id: ctx.rh };
+    const usuario = ctx.tokenRH;
     const hoje = await get(`/hoje/${ctx.deOutraEmpresa}`, usuario);
     const historico = await get(`/historico/${ctx.deOutraEmpresa}?mes=${MES}`, usuario);
     assert.equal(hoje.status, 200);
@@ -140,7 +134,7 @@ test('o filtro por empresa continua valendo para perfis privilegiados', { skip: 
 });
 
 test('Colaborador continua restrito ao próprio vínculo', { skip: semBanco }, async () => {
-    const usuario = { perfil: 'Colaborador', empresa_id: ctx.empresaA, funcionario_id: ctx.alvo };
+    const usuario = ctx.tokenColaborador;
 
     const proprio = await get(`/hoje/${ctx.alvo}`, usuario);
     assert.equal(proprio.status, 200);

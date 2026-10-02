@@ -7,14 +7,14 @@ const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const banco = require('./support/bancoDeTeste');
+const { criarUsuario } = require('./support/sessao');
 
 describe('referências de cargo e departamento entre empresas', { skip: banco.skip }, () => {
     let server, baseUrl, pool;
     let empresaA, empresaB, deptoA, deptoB, cargoA, cargoB;
 
-    const tokenDe = (empresa_id) => require('jsonwebtoken').sign(
-        { id: 1, perfil: 'Administrador', empresa_id }, process.env.JWT_SECRET
-    );
+    const tokens = {};
+    const tokenDe = (empresa_id) => tokens[empresa_id];
 
     const chamar = async (metodo, caminho, empresa_id, corpo) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, {
@@ -68,6 +68,9 @@ describe('referências de cargo e departamento entre empresas', { skip: banco.sk
         cargoA = await inserir(
             'INSERT INTO cargos (nome, departamento_id, empresa_id) VALUES (?, ?, ?)', ['Cargo A', deptoA, empresaA]
         );
+        for (const empresaId of [empresaA, empresaB]) {
+            tokens[empresaId] = (await criarUsuario(pool, { empresaId, perfil: 'Administrador' })).token;
+        }
         assert.notEqual(deptoA, deptoB);
         assert.notEqual(cargoA, cargoB);
     });
