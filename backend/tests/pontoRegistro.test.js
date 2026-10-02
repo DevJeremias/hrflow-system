@@ -9,8 +9,8 @@ const { criarUsuario } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
-const pontoRoutes = require('../routes/pontoRoutes');
-const pontoController = require('../controllers/pontoController');
+const { pontoRoutes } = require('../modules/ponto/index.ts');
+const { relogio } = require('../modules/ponto/ponto.service.ts');
 
 const semBanco = banco.skip;
 const ctx = {};
@@ -20,7 +20,7 @@ let contador = 0;
 
 // 01:30 UTC de 11/03 é 22:30 de 10/03 em Belém: toISOString diria 11/03.
 const NOITE_10 = Date.parse('2026-03-11T01:30:00Z');
-const hora = (iso) => { pontoController.relogio.agora = () => Date.parse(iso); };
+const hora = (iso) => { relogio.agora = () => Date.parse(iso); };
 
 const novaEmpresa = async (nome) => (await db.query('INSERT INTO empresas (nome) VALUES (?)', [nome]))[0].insertId;
 
@@ -70,10 +70,10 @@ test.before(async () => {
     baseUrl = `http://127.0.0.1:${servidor.address().port}/api/ponto`;
 });
 
-test.beforeEach(() => { pontoController.relogio.agora = () => NOITE_10; });
+test.beforeEach(() => { relogio.agora = () => NOITE_10; });
 
 test.after(async () => {
-    pontoController.relogio.agora = () => Date.now();
+    relogio.agora = () => Date.now();
     if (servidor) await new Promise((resolve) => servidor.close(resolve));
     await db.end();
     if (!semBanco) await banco.encerrar();

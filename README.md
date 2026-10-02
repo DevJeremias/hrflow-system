@@ -51,9 +51,11 @@ hrflow-system/
 │   ├── db/                # Aplicador de migrations
 │   ├── middlewares/       # Proteções JWT e validação de perfis (Admin/Colaborador)
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
+│   ├── modules/           # Módulos em TypeScript, um por área (ponto); padrão em backend/README.md
 │   ├── routes/            # Endpoints da API REST
 │   ├── seeds/             # Fixtures sintéticas de desenvolvimento
 │   ├── tests/             # Testes de integração (MySQL descartável)
+│   ├── types/             # Declarações de tipos que só o tsc usa (express.d.ts)
 │   └── server.js          # Ponto de entrada do Node.js
 └── frontend/
     ├── src/
@@ -84,7 +86,7 @@ Primeira execução em menos de 15 minutos, a partir de um clone novo e sem nenh
 
 ### Pré-requisitos
 
-* [Node.js](https://nodejs.org/) 22.12.0 ou superior, conforme `.node-version` e a exigência do Vite 8
+* [Node.js](https://nodejs.org/) 22.18.0 ou superior, conforme `.node-version`: o Vite 8 pede 22.12 e o back-end roda TypeScript direto no Node, recurso ligado por padrão a partir da 22.18
 * [Bun](https://bun.sh/) para a instalação recomendada (o npm continua suportado)
 * MySQL 8 ou superior. Se não houver um instalado, o caminho mais curto é o [Docker](https://docs.docker.com/get-docker/), usado no passo 2.
 

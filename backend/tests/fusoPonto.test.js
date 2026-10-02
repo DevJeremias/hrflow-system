@@ -3,8 +3,8 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
-const fuso = require('../utils/fusoPonto');
-const regras = require('../utils/pontoRegras');
+const fuso = require('../modules/ponto/ponto.fuso.ts');
+const regras = require('../modules/ponto/ponto.regras.ts');
 
 const s = (iso) => Date.parse(iso) / 1000;
 
@@ -49,7 +49,7 @@ describe('fusoPonto', () => {
 
     it('não depende do fuso do processo Node', () => {
         const codigo = `
-            const f = require('./utils/fusoPonto');
+            const f = require('./modules/ponto/ponto.fuso.ts');
             const t = Date.parse('2026-03-11T01:30:05Z') / 1000;
             console.log([f.diaLocal(t), f.horaLocal(t), f.limitesDoDia('2026-03-10').inicio].join('|'));`;
         const esperado = `2026-03-10|22:30:05|${s('2026-03-10T03:00:00Z')}`;
