@@ -30,9 +30,9 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
 
   useEffect(() => {
     if (isOpen) {
-      setListError(null);
       Promise.all([getRoles(), getDepartments()])
         .then(([cargos, departamentos]) => {
+          setListError(null);
           setCargosList(cargos);
           setDepartamentosList(departamentos);
         })

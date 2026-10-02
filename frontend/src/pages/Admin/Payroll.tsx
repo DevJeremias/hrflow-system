@@ -14,22 +14,27 @@ const Payroll: React.FC = () => {
   const [deptFilter, setDeptFilter] = useState('Todos');
   const [monthFilter, setMonthFilter] = useState('2026-04'); 
 
-  const loadPayrollData = async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const startLoading = () => {
     setLoading(true);
     setLoadError(null);
-    try {
-      setAllPayrolls(await generateMonthlyPayroll());
-    } catch (error) {
-      setAllPayrolls([]);
-      setLoadError(mensagemDeErro(error, 'Erro ao processar folha de pagamento'));
-    } finally {
-      setLoading(false);
-    }
+  };
+
+  const retry = () => {
+    startLoading();
+    setReloadKey((k) => k + 1);
   };
 
   useEffect(() => {
-    loadPayrollData();
-  }, [monthFilter]); 
+    generateMonthlyPayroll()
+      .then(setAllPayrolls)
+      .catch((error) => {
+        setAllPayrolls([]);
+        setLoadError(mensagemDeErro(error, 'Erro ao processar folha de pagamento'));
+      })
+      .finally(() => setLoading(false));
+  }, [monthFilter, reloadKey]); 
 
   const displayedPayrolls = useMemo(() => {
     if (deptFilter === 'Todos') return allPayrolls;
@@ -66,7 +71,7 @@ const Payroll: React.FC = () => {
             </select>
           </div>
 
-          <input type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} 
+          <input type="month" value={monthFilter} onChange={(e) => { startLoading(); setMonthFilter(e.target.value); }} 
             className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 rounded-xl outline-none focus:border-primary cursor-pointer" />
 
           <button className="flex items-center gap-2 bg-slate-900 hover:bg-primary text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95">
@@ -81,7 +86,7 @@ const Payroll: React.FC = () => {
           <p className="font-bold">Processando base de cálculo...</p>
         </div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={loadPayrollData} />
+        <ErrorAlert message={loadError} onRetry={retry} />
       ) : (
         <>
           <PayrollSummaryCards metrics={dynamicMetrics} />

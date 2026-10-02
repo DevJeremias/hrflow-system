@@ -28,13 +28,13 @@ const EmployeeDashboard: React.FC = () => {
   useEffect(() => {
     if (funcionarioId === null) return;
     let ativo = true;
-    setLoadError(null);
     Promise.all([
       pontoService.getRegistrosHoje(funcionarioId),
       pontoService.getHistoricoMes(funcionarioId, historyMonth),
       pontoService.getTotaisSemanais(funcionarioId, historyMonth),
     ]).then(([hoje, historico, totais]) => {
       if (!ativo) return;
+      setLoadError(null);
       setDailyRecords(hoje);
       setHistoryData(historico);
       setWeeklyData(totais.totals);
@@ -105,7 +105,7 @@ const EmployeeDashboard: React.FC = () => {
       {funcionarioId === null && (
         <ErrorAlert message="Seu usuário ainda não está vinculado a um colaborador. Procure o RH para registrar e consultar o ponto." />
       )}
-      {loadError && <ErrorAlert message={loadError} onRetry={() => setReloadKey((k) => k + 1)} />}
+      {loadError && <ErrorAlert message={loadError} onRetry={() => { setLoadError(null); setReloadKey((k) => k + 1); }} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <DashboardPunchCard 

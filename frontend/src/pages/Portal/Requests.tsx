@@ -12,22 +12,21 @@ const Requests: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Busca o histórico de solicitações do colaborador
-  const fetchRequests = async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const retry = () => {
     setLoading(true);
     setLoadError(null);
-    try {
-      setRequests(await requestService.getMyRequests());
-    } catch (error) {
-      setLoadError(mensagemDeErro(error, 'Erro ao buscar minhas solicitações'));
-    } finally {
-      setLoading(false);
-    }
+    setReloadKey((k) => k + 1);
   };
 
+  // Busca o histórico de solicitações do colaborador
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    requestService.getMyRequests()
+      .then(setRequests)
+      .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar minhas solicitações')))
+      .finally(() => setLoading(false));
+  }, [reloadKey]);
 
   const handleSubmitRequest = async (data: { type: RequestType; startDate: string; endDate: string; observation: string; hasAttachment: boolean }) => {
     try {
@@ -63,7 +62,7 @@ const Requests: React.FC = () => {
       {loading ? (
         <div className="py-24 text-center text-slate-500 font-bold animate-pulse">Carregando solicitações...</div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={fetchRequests} />
+        <ErrorAlert message={loadError} onRetry={retry} />
       ) : requests.length > 0 ? (
         <RequestsTable requests={requests} />
       ) : (

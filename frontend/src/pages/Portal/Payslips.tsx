@@ -16,21 +16,20 @@ const MyPayslips: React.FC = () => {
 
   const monthsLabels = ['Mês Atual'];
 
-  const loadMyPayslips = async () => {
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const retry = () => {
     setLoading(true);
     setLoadError(null);
-    try {
-      setPayslips(await getMyPayroll());
-    } catch (error) {
-      setLoadError(mensagemDeErro(error, 'Erro ao buscar meu holerite'));
-    } finally {
-      setLoading(false);
-    }
+    setReloadKey((k) => k + 1);
   };
 
   useEffect(() => {
-    loadMyPayslips();
-  }, []);
+    getMyPayroll()
+      .then(setPayslips)
+      .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar meu holerite')))
+      .finally(() => setLoading(false));
+  }, [reloadKey]);
 
   const handleOpenPayslip = (payroll: EmployeePayroll, monthLabel: string) => {
     setSelectedPayslip(payroll);
@@ -53,7 +52,7 @@ const MyPayslips: React.FC = () => {
           <p className="font-bold">A carregar demonstrativos...</p>
         </div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={loadMyPayslips} />
+        <ErrorAlert message={loadError} onRetry={retry} />
       ) : payslips.length > 0 ? (
         <>
           {latestPayslip && (
