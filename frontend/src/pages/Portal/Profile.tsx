@@ -79,7 +79,7 @@ const Profile: React.FC = () => {
       {/* ÁREA DE CONTEÚDO (RENDERIZA O COMPONENTE DA ABA ATIVA) */}
       <main className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden relative p-8 md:p-12">
         {activeTab === 'dados' && (
-          <ProfileDataTab perfil={perfil} onUpdate={handleUpdatePerfil} getToken={getToken} />
+          <ProfileDataTab perfil={perfil} onUpdate={handleUpdatePerfil} />
         )}
         
         {activeTab === 'profissional' && (

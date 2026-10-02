@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { EmployeePayroll, getMyPayroll } from '../../services/payrollService';
 import PayslipsSummaryCards from '../../components/Portal/PayslipsMetrics';
 import PayslipsHistoryTable from '../../components/Portal/PayslipsTable';
@@ -7,8 +6,6 @@ import HoleriteModal from '../../components/Admin/PayrollSlipModal';
 import { FileText } from 'lucide-react';
 
 const MyPayslips: React.FC = () => {
-  const { user } = useAuth();
-  
   const [payslips, setPayslips] = useState<EmployeePayroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPayslip, setSelectedPayslip] = useState<EmployeePayroll | null>(null);

@@ -26,23 +26,19 @@ export interface UserPersonalData {
 export const userService = {
   async getMyPersonalData(): Promise<UserPersonalData> {
     try {
-      // 1. Vai buscar o Token que o seu sistema guardou quando fez o login
-      // (Se você guardou com outro nome no seu frontend, basta alterar a palavra 'token' aqui)
-      const token = localStorage.getItem('token'); 
-
-      // 2. Faz o pedido direto ao seu backend na porta 3000 usando o fetch nativo
+      // 1. Faz o pedido direto ao seu backend na porta 3000 usando o fetch nativo
       const response = await httpClient('/usuarios/perfil', {
         method: 'GET',
         auth: true,
         errorMessage: (data, status) => `Erro na requisição: ${status}`
       });
 
-      // 3. Verifica se o backend devolveu algum erro (ex: 401 ou 404)
+      // 2. Verifica se o backend devolveu algum erro (ex: 401 ou 404)
       if (!response.ok) {
         throw new Error(`Erro na requisição: ${response.status}`);
       }
 
-      // 4. Converte a resposta do backend para JSON e devolve para o ecrã MyProfile
+      // 3. Converte a resposta do backend para JSON e devolve para o ecrã MyProfile
       const data = await response.json();
       return data;
       

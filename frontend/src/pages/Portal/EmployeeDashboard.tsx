@@ -62,7 +62,7 @@ const EmployeeDashboard: React.FC = () => {
           setIsRegistering(false);
         }
       },
-      (error) => {
+      () => {
         alert("Por favor, permita o acesso à sua localização para registrar o ponto.");
         setIsRegistering(false);
       },
@@ -74,7 +74,7 @@ const EmployeeDashboard: React.FC = () => {
     try {
       await pontoService.salvarJustificativa(id, note);
       setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note } : day));
-    } catch (error) {
+    } catch {
       alert("Erro ao salvar justificativa.");
     }
   };

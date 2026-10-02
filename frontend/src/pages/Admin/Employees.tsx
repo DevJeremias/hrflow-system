@@ -26,7 +26,7 @@ const Employees: React.FC = () => {
       await employeeService.save(employeeData);
       await loadEmployees(); 
       setIsModalOpen(false);
-    } catch (error) {
+    } catch {
       alert("Erro ao guardar colaborador.");
     }
   };
