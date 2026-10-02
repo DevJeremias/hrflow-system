@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react'; 
 import { useAuth } from '../../contexts/AuthContext'; 
+import logo from '../../assets/logo.png';
+import loginImagem from '../../assets/login_imagem2.png';
 
 const Login: React.FC = () => {
-  const bgImage = new URL('../../assets/login_imagem2.png', import.meta.url).href;
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState(''); 
@@ -32,7 +33,7 @@ const Login: React.FC = () => {
       <div className="hidden lg:flex flex-[1.4] relative bg-[#0a0f1d]">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-25" 
-          style={{ backgroundImage: `url(${bgImage})` }}
+          style={{ backgroundImage: `url(${loginImagem})` }}
         />
         
         <div className="relative z-10 flex flex-col justify-between w-full h-full pt-12 pb-12 pl-10 pr-12 xl:pt-16 xl:pb-16 xl:pl-20">
@@ -40,7 +41,7 @@ const Login: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className=" p-2.5 rounded-xl shadow-indigo-500/20">
               <img 
-                src="./src/assets/logo.png" 
+                src={logo} 
                 alt="Logo da Empresa" 
                 className="h-10 md:h-12 w-auto object-contain" 
               />

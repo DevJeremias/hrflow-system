@@ -1,5 +1,6 @@
 import React from 'react';
 import { Cog, Network, Database, CheckCircle2 } from 'lucide-react';
+import heroImagem from '../../assets/hero_imagem.avif';
 
 export default function AnatomySection() {
   return (
@@ -30,7 +31,7 @@ export default function AnatomySection() {
             <div className="relative z-10 transform-gpu rotate-y-[-5deg] rotate-x-[2deg] group-hover:rotate-0 group-hover:scale-[1.02] transition-all duration-1000 ease-out w-full max-w-2xl">
               <div className="p-2 bg-white rounded-[2.5rem] shadow-xl border border-slate-200 backdrop-blur-sm">
                 <img 
-                  src="./src/assets/hero_imagem.avif" 
+                  src={heroImagem} 
                   alt="Interface do Sistema RHPRO" 
                   className="w-full h-auto rounded-[2rem] object-cover opacity-95"
                 />
