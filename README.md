@@ -163,6 +163,8 @@ npm install --workspaces
 
 Crie `backend/.env` a partir de [`backend/.env.example`](backend/.env.example), preenchendo as credenciais do seu MySQL e uma chave JWT. Gere uma chave com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Deixar `JWT_SECRET` vazio quebra as requisições autenticadas atualmente. O banco continua obrigatório: execute o SQL do passo 1 antes de usar as rotas que acessam dados.
 
+Login e cadastro (`/api/auth`) têm corpo limitado a 4 KB e limite de tentativas por IP e por e-mail. Atrás de um proxy reverso, defina `TRUST_PROXY` com o número de proxies (veja `backend/.env.example`); sem isso, todos os clientes dividem o mesmo IP e o mesmo limite.
+
 ### Passo 3: Execução
 
 Os comandos abaixo são executados na raiz. `dev` sobe os dois workspaces; `build`, `lint` e `verify` executam as verificações disponíveis atualmente no front-end:

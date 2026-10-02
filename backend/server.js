@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./config/db');
+const { interpretarTrustProxy } = require('./utils/trustProxy');
 
 // Importação das Rotas
 const authRoutes = require('./routes/authRoutes');
@@ -17,8 +18,15 @@ const authMiddleware = require('./middlewares/authMiddleware');
 
 const app = express();
 
+// O limitador de tentativas da autenticação usa req.ip. Por padrão nenhum proxy é confiável
+// e X-Forwarded-For é ignorado; atrás de um proxy reverso, defina TRUST_PROXY (ex.: 1).
+app.set('trust proxy', interpretarTrustProxy(process.env.TRUST_PROXY));
+
 // Middlewares Globais
 app.use(cors());
+
+// Autenticação vem antes do parser global: tem corpo pequeno e limite próprio (middlewares/limitesAuth.js)
+app.use('/api/auth', authRoutes);
 
 // CORREÇÃO CRÍTICA AQUI: Aumentando o limite para suportar imagens Base64
 app.use(express.json({ limit: '10mb' }));
@@ -30,9 +38,6 @@ db.query('SELECT 1 + 1 AS result')
     .catch(err => console.error('❌ Erro real na conexão:', err.message));
 
 // --- DEFINIÇÃO DAS ROTAS ---
-
-// Rotas Públicas (Login e Registro inicial)
-app.use('/api/auth', authRoutes);
 
 // Rotas Protegidas (Exigem Token JWT)
 app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
