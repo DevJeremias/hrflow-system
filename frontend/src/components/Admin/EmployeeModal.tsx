@@ -57,7 +57,7 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
       if (cargoSelecionado) {
         updatedData = {
           ...updatedData,
-          salarioBase: cargoSelecionado.salary.toString(),
+          salarioBase: (cargoSelecionado.salary ?? 0).toString(),
           departamento: cargoSelecionado.department,
           nivel: cargoSelecionado.level || '', 
           cargoEarnings: cargoSelecionado.earnings || [],
