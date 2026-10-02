@@ -296,6 +296,18 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
             assert.equal((await falhar(chamar, 'v9@exemplo.invalid')).status, 429);
         });
 
+        it('não conta logins corretos contra o IP: um escritório inteiro entra no início do expediente', async () => {
+            const chamar = await subir({ loginPorIp: { windowMs: 60_000, limit: 5 } });
+            const dados = registro();
+            await chamar('/registrar', dados);
+            for (let i = 0; i < 31; i += 1) {
+                assert.equal((await chamar('/login', { email: dados.email, senha: senhaFicticia })).status, 200, `login ${i + 1}`);
+            }
+            // As falhas seguem contando, então o IP não vira rota livre para tentar senhas.
+            for (let i = 0; i < 5; i += 1) assert.equal((await falhar(chamar, dados.email)).status, 401);
+            assert.equal((await falhar(chamar, dados.email)).status, 429);
+        });
+
         it('limita o cadastro por IP, sem tocar o banco depois do limite', async () => {
             const chamar = await subir({ registroPorIp: { windowMs: 60_000, limit: 2 } });
             const empresas = await contar('empresas');

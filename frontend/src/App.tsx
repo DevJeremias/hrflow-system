@@ -29,7 +29,7 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
       <div className="flex min-h-screen items-center justify-center p-6 bg-slate-50">
         <div className="w-full max-w-md space-y-4">
           <ErrorAlert message={sessionError} onRetry={retrySession} />
-          <button onClick={logout} className="text-sm font-bold text-slate-500 hover:text-slate-700 underline underline-offset-4">
+          <button onClick={() => logout()} className="text-sm font-bold text-slate-500 hover:text-slate-700 underline underline-offset-4">
             Sair e entrar novamente
           </button>
         </div>

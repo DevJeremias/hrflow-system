@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import httpClient, {
@@ -8,6 +8,7 @@ import httpClient, {
   setSessionExpiredHandler,
   startSessionEpoch,
 } from '../services/httpClient';
+import { avisarAbas, observarSessao } from '../services/sessaoEntreAbas';
 import { User, lerSessao, rotaInicial } from '../utils/sessao';
 
 export type { User };
@@ -19,6 +20,7 @@ export type { User };
 const CHAVES_LEGADAS = ['token', 'user', 'nomeUsuario', 'funcionarioId', 'perfil'];
 
 const AVISO_SESSAO_EXPIRADA = 'Sua sessão expirou. Entre novamente para continuar.';
+const AVISO_SESSAO_ENCERRADA_EM_OUTRA_ABA = 'Sua sessão foi encerrada em outra aba. Entre novamente para continuar.';
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +32,8 @@ interface AuthContextType {
   sessionNotice: string | null;
   retrySession: () => void;
   login: (email: string, senha: string) => Promise<void>;
-  logout: () => Promise<void>;
+  // O aviso, se houver, aparece na tela de login (ex.: a troca de senha encerra a sessão).
+  logout: (aviso?: string) => Promise<void>;
   updateUser: (data: Partial<User>) => void;
 }
 
@@ -44,6 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // As abas se comparam pelo id: o observador precisa do usuário de agora, não o da renderização que o criou.
+  const userIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    userIdRef.current = user?.id ?? null;
+  }, [user]);
 
   const clearSession = useCallback(() => {
     forgetSession();
@@ -87,6 +95,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (hasSessionHint()) loadSession();
   }, [loadSession]);
 
+  // Outra aba entrou como outra pessoa ou encerrou a sessão: esta aba deixa de exibir quem não é
+  // mais o dono do cookie antes que alguma ação saia em nome da pessoa errada.
+  useEffect(() => observarSessao({
+    idAtual: () => userIdRef.current,
+    buscarSessao: fetchSession,
+    aoTrocar: (novo) => {
+      queryClient.clear();
+      setSessionError(null);
+      setSessionNotice(null);
+      setUser(novo);
+      navigate(rotaInicial(novo.role), { replace: true });
+    },
+    aoEncerrar: () => {
+      clearSession();
+      setSessionNotice(AVISO_SESSAO_ENCERRADA_EM_OUTRA_ABA);
+    },
+  }), [fetchSession, clearSession, queryClient, navigate]);
+
   const login = async (email: string, senha: string) => {
     await httpClient('/auth/login', {
       method: 'POST',
@@ -99,6 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const logged = await fetchSession();
       setSessionNotice(null);
       setUser(logged);
+      avisarAbas('login');
       navigate(rotaInicial(logged.role));
     } catch (error) {
       clearSession();
@@ -112,14 +139,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // O cookie HttpOnly só o servidor apaga. Sem resposta dele (rede fora) a tela sai mesmo assim:
   // o cookie de CSRF cai, o app deixa de achar que há sessão e a sessão no servidor expira em até 8 horas.
-  const logout = async () => {
+  const logout = async (aviso?: string) => {
     try {
       await httpClient('/auth/logout', { method: 'POST' });
     } catch {
       // segue para limpar a sessão local
     }
     clearSession();
-    setSessionNotice(null);
+    setSessionNotice(aviso ?? null);
+    avisarAbas('logout');
     navigate('/login');
   };
 
