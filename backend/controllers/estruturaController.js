@@ -1,5 +1,7 @@
 const db = require('../config/db');
 const { departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
+const { responderErro } = require('../utils/erros');
+const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
 
 // ==========================================
 // CRUD DE DEPARTAMENTOS
@@ -8,36 +10,34 @@ const { departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
 exports.listarDepartamentos = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;
-        const [rows] = await db.query('SELECT * FROM departamentos WHERE empresa_id = ?', [empresa_id]);
-        res.json(rows);
+        const [rows] = await db.query(
+            'SELECT * FROM departamentos WHERE empresa_id = ? ORDER BY id LIMIT ? OFFSET ?',
+            [empresa_id, ...limiteEDeslocamento(req.dadosValidados.query)]
+        );
+        const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM departamentos WHERE empresa_id = ?', [empresa_id]);
+        enviarPagina(res, rows, total);
     } catch (error) {
-        console.error("Erro ao listar departamentos:", error);
-        res.status(500).json({ erro: "Erro ao buscar departamentos." });
+        responderErro(res, error, "Erro ao buscar departamentos.");
     }
 };
 
 exports.criarDepartamento = async (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const { nome, sigla, descricao, gestor } = req.body;
-
-    if (!nome || !sigla) {
-        return res.status(400).json({ erro: "Nome e sigla são campos obrigatórios." });
-    }
+    const { nome, sigla, descricao, gestor } = req.dadosValidados.body;
 
     try {
         const sql = 'INSERT INTO departamentos (nome, sigla, descricao, gestor, empresa_id) VALUES (?, ?, ?, ?, ?)';
-        await db.query(sql, [nome, sigla, descricao || null, gestor || null, empresa_id]);
+        await db.query(sql, [nome, sigla, descricao, gestor, empresa_id]);
         res.status(201).json({ mensagem: "Departamento criado com sucesso!" });
     } catch (error) {
-        console.error("Erro ao criar departamento:", error);
-        res.status(500).json({ erro: "Erro ao salvar o departamento." });
+        responderErro(res, error, "Erro ao salvar o departamento.");
     }
 };
 
 exports.atualizarDepartamento = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.dadosValidados.params;
     const empresa_id = req.usuario.empresa_id;
-    const { nome, sigla, descricao, gestor } = req.body;
+    const { nome, sigla, descricao, gestor } = req.dadosValidados.body;
 
     try {
         const sql = `
@@ -45,16 +45,17 @@ exports.atualizarDepartamento = async (req, res) => {
             SET nome = ?, sigla = ?, descricao = ?, gestor = ? 
             WHERE id = ? AND empresa_id = ?
         `;
-        await db.query(sql, [nome, sigla, descricao || null, gestor || null, id, empresa_id]);
+        const [result] = await db.query(sql, [nome, sigla, descricao, gestor, id, empresa_id]);
+        if (result.affectedRows === 0) return res.status(404).json({ erro: "Departamento não encontrado." });
+
         res.json({ mensagem: "Departamento atualizado com sucesso!" });
     } catch (error) {
-        console.error("Erro ao atualizar departamento:", error);
-        res.status(500).json({ erro: "Erro ao modificar o departamento." });
+        responderErro(res, error, "Erro ao modificar o departamento.");
     }
 };
 
 exports.deletarDepartamento = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.dadosValidados.params;
     const empresa_id = req.usuario.empresa_id;
 
     try {
@@ -68,8 +69,7 @@ exports.deletarDepartamento = async (req, res) => {
 
         res.json({ mensagem: "Departamento removido com sucesso!" });
     } catch (error) {
-        console.error("Erro ao deletar departamento:", error);
-        res.status(500).json({ erro: "Erro ao remover o departamento." });
+        responderErro(res, error, "Erro ao remover o departamento.");
     }
 };
 
@@ -85,22 +85,20 @@ exports.listarCargos = async (req, res) => {
             FROM cargos c
             LEFT JOIN departamentos d ON c.departamento_id = d.id AND d.empresa_id = c.empresa_id
             WHERE c.empresa_id = ?
+            ORDER BY c.id
+            LIMIT ? OFFSET ?
         `;
-        const [rows] = await db.query(sql, [empresa_id]);
-        res.json(rows);
+        const [rows] = await db.query(sql, [empresa_id, ...limiteEDeslocamento(req.dadosValidados.query)]);
+        const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM cargos WHERE empresa_id = ?', [empresa_id]);
+        enviarPagina(res, rows, total);
     } catch (error) {
-        console.error("Erro ao listar cargos:", error);
-        res.status(500).json({ erro: "Erro ao buscar cargos." });
+        responderErro(res, error, "Erro ao buscar cargos.");
     }
 };
 
 exports.criarCargo = async (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const { nome, departamento_id, nivel, salario_base } = req.body;
-
-    if (!nome || !departamento_id) {
-        return res.status(400).json({ erro: "Nome do cargo e departamento são obrigatórios." });
-    }
+    const { nome, departamento_id, nivel, salario_base } = req.dadosValidados.body;
 
     try {
         if (!(await departamentoDaEmpresa(db, departamento_id, empresa_id))) {
@@ -108,35 +106,35 @@ exports.criarCargo = async (req, res) => {
         }
 
         const sql = 'INSERT INTO cargos (nome, departamento_id, nivel, salario_base, empresa_id) VALUES (?, ?, ?, ?, ?)';
-        await db.query(sql, [nome, departamento_id, nivel || null, salario_base || 0, empresa_id]);
+        await db.query(sql, [nome, departamento_id, nivel, salario_base, empresa_id]);
         res.status(201).json({ mensagem: "Cargo estruturado com sucesso!" });
     } catch (error) {
-        console.error("Erro ao criar cargo:", error);
-        res.status(500).json({ erro: "Erro ao salvar o cargo." });
+        responderErro(res, error, "Erro ao salvar o cargo.");
     }
 };
 
 exports.atualizarCargo = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.dadosValidados.params;
     const empresa_id = req.usuario.empresa_id;
-    const { nome, departamento_id, nivel, salario_base } = req.body;
+    const { nome, departamento_id, nivel, salario_base } = req.dadosValidados.body;
 
     try {
-        if (departamento_id != null && !(await departamentoDaEmpresa(db, departamento_id, empresa_id))) {
+        if (!(await departamentoDaEmpresa(db, departamento_id, empresa_id))) {
             return res.status(400).json({ erro: "Departamento não encontrado nesta empresa." });
         }
 
         const sql = 'UPDATE cargos SET nome = ?, departamento_id = ?, nivel = ?, salario_base = ? WHERE id = ? AND empresa_id = ?';
-        await db.query(sql, [nome, departamento_id, nivel || null, salario_base || 0, id, empresa_id]);
+        const [result] = await db.query(sql, [nome, departamento_id, nivel, salario_base, id, empresa_id]);
+        if (result.affectedRows === 0) return res.status(404).json({ erro: "Cargo não encontrado." });
+
         res.json({ mensagem: "Cargo modificado com sucesso!" });
     } catch (error) {
-        console.error("Erro ao atualizar cargo:", error);
-        res.status(500).json({ erro: "Erro ao modificar o cargo." });
+        responderErro(res, error, "Erro ao modificar o cargo.");
     }
 };
 
 exports.deletarCargo = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.dadosValidados.params;
     const empresa_id = req.usuario.empresa_id;
 
     try {
@@ -145,10 +143,11 @@ exports.deletarCargo = async (req, res) => {
             return res.status(400).json({ erro: "Não é possível remover este cargo porque existem colaboradores ativos alocados nele." });
         }
 
-        await db.query('DELETE FROM cargos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        const [result] = await db.query('DELETE FROM cargos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        if (result.affectedRows === 0) return res.status(404).json({ erro: "Cargo não encontrado." });
+
         res.json({ mensagem: "Cargo removido com sucesso!" });
     } catch (error) {
-        console.error("Erro ao deletar cargo:", error);
-        res.status(500).json({ erro: "Erro ao remover o cargo." });
+        responderErro(res, error, "Erro ao remover o cargo.");
     }
 };

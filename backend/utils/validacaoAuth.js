@@ -73,4 +73,4 @@ const validarLogin = (corpo) => {
     return { dados: { email: email.trim(), senha } };
 };
 
-module.exports = { LIMITES, validarRegistro, validarLogin };
+module.exports = { LIMITES, validarTexto, validarEmail, validarSenhaDeRegistro, validarRegistro, validarLogin };

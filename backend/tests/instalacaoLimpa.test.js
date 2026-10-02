@@ -6,6 +6,7 @@ const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const banco = require('./support/bancoDeTeste');
+const { dataUrl } = require('./support/imagens');
 
 describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, () => {
     let server, baseUrl, pool;
@@ -121,7 +122,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(perfil.status, 200);
         assert.equal(perfil.corpo.cargo, 'Analista de Operações');
 
-        const avatar = `data:image/png;base64,${'A'.repeat(2048)}`;
+        const avatar = dataUrl('png', 2048);
         assert.equal((await chamar('PUT', '/api/perfil/meus-dados', estado.colaborador, {
             nome: 'Colaborador Ficticio', email: 'colaborador@limpa.exemplo.invalid', telefone: '(00) 11111-1111', avatar,
         })).status, 200);
