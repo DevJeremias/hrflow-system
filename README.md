@@ -145,16 +145,16 @@ Regras das migrations:
 
 ### Passo 5: Execução
 
-Os comandos abaixo são executados na raiz. `dev` sobe os dois workspaces; `build`, `lint` e `verify` executam as verificações disponíveis atualmente no front-end:
+Os comandos abaixo são executados na raiz. `dev` sobe os dois workspaces; `build`, `lint` e `typecheck` executam as verificações do front-end:
 
 ```bash
 # Front-end Vite e API Express em modo desenvolvimento
 bun run dev
 
 # Verificações do projeto
-bun run build
 bun run lint
-bun run verify
+bun run typecheck
+bun run build
 ```
 
 Para usar npm, substitua `bun run` por `npm run`. A API fica em `http://localhost:3000/api` e o Vite informa a URL do front-end no terminal. Também é possível iniciar apenas um workspace com `npm run dev --workspace frontend` ou `npm run dev --workspace backend`. Entre com um dos usuários de teste do passo 4.
@@ -168,6 +168,21 @@ HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflo
 ```
 
 `HRFLOW_TEST_DB_PORT` é opcional (padrão 3306). Sem `HRFLOW_TEST_DB_HOST` os testes são marcados como ignorados, nunca como aprovados.
+
+### Verificação completa (`verify`)
+
+`bun run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes de back-end, todas as etapas, e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam.
+
+```bash
+HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflow-dev bun run verify
+```
+
+O mesmo comando roda no GitHub Actions (`.github/workflows/ci.yml`) em todo pull request e em todo push na `main`, com um MySQL de serviço, depois de `db:setup` aplicar as migrations e as fixtures.
+
+Sobre o lint do front-end (`frontend/eslint.config.js`):
+
+* Cobre todo o código ativo, inclusive `.ts` e `.tsx`, com `--max-warnings 0`.
+* `eslint-suppressions.json` registra as violações que já existiam de `no-explicit-any` e de algumas regras do React que exigem mudar o comportamento do componente para serem corrigidas. Elas não bloqueiam, mas nenhuma violação nova passa. Ao corrigir uma, rode `npm run lint:prune --workspace frontend` para tirá-la da lista; o lint avisa quando sobra supressão que não ocorre mais.
 
 ---
 
