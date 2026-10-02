@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import httpClient, {
   HttpError,
-  clearAuthToken,
-  getAuthToken,
-  setAuthToken,
+  forgetSession,
+  hasSessionHint,
   setSessionExpiredHandler,
+  startSessionEpoch,
 } from '../services/httpClient';
 import { User, lerSessao, rotaInicial } from '../utils/sessao';
 
 export type { User };
 
-// Chaves de versões anteriores, que guardavam a identidade no navegador. Nada mais as lê: a
-// identidade vem de GET /api/auth/sessao. São apagadas para não restar um perfil forjável.
-const CHAVES_LEGADAS = ['user', 'nomeUsuario', 'funcionarioId', 'perfil'];
+// Chaves de versões anteriores, que guardavam o token e a identidade no navegador. Nada mais as
+// lê: a sessão agora é um cookie HttpOnly e a identidade vem de GET /api/auth/sessao. São
+// apagadas para não restar um token ao alcance de qualquer script nem um perfil forjável.
+// Quem ainda estava logado com o token antigo cai uma vez no login, sem erro.
+const CHAVES_LEGADAS = ['token', 'user', 'nomeUsuario', 'funcionarioId', 'perfil'];
 
 const AVISO_SESSAO_EXPIRADA = 'Sua sessão expirou. Entre novamente para continuar.';
 
@@ -28,7 +30,7 @@ interface AuthContextType {
   sessionNotice: string | null;
   retrySession: () => void;
   login: (email: string, senha: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (data: Partial<User>) => void;
 }
 
@@ -36,15 +38,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  // Sem token não há o que confirmar: as páginas públicas abrem sem esperar o servidor.
-  const [loading, setLoading] = useState(() => getAuthToken() !== null);
+  // Sem sessão não há o que confirmar: as páginas públicas abrem sem esperar o servidor.
+  const [loading, setLoading] = useState(hasSessionHint);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const clearSession = useCallback(() => {
-    clearAuthToken();
+    forgetSession();
     setUser(null);
     setSessionError(null);
     queryClient.clear();
@@ -82,17 +84,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     CHAVES_LEGADAS.forEach((chave) => localStorage.removeItem(chave));
-    if (getAuthToken() !== null) loadSession();
+    if (hasSessionHint()) loadSession();
   }, [loadSession]);
 
   const login = async (email: string, senha: string) => {
-    const dados = await httpClient<{ token: string }>('/auth/login', {
+    await httpClient('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, senha }),
       errorMessage: (data) => data?.mensagem || data?.erro || 'E-mail ou senha incorretos.'
     });
 
-    setAuthToken(dados.token);
+    startSessionEpoch();
     try {
       const logged = await fetchSession();
       setSessionNotice(null);
@@ -108,7 +110,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser((atual) => (atual ? { ...atual, ...data } : atual));
   };
 
-  const logout = () => {
+  // O cookie HttpOnly só o servidor apaga. Sem resposta dele (rede fora) a tela sai mesmo assim:
+  // o cookie de CSRF cai, o app deixa de achar que há sessão e a sessão no servidor expira em até 8 horas.
+  const logout = async () => {
+    try {
+      await httpClient('/auth/logout', { method: 'POST' });
+    } catch {
+      // segue para limpar a sessão local
+    }
     clearSession();
     setSessionNotice(null);
     navigate('/login');
