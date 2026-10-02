@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, Users, ShieldCheck, DownloadCloud } from 'lucide-react';
+import { Calculator, Users, ShieldCheck, Printer } from 'lucide-react';
 
 export default function Features() {
   return (
@@ -8,13 +8,13 @@ export default function Features() {
         
         <div className="max-w-2xl mb-20">
           <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">
-            O poder de um ERP.<br />
+            Do cadastro<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-purple-500">
-              A beleza de um app.
+              ao holerite.
             </span>
           </h2>
           <p className="text-xl text-gray-500 font-medium">
-            Desenhamos cada pixel do nosso sistema para que processos complexos de Departamento Pessoal sejam resolvidos com 2 cliques.
+            O HRFlow reúne as rotinas básicas do Departamento Pessoal em uma só aplicação web: estrutura da empresa, colaboradores, ponto e folha.
           </p>
         </div>
 
@@ -25,9 +25,9 @@ export default function Features() {
               <div className="w-14 h-14 bg-orange-50 text-orange-500 border border-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
                 <Calculator size={28} />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-4">Motor de Folha em Tempo Real</h3>
+              <h3 className="text-2xl font-black text-gray-900 mb-4">Folha de pagamento em lote</h3>
               <p className="text-gray-500 font-medium">
-                Sabe os cálculos que você viu no dashboard? Eles são atualizados instantaneamente. Adicione uma hora extra e veja o IRRF e o INSS serem recalculados na hora.
+                Processe a folha de todos os colaboradores ativos de uma vez. O desconto de INSS é calculado no servidor e cada colaborador tem o seu holerite.
               </p>
             </div>
             
@@ -35,7 +35,7 @@ export default function Features() {
               <div className="h-4 w-1/2 bg-gray-100 rounded-full mb-3"></div>
               <div className="h-4 w-3/4 bg-gray-100 rounded-full mb-6"></div>
               <div className="h-10 w-full bg-green-50 rounded-xl border border-green-100 flex items-center px-4">
-                <span className="text-green-600 font-bold text-sm">+ R$ 500,00 Bônus</span>
+                <span className="text-green-600 font-bold text-sm">Desconto INSS</span>
               </div>
             </div>
           </div>
@@ -47,17 +47,17 @@ export default function Features() {
               </div>
               <h3 className="text-2xl font-black text-gray-900 mb-4">Estrutura Viva</h3>
               <p className="text-gray-500 font-medium">
-                Crie departamentos, atrele líderes e visualize toda a cadeia hierárquica da sua empresa visualmente.
+                Cadastre departamentos e cargos, com gestor responsável, nível hierárquico e salário base, e vincule cada colaborador à sua posição.
               </p>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-[2rem] p-10 border border-gray-100 hover:border-green-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
             <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center text-green-500 mb-6 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all shadow-sm">
-              <DownloadCloud size={24} />
+              <Printer size={24} />
             </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Exportação Contábil</h3>
-            <p className="text-gray-500 text-sm font-medium">Gere PDFs de holerites em lote e relatórios prontos para o contador.</p>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Holerite para imprimir</h3>
+            <p className="text-gray-500 text-sm font-medium">Abra o holerite de cada colaborador e imprima ou salve em PDF pelo navegador.</p>
           </div>
 
           <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 border border-gray-100 flex items-center gap-6 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
@@ -65,8 +65,8 @@ export default function Features() {
               <ShieldCheck size={40} />
             </div>
             <div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Segurança Bancária</h3>
-              <p className="text-gray-500 font-medium">Seus dados financeiros criptografados de ponta a ponta. Conformidade total com a LGPD e backups automáticos diários.</p>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Acesso por perfil</h3>
+              <p className="text-gray-500 font-medium">O colaborador só enxerga os próprios dados; Administrador e RH gerem a empresa. A sessão fica em cookie protegido e as senhas são guardadas com hash.</p>
             </div>
           </div>
 
