@@ -41,7 +41,6 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         app.use('/api/estrutura', authMiddleware, require('../routes/estruturaRoutes'));
         app.use('/api/folha', authMiddleware, require('../routes/folhaRoutes'));
         app.use('/api/perfil', authMiddleware, require('../routes/perfilRoutes'));
-        app.use('/api/usuarios', authMiddleware, require('../routes/usuarioRoutes'));
         server = http.createServer(app);
         await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
         baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -130,10 +129,9 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(depois.corpo.avatar, avatar);
         assert.equal(depois.corpo.telefone, '(00) 11111-1111');
 
-        const contrato = await chamar('GET', '/api/usuarios/perfil', estado.colaborador);
-        assert.equal(contrato.status, 200);
-        assert.equal(contrato.corpo.banco, 'Banco Ficticio');
-        assert.equal(contrato.corpo.nivel, null);
+        assert.equal(depois.corpo.banco, 'Banco Ficticio');
+        assert.equal(depois.corpo.tipo_contrato, 'Temporário');
+        assert.equal(depois.corpo.vinculado, true);
 
         assert.equal((await chamar('PUT', '/api/perfil/alterar-senha', estado.colaborador, {
             senhaAtual: 'outra-senha-ficticia', novaSenha: 'terceira-senha-ficticia',
@@ -144,7 +142,8 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
     it('o administrador tem perfil próprio sem funcionário', async () => {
         const perfil = await chamar('GET', '/api/perfil/meus-dados', estado.admin);
-        assert.equal(perfil.corpo.isAdmin, true);
+        assert.equal(perfil.corpo.perfil, 'Administrador');
+        assert.equal(perfil.corpo.vinculado, false);
     });
 
     it('registra os quatro pontos do dia e o colaborador, o administrador e a listagem os enxergam', async () => {
