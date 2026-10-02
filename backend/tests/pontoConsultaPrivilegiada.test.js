@@ -10,7 +10,7 @@ const { criarUsuario } = require('./support/sessao');
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
 const pontoRoutes = require('../modules/ponto/ponto.routes');
-const pontoController = require('../modules/ponto/ponto.controller');
+const { relogio } = require('../modules/ponto/ponto.service');
 const fuso = require('../modules/ponto/ponto.fuso');
 
 const semBanco = banco.skip;
@@ -55,7 +55,7 @@ const get = async (caminho, token) => {
 
 test.before(async () => {
     if (semBanco) return;
-    pontoController.relogio.agora = () => AGORA * 1000;
+    relogio.agora = () => AGORA * 1000;
     await banco.preparar();
 
     const sufixo = `${process.pid}-${Date.now()}`;
