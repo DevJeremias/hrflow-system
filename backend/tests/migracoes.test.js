@@ -173,7 +173,69 @@ describe('migrations', { skip: banco.skip }, () => {
 
             await alvo.query('DELETE FROM funcionarios WHERE id = ?', [funcionarioContaminado]);
             await alvo.query('DELETE FROM cargos WHERE id = ?', [cargoContaminado]);
-            assert.deepEqual(await migrator.migrar(parcial), ['0003', '0004']);
+            assert.deepEqual(await migrator.migrar(parcial, () => {}, { ate: '0004' }), ['0003', '0004']);
+        });
+    });
+
+    describe('coordenadas do ponto (0005)', () => {
+        let alvo;
+        let empresa, funcionario;
+        const marcar = (latitude, longitude, executor = alvo) => executor.query(
+            "INSERT INTO registro_pontos (funcionario_id, empresa_id, tipo_registro, latitude, longitude) VALUES (?, ?, 'Entrada', ?, ?)",
+            [funcionario, empresa, latitude, longitude]
+        );
+
+        before(async () => {
+            await migrator.removerBanco(parcial);
+            await migrator.criarBanco(parcial);
+            await migrator.migrar(parcial, () => {}, { ate: '0004' });
+            alvo = await migrator.conectar(parcial);
+            empresa = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia A'], alvo);
+            funcionario = await inserir('INSERT INTO funcionarios (nome, email, empresa_id) VALUES (?, ?, ?)', ['Pessoa Ficticia', 'ponto@exemplo.invalid', empresa], alvo);
+        });
+
+        after(async () => {
+            if (alvo) await alvo.end();
+        });
+
+        it('a auditoria lista só ids de marcações com coordenadas impossíveis ou incompletas e a 0005 recusa aplicar', async () => {
+            const [[semLongitude], [latitudeAlta], [longitudeBaixa], [valida], [semNada]] = await Promise.all([
+                marcar(-1.45, null), marcar(91, 0), marcar(0, -181), marcar(-1.45, -48.5), marcar(null, null),
+            ]);
+            const ids = (r) => r.insertId;
+
+            const auditoria = (await migrator.auditarBanco(parcial)).find((r) => r.migracao === '0005_ponto_coordenadas');
+            assert.deepEqual(
+                auditoria.violacoes.map((v) => v.registro_id).sort((a, b) => a - b),
+                [ids(semLongitude), ids(latitudeAlta), ids(longitudeBaixa)].sort((a, b) => a - b)
+            );
+            assert.ok(!auditoria.violacoes.some((v) => [ids(valida), ids(semNada)].includes(v.registro_id)));
+
+            await assert.rejects(migrator.migrar(parcial), (erro) => erro.name === 'ErroDeAuditoria' && /0005_ponto_coordenadas/.test(erro.message));
+            assert.equal((await migrator.status(parcial)).find((m) => m.versao === '0005').estado, 'pendente');
+
+            await alvo.query('DELETE FROM registro_pontos WHERE id IN (?)', [[ids(semLongitude), ids(latitudeAlta), ids(longitudeBaixa)]]);
+            assert.deepEqual(await migrator.migrar(parcial), ['0005']);
+        });
+
+        it('depois da 0005 o banco recusa coordenadas fora do intervalo e pares incompletos', async () => {
+            for (const [latitude, longitude] of [[90.5, 0], [-90.5, 0], [0, 180.5], [0, -180.5], [1, null], [null, 1]]) {
+                assert.equal(await codigoDoErro(marcar(latitude, longitude)), 'ER_CHECK_CONSTRAINT_VIOLATED', `${latitude},${longitude}`);
+            }
+        });
+
+        it('depois da 0005 o banco aceita extremos, zero e marcação sem coordenadas', async () => {
+            for (const [latitude, longitude] of [[90, 180], [-90, -180], [0, 0], [null, null], [-1.45502, -48.5024]]) {
+                await marcar(latitude, longitude);
+            }
+        });
+
+        it('cria o índice por colaborador e instante', async () => {
+            const [indices] = await alvo.query(
+                "SELECT column_name AS coluna FROM information_schema.statistics WHERE table_schema = ? AND index_name = 'idx_registro_pontos_funcionario_data' ORDER BY seq_in_index",
+                [parcial.database]
+            );
+            assert.deepEqual(indices.map((i) => i.coluna), ['funcionario_id', 'data_hora_oficial']);
         });
     });
 

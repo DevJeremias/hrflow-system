@@ -156,7 +156,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         const hoje = await chamar('GET', `/api/ponto/hoje/${estado.funcionario}`, estado.colaborador);
         assert.deepEqual(hoje.corpo.map((p) => p.type), ['Entrada', 'Pausa Almoço', 'Retorno Almoço', 'Saída']);
 
-        const [[{ mes }]] = await pool.query("SELECT DATE_FORMAT(CURDATE(), '%Y-%m') AS mes");
+        const mes = require('../utils/fusoPonto').mesLocal(Math.floor(Date.now() / 1000));
         const historico = await chamar('GET', `/api/ponto/historico/${estado.funcionario}?mes=${mes}`, estado.admin);
         assert.equal(historico.corpo.length, 1);
         assert.notEqual(historico.corpo[0].exit, '--:--');

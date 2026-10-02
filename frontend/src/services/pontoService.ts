@@ -60,7 +60,8 @@ export const pontoService = {
       body: JSON.stringify({ 
         funcionario_id: id, // A variável exatamente como o seu Node.js pede
         tipo: type, 
-        localizacao 
+        latitude: localizacao?.lat,
+        longitude: localizacao?.lng
       })
     });
     
