@@ -5,10 +5,9 @@ import httpClient from '../../services/httpClient';
 interface Props {
   perfil: any;
   onUpdate: (novosDados: any) => void;
-  getToken: () => string | null;
 }
 
-const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate, getToken }) => {
+const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ 
   nome: perfil?.nome || '', 

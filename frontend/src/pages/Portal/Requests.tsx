@@ -31,7 +31,7 @@ const Requests: React.FC = () => {
       const updatedRequests = await requestService.getMyRequests(); 
       setRequests(updatedRequests);
       setIsModalOpen(false); 
-    } catch (error) {
+    } catch {
       alert('Erro ao enviar solicitação.');
     }
   };
