@@ -1,8 +1,8 @@
 // Regressão do SEC-07 (autenticação e cadastro): limite de corpo, limitador de tentativas,
 // validação antes do banco e cadastro de empresa e usuário numa única transação.
 //
-// Exige um MySQL real. Informe o servidor (porta 3306, a única que o pool da API usa) com
-// HRFLOW_TEST_DB_HOST, HRFLOW_TEST_DB_USER e HRFLOW_TEST_DB_PASS. O teste cria e apaga um banco próprio
+// Exige um MySQL real. Informe o servidor com HRFLOW_TEST_DB_HOST, HRFLOW_TEST_DB_USER,
+// HRFLOW_TEST_DB_PASS e, se não for 3306, HRFLOW_TEST_DB_PORT. O teste cria e apaga um banco próprio
 // (hrflow_test_<pid>), sem tocar em DB_NAME. Sem HRFLOW_TEST_DB_HOST os testes são marcados como
 // ignorados, nunca como aprovados.
 const { before, after, describe, it } = require('node:test');
@@ -12,6 +12,7 @@ const http = require('node:http');
 const mysql = require('mysql2/promise');
 
 const host = process.env.HRFLOW_TEST_DB_HOST;
+const port = process.env.HRFLOW_TEST_DB_PORT ? Number(process.env.HRFLOW_TEST_DB_PORT) : undefined;
 const skip = host ? false : 'HRFLOW_TEST_DB_HOST não definido: sem MySQL, nada foi exercitado.';
 
 const SCHEMA = [
@@ -73,6 +74,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     before(async () => {
         admin = await mysql.createConnection({
             host,
+            port,
             user: process.env.HRFLOW_TEST_DB_USER,
             password: process.env.HRFLOW_TEST_DB_PASS,
         });
@@ -81,6 +83,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         for (const sql of SCHEMA) await admin.query(sql);
 
         process.env.DB_HOST = host;
+        if (port) process.env.DB_PORT = String(port);
         process.env.DB_USER = process.env.HRFLOW_TEST_DB_USER;
         process.env.DB_PASS = process.env.HRFLOW_TEST_DB_PASS;
         process.env.DB_NAME = dbName;
