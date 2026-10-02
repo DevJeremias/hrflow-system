@@ -35,21 +35,6 @@
       "count": 2
     }
   },
-  "src/components/Portal/ProfileContractTab.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/components/Portal/ProfileDataTab.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 3
-    }
-  },
-  "src/components/Portal/ProfileSecurityTab.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
   "src/components/Portal/RequestsTable.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 2
@@ -87,12 +72,6 @@
     }
   },
   "src/pages/Portal/Profile.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 3
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }

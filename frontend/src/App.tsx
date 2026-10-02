@@ -65,6 +65,7 @@ function App() {
         <Route path="estrutura" element={<DepartmentsRoles />} />
         <Route path="folha" element={<Payroll />} />
         <Route path="gestao-ponto" element={<TimeTracking />} /> {/* ROTA OFICIALIZADA */}
+        <Route path="perfil" element={<Profile />} />
       </Route>
 
       {/* ÁREA DO COLABORADOR */}

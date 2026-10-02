@@ -4,26 +4,22 @@ import { useAuth } from '../../contexts/AuthContext';
 import ProfileDataTab from '../../components/Portal/ProfileDataTab';
 import ProfileContractTab from '../../components/Portal/ProfileContractTab';
 import ProfileSecurityTab from '../../components/Portal/ProfileSecurityTab';
-import { userService } from '../../services/userService';
+import { userService, PerfilUsuario, DadosEditaveis } from '../../services/userService';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 
 const Profile: React.FC = () => {
   const { updateUser } = useAuth();
-  const [perfil, setPerfil] = useState<any>(null);
+  const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dados' | 'profissional' | 'seguranca'>('dados');
-
-  const getToken = () => localStorage.getItem('token');
 
   const carregarPerfil = async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await userService.getMyPersonalData();
-      setPerfil(data);
-      updateUser({ nome: data.nome, avatar: data.avatar || null });
+      setPerfil(await userService.getMyProfile());
     } catch (error) {
       setLoadError(mensagemDeErro(error, 'Erro ao carregar o perfil'));
     } finally {
@@ -36,8 +32,8 @@ const Profile: React.FC = () => {
   }, []);
 
   // Atualiza o estado local e global quando a aba de dados salva uma alteração
-  const handleUpdatePerfil = (novosDados: any) => {
-    setPerfil((prev: any) => ({ ...prev, ...novosDados }));
+  const handleUpdatePerfil = (novosDados: DadosEditaveis) => {
+    setPerfil((prev) => (prev ? { ...prev, ...novosDados } : prev));
     updateUser({ nome: novosDados.nome, avatar: novosDados.avatar || null });
   };
 
@@ -50,10 +46,10 @@ const Profile: React.FC = () => {
     );
   }
 
-  if (loadError) {
+  if (loadError || !perfil) {
     return (
       <div className="max-w-4xl mx-auto">
-        <ErrorAlert message={loadError} onRetry={carregarPerfil} />
+        <ErrorAlert message={loadError ?? 'Perfil indisponível.'} onRetry={carregarPerfil} />
       </div>
     );
   }
@@ -75,12 +71,14 @@ const Profile: React.FC = () => {
         >
           <UserIcon size={18} /> Meus Dados
         </button>
-        <button 
-          onClick={() => setActiveTab('profissional')} 
-          className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 rounded-xl text-sm font-black transition-all whitespace-nowrap ${activeTab === 'profissional' ? 'bg-white text-primary shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          <Briefcase size={18} /> Vínculo e Contrato
-        </button>
+        {perfil.vinculado && (
+          <button 
+            onClick={() => setActiveTab('profissional')} 
+            className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 rounded-xl text-sm font-black transition-all whitespace-nowrap ${activeTab === 'profissional' ? 'bg-white text-primary shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <Briefcase size={18} /> Vínculo e Contrato
+          </button>
+        )}
         <button 
           onClick={() => setActiveTab('seguranca')} 
           className={`flex items-center gap-2 md:gap-3 px-6 md:px-8 py-3 rounded-xl text-sm font-black transition-all whitespace-nowrap ${activeTab === 'seguranca' ? 'bg-white text-primary shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
@@ -95,12 +93,12 @@ const Profile: React.FC = () => {
           <ProfileDataTab perfil={perfil} onUpdate={handleUpdatePerfil} />
         )}
         
-        {activeTab === 'profissional' && (
+        {activeTab === 'profissional' && perfil.vinculado && (
           <ProfileContractTab perfil={perfil} />
         )}
         
         {activeTab === 'seguranca' && (
-          <ProfileSecurityTab getToken={getToken} />
+          <ProfileSecurityTab />
         )}
       </main>
 

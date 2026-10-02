@@ -1,13 +1,16 @@
 import React from 'react';
+import { PerfilUsuario } from '../../services/userService';
 
 interface Props {
-  perfil: any;
+  perfil: PerfilUsuario;
 }
 
 const ProfileContractTab: React.FC<Props> = ({ perfil }) => {
-  const formatarData = (dataString?: string) => {
+  // A API manda a data como AAAA-MM-DD; passar por Date a deslocaria um dia no fuso do navegador.
+  const formatarData = (dataString: string | null) => {
     if (!dataString) return '-';
-    return new Date(dataString).toLocaleDateString('pt-BR');
+    const [ano, mes, dia] = dataString.slice(0, 10).split('-');
+    return `${dia}/${mes}/${ano}`;
   };
 
   return (
@@ -18,22 +21,22 @@ const ProfileContractTab: React.FC<Props> = ({ perfil }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-4 bg-slate-50 rounded-2xl">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Data de Admissão</label>
-            <span className="font-bold text-slate-900">{formatarData(perfil?.data_admissao)}</span>
+            <span className="font-bold text-slate-900">{formatarData(perfil.data_admissao)}</span>
           </div>
           <div className="p-4 bg-slate-50 rounded-2xl">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Tipo de Contrato</label>
-            <span className="font-bold text-slate-900">{perfil?.tipo_contrato || 'CLT'}</span>
+            <span className="font-bold text-slate-900">{perfil.tipo_contrato || 'Não informado'}</span>
           </div>
           <div className="p-4 bg-slate-50 rounded-2xl">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Nível Profissional</label>
-            <span className="font-bold text-slate-900">{perfil?.nivel || 'Não definido'}</span>
+            <span className="font-bold text-slate-900">{perfil.nivel || 'Não definido'}</span>
           </div>
         </div>
       </div>
 
       <div>
         <h2 className="text-xl font-black text-slate-900 mb-6 border-b border-slate-100 pb-4">Dados Bancários</h2>
-        {perfil?.banco ? (
+        {perfil.banco ? (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2 p-4 bg-slate-50 rounded-2xl">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Instituição Bancária</label>
