@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const jwt = require('jsonwebtoken');
 const banco = require('./support/bancoDeTeste');
+const { cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
 
 const SENHA = 'senha-ficticia-1';
 
@@ -14,7 +15,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
     const ids = {};
 
     const get = async (token) => {
-        const resposta = await fetch(`${baseUrl}/api/auth/sessao`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const resposta = await fetch(`${baseUrl}/api/auth/sessao`, { headers: cabecalhosDaSessao(token) });
         return { status: resposta.status, corpo: await resposta.json() };
     };
 
@@ -25,7 +26,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
             body: JSON.stringify({ email, senha: SENHA }),
         });
         assert.equal(resposta.status, 200);
-        return (await resposta.json()).token;
+        return tokenDaResposta(resposta);
     };
 
     before(async () => {

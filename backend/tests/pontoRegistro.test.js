@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const banco = require('./support/bancoDeTeste');
-const { criarUsuario } = require('./support/sessao');
+const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -43,7 +43,7 @@ const colaborador = (funcionarioId, empresaId = ctx.empresaA) => ator('Colaborad
 const chamar = async (metodo, caminho, usuario, corpo) => {
     const resposta = await fetch(`${baseUrl}${caminho}`, {
         method: metodo,
-        headers: { Authorization: `Bearer ${usuario.token}`, 'Content-Type': 'application/json' },
+        headers: { ...cabecalhosDaSessao(usuario.token), 'Content-Type': 'application/json' },
         body: corpo === undefined ? undefined : JSON.stringify(corpo),
     });
     return { status: resposta.status, corpo: await resposta.json() };

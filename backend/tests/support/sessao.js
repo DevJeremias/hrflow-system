@@ -1,7 +1,9 @@
+// A sessão viaja em cookie (utils/sessao.js). Estes helpers montam os cabeçalhos que o navegador
+// mandaria: o cookie da sessão e, para o front-end, o token CSRF no cabeçalho.
 // Cria um usuário real e devolve um token como o login o emitiria. O authMiddleware confere o
 // usuário no banco (existência, versão da sessão, funcionário ativo), então token forjado
 // à mão, sem linha em usuarios, não autentica mais.
-const { emitirToken } = require('../../utils/sessao');
+const { emitirToken, tokenCsrf, COOKIE_SESSAO, CABECALHO_CSRF } = require('../../utils/sessao');
 
 let contador = 0;
 
@@ -15,4 +17,20 @@ const criarUsuario = async (pool, { empresaId, perfil, funcionarioId = null, sen
     return { usuario, token: emitirToken(usuario, usuario.nome) };
 };
 
-module.exports = { criarUsuario };
+// Cabeçalhos de uma requisição autenticada vinda do front-end. Sem token, nenhum cabeçalho.
+const cabecalhosDaSessao = (token) => (token ? {
+    Cookie: `${COOKIE_SESSAO}=${token}`,
+    [CABECALHO_CSRF]: tokenCsrf(token),
+} : {});
+
+// O token que a resposta do login entregou no Set-Cookie da sessão (undefined se não entregou).
+const tokenDaResposta = (resposta) => {
+    for (const linha of resposta.headers.getSetCookie()) {
+        const [par] = linha.split(';');
+        const [nome, valor] = par.split('=');
+        if (nome === COOKIE_SESSAO && valor) return valor;
+    }
+    return undefined;
+};
+
+module.exports = { criarUsuario, cabecalhosDaSessao, tokenDaResposta };

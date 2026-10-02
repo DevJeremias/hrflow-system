@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const jwt = require('jsonwebtoken');
 const banco = require('./support/bancoDeTeste');
+const { cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
 
 describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
     let server, baseUrl, pool;
@@ -16,10 +17,10 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
     const chamar = async (metodo, caminho, token, corpo) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, {
             method: metodo,
-            headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+            headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
             body: corpo ? JSON.stringify(corpo) : undefined,
         });
-        return { status: resposta.status, corpo: await resposta.json() };
+        return { status: resposta.status, corpo: await resposta.json(), token: tokenDaResposta(resposta) };
     };
 
     const login = (email, senha) => chamar('POST', '/api/auth/login', null, { email, senha });
@@ -35,7 +36,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         const [[funcionario]] = await pool.query('SELECT id FROM funcionarios WHERE email = ?', [email]);
         const entrada = await login(email, senha);
         assert.equal(entrada.status, 200);
-        return { email, senha, funcionarioId: funcionario.id, token: entrada.corpo.token };
+        return { email, senha, funcionarioId: funcionario.id, token: entrada.token };
     };
 
     const atualizarStatus = (colaborador, status) => chamar('PUT', `/api/funcionarios/${colaborador.funcionarioId}`, tokenAdmin, {
@@ -69,7 +70,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
             email: 'admin@sessao.exemplo.invalid', senha: 'senha-admin-ficticia',
         });
         assert.equal(registro.status, 201);
-        tokenAdmin = (await login('admin@sessao.exemplo.invalid', 'senha-admin-ficticia')).corpo.token;
+        tokenAdmin = (await login('admin@sessao.exemplo.invalid', 'senha-admin-ficticia')).token;
         [[{ id: empresa }]] = await pool.query('SELECT id FROM empresas');
     });
 
@@ -93,7 +94,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
 
         const tentativa = await login(colaborador.email, colaborador.senha);
         assert.equal(tentativa.status, 403);
-        assert.equal(tentativa.corpo.token, undefined);
+        assert.equal(tentativa.token, undefined);
 
         // Senha errada continua sendo credencial inválida, sem revelar o estado da conta.
         assert.equal((await login(colaborador.email, 'senha-errada-ficticia')).status, 401);
@@ -134,8 +135,8 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
 
         const novo = await login(colaborador.email, 'senha-nova-ficticia');
         assert.equal(novo.status, 200);
-        assert.equal(jwt.decode(novo.corpo.token).sv, 1);
-        assert.equal((await consultar(novo.corpo.token)).status, 200);
+        assert.equal(jwt.decode(novo.token).sv, 1);
+        assert.equal((await consultar(novo.token)).status, 200);
     });
 
     it('a troca de senha de um usuário não derruba a sessão de outro', async () => {

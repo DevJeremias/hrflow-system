@@ -6,6 +6,7 @@ const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const banco = require('./support/bancoDeTeste');
+const { cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
 const { dataUrl } = require('./support/imagens');
 
 describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, () => {
@@ -15,16 +16,16 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
     const chamar = async (metodo, caminho, token, corpo) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, {
             method: metodo,
-            headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+            headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
             body: corpo ? JSON.stringify(corpo) : undefined,
         });
-        return { status: resposta.status, corpo: await resposta.json() };
+        return { status: resposta.status, corpo: await resposta.json(), token: tokenDaResposta(resposta) };
     };
 
     const entrar = async (email, senha) => {
-        const { status, corpo } = await chamar('POST', '/api/auth/login', null, { email, senha });
+        const { status, token } = await chamar('POST', '/api/auth/login', null, { email, senha });
         assert.equal(status, 200);
-        return corpo.token;
+        return token;
     };
 
     before(async () => {

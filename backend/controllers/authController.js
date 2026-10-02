@@ -1,6 +1,6 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
-const { emitirToken } = require('../utils/sessao');
+const { emitirToken, iniciarSessao, encerrarSessao } = require('../utils/sessao');
 
 // Cria a Empresa e o Usuário Admin ao mesmo tempo. A entrada já chegou validada pela rota.
 exports.registrarConta = async (req, res) => {
@@ -66,14 +66,21 @@ exports.login = async (req, res) => {
             }
         }
 
-        // O Token carrega a identidade completa e a versão da sessão (ver utils/sessao.js)
-        const token = emitirToken(usuario, nomeUsuario);
+        // O token carrega a identidade completa e a versão da sessão (ver utils/sessao.js).
+        // Só viaja em cookie HttpOnly: não está no corpo da resposta nem chega ao JavaScript.
+        iniciarSessao(req, res, emitirToken(usuario, nomeUsuario));
 
-        res.json({ token, perfil: usuario.perfil, nome: nomeUsuario });
+        res.json({ perfil: usuario.perfil, nome: nomeUsuario });
     } catch (error) {
         console.error("erro no login:", error);
         res.status(500).json({ erro: "Erro ao processar login." });
     }
+};
+
+// Público de propósito: quem tem a sessão expirada também precisa conseguir limpar os cookies.
+exports.logout = (req, res) => {
+    encerrarSessao(req, res);
+    res.status(204).end();
 };
 
 // Quem sou eu: a fonte única da identidade que o front-end exibe e usa para guardar rotas.

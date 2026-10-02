@@ -1,33 +1,44 @@
 // Comportamento central do cliente HTTP (SEC-08): 401 encerra a sessão em um só lugar,
-// falha de rede vira erro com mensagem, e nunca se envia "Bearer null".
+// falha de rede vira erro com mensagem, e a sessão em cookie HttpOnly nunca passa pelo JavaScript:
+// o cliente só devolve o token CSRF nos métodos que mudam estado.
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import httpClient, {
-  HttpError, NETWORK_ERROR_MESSAGE, getAuthToken, setAuthToken, clearAuthToken, setSessionExpiredHandler,
+  HttpError, NETWORK_ERROR_MESSAGE, forgetSession, hasSessionHint, setSessionExpiredHandler, startSessionEpoch,
 } from '../src/services/httpClient.ts';
 
-const memoria = new Map<string, string>();
+// Jar mínimo no lugar de document.cookie: guarda os pares e entende a expiração por Max-Age=0.
+const jar = new Map<string, string>();
 const fetchOriginal = globalThis.fetch;
 let encerramentos = 0;
 let cabecalhos: Headers | undefined;
+let opcoes: RequestInit | undefined;
 
 const responder = (status: number, corpo: unknown) => {
   globalThis.fetch = (async (_url: string, init?: RequestInit) => {
     cabecalhos = init?.headers as Headers;
+    opcoes = init;
     return new Response(JSON.stringify(corpo), { status });
   }) as typeof fetch;
 };
 
 beforeEach(() => {
-  memoria.clear();
+  jar.clear();
   encerramentos = 0;
   cabecalhos = undefined;
-  Object.defineProperty(globalThis, 'localStorage', {
+  opcoes = undefined;
+  Object.defineProperty(globalThis, 'document', {
     configurable: true,
     value: {
-      getItem: (chave: string) => memoria.get(chave) ?? null,
-      setItem: (chave: string, valor: string) => { memoria.set(chave, valor); },
-      removeItem: (chave: string) => { memoria.delete(chave); },
+      get cookie() {
+        return [...jar].map(([chave, valor]) => `${chave}=${valor}`).join('; ');
+      },
+      set cookie(linha: string) {
+        const [par, ...atributos] = linha.split(';').map((parte) => parte.trim());
+        const [chave, ...valor] = par.split('=');
+        if (atributos.includes('Max-Age=0')) jar.delete(chave);
+        else jar.set(chave, valor.join('='));
+      },
     },
   });
   setSessionExpiredHandler(() => { encerramentos += 1; });
@@ -36,22 +47,64 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.fetch = fetchOriginal;
   setSessionExpiredHandler(null);
+  Reflect.deleteProperty(globalThis, 'document');
 });
 
-test('envia o token guardado e nada quando não há token', async () => {
-  responder(200, { ok: true });
-  setAuthToken('token-ficticio');
-  await httpClient('/x', { auth: true });
-  assert.equal(cabecalhos?.get('Authorization'), 'Bearer token-ficticio');
+const entrar = (csrf = 'csrf-ficticio') => { jar.set('hrflow_csrf', csrf); startSessionEpoch(); };
 
-  clearAuthToken();
+test('nunca envia Authorization: o token da sessão não existe para o JavaScript', async () => {
+  responder(200, { ok: true });
+  entrar();
   await httpClient('/x', { auth: true });
-  assert.equal(cabecalhos?.has('Authorization'), false, 'sem token não pode ir "Bearer null"');
+  assert.equal(cabecalhos?.has('Authorization'), false);
+  assert.equal(opcoes?.credentials, 'same-origin');
+});
+
+test('devolve o token CSRF nos métodos que mudam estado e não nos de leitura', async () => {
+  responder(200, { ok: true });
+  entrar('csrf-da-sessao');
+
+  for (const method of ['POST', 'PUT', 'PATCH', 'DELETE', 'post']) {
+    await httpClient('/x', { auth: true, method });
+    assert.equal(cabecalhos?.get('X-CSRF-Token'), 'csrf-da-sessao', method);
+  }
+  for (const method of [undefined, 'GET', 'HEAD']) {
+    await httpClient('/x', { auth: true, method });
+    assert.equal(cabecalhos?.has('X-CSRF-Token'), false, String(method));
+  }
+});
+
+test('sem sessão não há cabeçalho CSRF, nem "undefined" ou vazio', async () => {
+  responder(200, { ok: true });
+  await httpClient('/x', { method: 'POST', body: '{}' });
+  assert.equal(cabecalhos?.has('X-CSRF-Token'), false);
+});
+
+test('hasSessionHint acompanha o cookie de CSRF e forgetSession o apaga', () => {
+  assert.equal(hasSessionHint(), false);
+  entrar();
+  assert.equal(hasSessionHint(), true);
+  forgetSession();
+  assert.equal(hasSessionHint(), false);
+});
+
+test('hasSessionHint ignora cookies de outros nomes, mesmo com valor parecido', () => {
+  jar.set('hrflow_csrf_falso', 'x');
+  jar.set('outro', 'hrflow_csrf=x');
+  assert.equal(hasSessionHint(), false);
+});
+
+test('fora do navegador (sem document) não há sessão a confirmar', async () => {
+  Reflect.deleteProperty(globalThis, 'document');
+  assert.equal(hasSessionHint(), false);
+  responder(200, { ok: true });
+  await httpClient('/x', { auth: true, method: 'POST' });
+  assert.equal(cabecalhos?.has('X-CSRF-Token'), false);
 });
 
 test('401 em chamada autenticada aciona o encerramento central da sessão e ainda lança o erro', async () => {
   responder(401, { erro: 'Token inválido ou expirado.' });
-  setAuthToken('token-ficticio');
+  entrar();
   await assert.rejects(httpClient('/x', { auth: true }), (erro: unknown) => erro instanceof HttpError && erro.status === 401);
   assert.equal(encerramentos, 1);
 });
@@ -62,19 +115,29 @@ test('401 de uma chamada pública (login com senha errada) não encerra sessão'
   assert.equal(encerramentos, 0);
 });
 
-test('resposta 401 atrasada de um token antigo não derruba a sessão nova', async () => {
-  setAuthToken('token-antigo');
+test('resposta 401 atrasada de uma sessão antiga não derruba a sessão nova', async () => {
+  entrar('csrf-antigo');
   globalThis.fetch = (async () => {
-    setAuthToken('token-novo'); // novo login enquanto a chamada antiga estava em voo
+    entrar('csrf-novo'); // novo login enquanto a chamada antiga estava em voo
     return new Response('{}', { status: 401 });
   }) as typeof fetch;
   await assert.rejects(httpClient('/x', { auth: true }), HttpError);
   assert.equal(encerramentos, 0);
-  assert.equal(getAuthToken(), 'token-novo');
+  assert.equal(hasSessionHint(), true);
+});
+
+test('resposta 401 atrasada depois de um logout também não reabre aviso de sessão expirada', async () => {
+  entrar();
+  globalThis.fetch = (async () => {
+    forgetSession(); // o usuário saiu enquanto a chamada estava em voo
+    return new Response('{}', { status: 401 });
+  }) as typeof fetch;
+  await assert.rejects(httpClient('/x', { auth: true }), HttpError);
+  assert.equal(encerramentos, 0);
 });
 
 test('outros erros HTTP não encerram a sessão', async () => {
-  setAuthToken('token-ficticio');
+  entrar();
   for (const status of [400, 403, 404, 500]) {
     responder(status, { erro: 'falha' });
     await assert.rejects(httpClient('/x', { auth: true }), (erro: unknown) => erro instanceof HttpError && erro.status === status);

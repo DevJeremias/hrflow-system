@@ -24,6 +24,8 @@ const criarRouter = (limites) => {
         limitadores.loginPorIp, corpoJson, validar(validarLogin), limitadores.loginPorIdentidade,
         authController.login);
 
+    router.post('/logout', authController.logout);
+
     router.get('/sessao', authMiddleware, authController.sessao);
 
     router.use(tratarErroDeCorpo);

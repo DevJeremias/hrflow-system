@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const bcrypt = require('bcryptjs');
 const express = require('express');
 const banco = require('./support/bancoDeTeste');
-const { criarUsuario } = require('./support/sessao');
+const { criarUsuario, cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
 const { dataUrl } = require('./support/imagens');
 
 const db = require('../config/db');
@@ -25,7 +25,7 @@ let baseUrl;
 const chamar = async (metodo, caminho, token, corpo) => {
     const resposta = await fetch(`${baseUrl}${caminho}`, {
         method: metodo,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
         body: corpo ? JSON.stringify(corpo) : undefined,
     });
     return { status: resposta.status, corpo: await resposta.json() };
@@ -160,7 +160,7 @@ test('login, sessão e atualização de perfil não acessam funcionário de outr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: ctx.cruzado.usuario.email, senha }),
     });
-    const credencial = await login.json();
+    const credencial = { ...(await login.json()), token: tokenDaResposta(login) };
     assert.equal(login.status, 200);
     assert.equal(credencial.nome, ctx.cruzado.usuario.nome);
 
