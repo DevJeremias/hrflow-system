@@ -50,7 +50,7 @@ test('meuHolerite resolve a identidade pelo vínculo usuário/funcionário', { s
     await usuario('Ana Usuária', 'Colaborador', empresaA, ana);
     const usuarioBruno = await usuario('Bruno Usuário', 'Colaborador', empresaA, bruno);
     const usuarioDavi = await usuario('Davi Usuário', 'Colaborador', empresaA, davi);
-    const usuarioElisa = await usuario('Elisa Usuária', 'Colaborador', empresaA, elisa);
+    const usuarioElisa = await usuario('Elisa Usuária', 'Colaborador', empresaB, elisa);
     const usuarioAnaSemColisao = await usuario('Ana Sem Colisão', 'Colaborador', empresaA, ana);
 
     assert.equal(usuarioBruno, carla, 'o teste depende do id do usuário de Bruno ser o id de Carla');

@@ -56,7 +56,7 @@ exports.login = async (req, res) => {
         // Se for Admin, o nome já está em usuario.nome. Se for Colaborador, o nome está na tabela funcionarios.
         let nomeUsuario = usuario.nome; 
         if (usuario.funcionario_id) {
-            const [funcs] = await db.query('SELECT nome, status FROM funcionarios WHERE id = ?', [usuario.funcionario_id]);
+            const [funcs] = await db.query('SELECT nome, status FROM funcionarios WHERE id = ? AND empresa_id = ?', [usuario.funcionario_id, usuario.empresa_id]);
             if (funcs.length > 0) {
                 // Só depois da senha correta, para a resposta não revelar o estado de contas alheias.
                 if (funcs[0].status === 'Inativo') {
@@ -85,7 +85,7 @@ exports.sessao = async (req, res) => {
             `SELECT u.id, u.perfil, u.empresa_id, u.funcionario_id, u.avatar,
                     COALESCE(f.nome, u.nome) AS nome
              FROM usuarios u
-             LEFT JOIN funcionarios f ON f.id = u.funcionario_id
+             LEFT JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
              WHERE u.id = ?`,
             [req.usuario.id]
         );

@@ -48,6 +48,7 @@ exports.atualizarMeusDados = async (req, res) => {
     const { nome, email, telefone, avatar } = req.dadosValidados.body;
     const usuario_id = req.usuario.id;
     const funcionario_id = req.usuario.funcionario_id;
+    const empresa_id = req.usuario.empresa_id;
 
     const connection = await db.getConnection();
     try {
@@ -60,13 +61,13 @@ exports.atualizarMeusDados = async (req, res) => {
         }
 
         // Atualiza a tabela de usuários (Aplica-se ao Admin e login do Colaborador)
-        await connection.query('UPDATE usuarios SET email = ?, nome = ?, avatar = ? WHERE id = ?', [email, nome, avatar, usuario_id]);
+        await connection.query('UPDATE usuarios SET email = ?, nome = ?, avatar = ? WHERE id = ? AND empresa_id = ?', [email, nome, avatar, usuario_id, empresa_id]);
 
         // Sincroniza a tabela de RH (Aplica-se apenas ao Colaborador)
         if (funcionario_id) {
             await connection.query(
-                'UPDATE funcionarios SET email = ?, nome = ?, telefone = ?, avatar = ? WHERE id = ?', 
-                [email, nome, telefone, avatar, funcionario_id]
+                'UPDATE funcionarios SET email = ?, nome = ?, telefone = ?, avatar = ? WHERE id = ? AND empresa_id = ?',
+                [email, nome, telefone, avatar, funcionario_id, empresa_id]
             );
         }
 
