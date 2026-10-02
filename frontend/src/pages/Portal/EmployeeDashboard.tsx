@@ -4,10 +4,15 @@ import { pontoService, PointRecord, HistoryDay, WeeklyTotal } from '../../servic
 import DashboardPunchCard from '../../components/Portal/DashboardPunchCard';
 import DashboardTimeline from '../../components/Portal/DashboardTimeline';
 import DashboardTimeMirror from '../../components/Portal/DashboardTimeMirror';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth();
   
+  const funcionarioId = user?.funcionarioId ?? null;
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [dailyRecords, setDailyRecords] = useState<PointRecord[]>([]);
   const [isRegistering, setIsRegistering] = useState(false);
   
@@ -21,16 +26,24 @@ const EmployeeDashboard: React.FC = () => {
   const [monthlySummary, setMonthlySummary] = useState<any>(null);
 
   useEffect(() => {
-    pontoService.getRegistrosHoje().then(setDailyRecords);
-  }, []);
-
-  useEffect(() => {
-    pontoService.getHistoricoMes(historyMonth).then(setHistoryData);
-    pontoService.getTotaisSemanais(historyMonth).then((res) => {
-      setWeeklyData(res.totals);
-      setMonthlySummary(res.monthlySummary);
+    if (funcionarioId === null) return;
+    let ativo = true;
+    Promise.all([
+      pontoService.getRegistrosHoje(funcionarioId),
+      pontoService.getHistoricoMes(funcionarioId, historyMonth),
+      pontoService.getTotaisSemanais(funcionarioId, historyMonth),
+    ]).then(([hoje, historico, totais]) => {
+      if (!ativo) return;
+      setLoadError(null);
+      setDailyRecords(hoje);
+      setHistoryData(historico);
+      setWeeklyData(totais.totals);
+      setMonthlySummary(totais.monthlySummary);
+    }).catch((error) => {
+      if (ativo) setLoadError(mensagemDeErro(error, 'Erro ao carregar o ponto'));
     });
-  }, [historyMonth]);
+    return () => { ativo = false; };
+  }, [funcionarioId, historyMonth, reloadKey]);
 
   const handlePunchClock = async () => {
     setIsRegistering(true);
@@ -88,6 +101,11 @@ const EmployeeDashboard: React.FC = () => {
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Olá, {firstName}!</h1>
         <p className="text-slate-500 font-medium mt-1 capitalize">{formattedDate}</p>
       </div>
+
+      {funcionarioId === null && (
+        <ErrorAlert message="Seu usuário ainda não está vinculado a um colaborador. Procure o RH para registrar e consultar o ponto." />
+      )}
+      {loadError && <ErrorAlert message={loadError} onRetry={() => { setLoadError(null); setReloadKey((k) => k + 1); }} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <DashboardPunchCard 

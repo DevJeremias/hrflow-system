@@ -25,7 +25,7 @@ module.exports = async (req, res, next) => {
     } catch (erro) {
         // Se cair aqui, é porque o crachá expirou ou foi corrompido
         console.error("Erro na verificação do Token:", erro.message);
-        return res.status(400).json({ erro: 'Token inválido ou expirado.' });
+        return res.status(401).json({ erro: 'Token inválido ou expirado.' });
     }
 
     try {

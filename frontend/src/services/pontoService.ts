@@ -41,24 +41,17 @@ const API_URL = '/ponto';
 
 export const pontoService = {
   
-  getRegistrosHoje: async (): Promise<PointRecord[]> => {
-    const funcionarioId = localStorage.getItem('funcionarioId');
-    try {
-      const data = await httpClient(`${API_URL}/hoje/${funcionarioId}`, { auth: true });
-      return Array.isArray(data) ? data : [];
-    } catch {
-      return [];
-    }
+  getRegistrosHoje: async (funcionarioId: number): Promise<PointRecord[]> => {
+    const data = await httpClient(`${API_URL}/hoje/${funcionarioId}`, { auth: true, errorMessage: 'Erro ao buscar os registros de hoje' });
+    return Array.isArray(data) ? data : [];
   },
 
   registrar: async (type: string, localizacao?: { lat: number, lng: number }): Promise<PointRecord> => {
-    const id = localStorage.getItem('funcionarioId');
-    
+    // O servidor identifica o colaborador pelo token; o corpo não leva o id.
     const res = await httpClient(`${API_URL}/registrar`, {
       method: 'POST',
       auth: true,
       body: JSON.stringify({ 
-        funcionario_id: id, // A variável exatamente como o seu Node.js pede
         tipo: type, 
         latitude: localizacao?.lat,
         longitude: localizacao?.lng
@@ -68,13 +61,8 @@ export const pontoService = {
     return res;
   },
 
-  getHistoricoMes: async (month: string): Promise<HistoryDay[]> => {
-    const funcionarioId = localStorage.getItem('funcionarioId');
-    try {
-      return await httpClient(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true });
-    } catch {
-      return []; 
-    }
+  getHistoricoMes: async (funcionarioId: number, month: string): Promise<HistoryDay[]> => {
+    return await httpClient(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar o histórico do mês' });
   },
 
   salvarJustificativa: async (id: string, note: string): Promise<void> => {
@@ -85,16 +73,7 @@ export const pontoService = {
     });
   },
 
-  getTotaisSemanais: async (month: string): Promise<{ totals: WeeklyTotal[], monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> }> => {
-    const funcionarioId = localStorage.getItem('funcionarioId');
-    try {
-      return await httpClient(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true });
-    } catch {
-      // Fallback seguro caso a rota falhe
-      return { 
-        totals: [], 
-        monthlySummary: { workloadLimit: '00:00', workloadPreset: '00:00', workloadDone: '00:00', presenceTime: '00:00', pendingTime: '00:00', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '00:00' } 
-      };
-    }
+  getTotaisSemanais: async (funcionarioId: number, month: string): Promise<{ totals: WeeklyTotal[], monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> }> => {
+    return await httpClient(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar os totais do mês' });
   }
 };

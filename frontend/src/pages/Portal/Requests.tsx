@@ -3,26 +3,30 @@ import { Calendar, Plus } from 'lucide-react';
 import RequestsModal from '../../components/Portal/RequestsModal';
 import RequestsTable from '../../components/Portal/RequestsTable';
 import { requestService, EmployeeRequest, RequestType } from '../../services/requestService';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const Requests: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [requests, setRequests] = useState<EmployeeRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const retry = () => {
+    setLoading(true);
+    setLoadError(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  // Busca o histórico de solicitações do colaborador
   useEffect(() => {
-    // Busca o histórico de solicitações do colaborador ao carregar a página
-    const fetchRequests = async () => {
-      try {
-        const data = await requestService.getMyRequests(); 
-        setRequests(data);
-      } catch (error) {
-        console.error('Erro ao buscar solicitações', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRequests();
-  }, []);
+    requestService.getMyRequests()
+      .then(setRequests)
+      .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar minhas solicitações')))
+      .finally(() => setLoading(false));
+  }, [reloadKey]);
 
   const handleSubmitRequest = async (data: { type: RequestType; startDate: string; endDate: string; observation: string; hasAttachment: boolean }) => {
     try {
@@ -57,6 +61,8 @@ const Requests: React.FC = () => {
       {/* Renderização Condicional: Tabela de Histórico ou Estado Vazio */}
       {loading ? (
         <div className="py-24 text-center text-slate-500 font-bold animate-pulse">Carregando solicitações...</div>
+      ) : loadError ? (
+        <ErrorAlert message={loadError} onRetry={retry} />
       ) : requests.length > 0 ? (
         <RequestsTable requests={requests} />
       ) : (

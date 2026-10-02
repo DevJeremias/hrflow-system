@@ -3,6 +3,8 @@ import { X, User, Briefcase, CreditCard } from 'lucide-react';
 import { Employee } from '../../services/employeeService';
 import { getRoles, getDepartments } from '../../services/departmentsRolesService'
 import { PersonalTab, WorkTab, FinancialTab } from './EmployeeModalTabs';
+import ErrorAlert from '../ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 interface Props {
   isOpen: boolean;
@@ -24,11 +26,17 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
   
   const [cargosList, setCargosList] = useState<any[]>([]);
   const [departamentosList, setDepartamentosList] = useState<any[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-      getRoles().then(setCargosList).catch(console.error);
-      getDepartments().then(setDepartamentosList).catch(console.error);
+      Promise.all([getRoles(), getDepartments()])
+        .then(([cargos, departamentos]) => {
+          setListError(null);
+          setCargosList(cargos);
+          setDepartamentosList(departamentos);
+        })
+        .catch((error) => setListError(mensagemDeErro(error, 'Erro ao carregar cargos e departamentos')));
     }
   }, [isOpen]);
 
@@ -98,6 +106,7 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+          {listError && <div className="mb-6"><ErrorAlert message={listError} /></div>}
           {activeTab === 'personal' && <PersonalTab formData={formData} handleChange={handleChange} />}
           
           {activeTab === 'work' && (

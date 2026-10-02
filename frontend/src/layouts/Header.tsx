@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, Bell, Search, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ehGestao } from '../utils/sessao';
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -10,7 +11,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
   const { user } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const ambienteLabel = user?.role === 'Administrador' ? "Ambiente Administrativo" : "Portal do Colaborador";
+  const ambienteLabel = ehGestao(user?.role) ? "Ambiente Administrativo" : "Portal do Colaborador";
   const primeiroNome = user?.nome ? user.nome.split(' ')[0] : 'Utilizador';
   const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : 'U';
 

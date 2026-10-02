@@ -1,5 +1,6 @@
 const express = require('express');
 const authController = require('../controllers/authController');
+const authMiddleware = require('../middlewares/authMiddleware');
 const { corpoJson, criarLimitadores, tratarErroDeCorpo } = require('../middlewares/limitesAuth');
 const { validarLogin, validarRegistro } = require('../utils/validacaoAuth');
 
@@ -22,6 +23,8 @@ const criarRouter = (limites) => {
     router.post('/login',
         limitadores.loginPorIp, corpoJson, validar(validarLogin), limitadores.loginPorIdentidade,
         authController.login);
+
+    router.get('/sessao', authMiddleware, authController.sessao);
 
     router.use(tratarErroDeCorpo);
     return router;

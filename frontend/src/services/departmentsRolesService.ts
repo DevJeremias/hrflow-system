@@ -28,22 +28,17 @@ export interface Role {
 const API_URL = '/estrutura';
 
 export const getDepartments = async (): Promise<Department[]> => {
-  try {
-    const data = await httpClient<any[]>(`${API_URL}/departamentos`, { auth: true, errorMessage: 'Erro ao buscar departamentos' });
-    return data.map((d: any) => ({
-      id: d.id.toString(),
-      name: d.nome,
-      sigla: d.sigla,
-      description: d.descricao || '',
-      manager: d.gestor || 'Não definido',
-      collaborators: 0,
-      active: 0,
-      rolesCount: 0
-    }));
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
+  const data = await httpClient<any[]>(`${API_URL}/departamentos`, { auth: true, errorMessage: 'Erro ao buscar departamentos' });
+  return data.map((d: any) => ({
+    id: d.id.toString(),
+    name: d.nome,
+    sigla: d.sigla,
+    description: d.descricao || '',
+    manager: d.gestor || 'Não definido',
+    collaborators: 0,
+    active: 0,
+    rolesCount: 0
+  }));
 };
 
 export const saveDepartment = async (data: any): Promise<void> => {
@@ -74,21 +69,16 @@ export const deleteDepartment = async (id: string): Promise<void> => {
 };
 
 export const getRoles = async (): Promise<Role[]> => {
-  try {
-    const data = await httpClient<any[]>(`${API_URL}/cargos`, { auth: true, errorMessage: 'Erro ao buscar cargos' });
-    return data.map((c: any) => ({
-      id: c.id.toString(),
-      title: c.nome,
-      department: c.departamento_nome,
-      deptSigla: c.departamento_nome,
-      level: c.nivel || 'Júnior',
-      salary: parseFloat(c.salario_base) || 0,
-      occupants: 0
-    }));
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
+  const data = await httpClient<any[]>(`${API_URL}/cargos`, { auth: true, errorMessage: 'Erro ao buscar cargos' });
+  return data.map((c: any) => ({
+    id: c.id.toString(),
+    title: c.nome,
+    department: c.departamento_nome,
+    deptSigla: c.departamento_nome,
+    level: c.nivel || 'Júnior',
+    salary: parseFloat(c.salario_base) || 0,
+    occupants: 0
+  }));
 };
 
 export const saveRole = async (data: any): Promise<void> => {

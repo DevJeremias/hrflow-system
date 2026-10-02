@@ -3,28 +3,38 @@ import { CheckCircle2, Download, Filter } from 'lucide-react';
 import { generateMonthlyPayroll, EmployeePayroll } from '../../services/payrollService';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const Payroll: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [allPayrolls, setAllPayrolls] = useState<EmployeePayroll[]>([]);
   
   const [deptFilter, setDeptFilter] = useState('Todos');
   const [monthFilter, setMonthFilter] = useState('2026-04'); 
 
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const startLoading = () => {
+    setLoading(true);
+    setLoadError(null);
+  };
+
+  const retry = () => {
+    startLoading();
+    setReloadKey((k) => k + 1);
+  };
+
   useEffect(() => {
-    const loadPayrollData = async () => {
-      setLoading(true);
-      try {
-        const data = await generateMonthlyPayroll();
-        setAllPayrolls(data);
-      } catch (error) {
-        console.error("Erro ao processar folha:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadPayrollData();
-  }, [monthFilter]); 
+    generateMonthlyPayroll()
+      .then(setAllPayrolls)
+      .catch((error) => {
+        setAllPayrolls([]);
+        setLoadError(mensagemDeErro(error, 'Erro ao processar folha de pagamento'));
+      })
+      .finally(() => setLoading(false));
+  }, [monthFilter, reloadKey]); 
 
   const displayedPayrolls = useMemo(() => {
     if (deptFilter === 'Todos') return allPayrolls;
@@ -61,7 +71,7 @@ const Payroll: React.FC = () => {
             </select>
           </div>
 
-          <input type="month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} 
+          <input type="month" value={monthFilter} onChange={(e) => { startLoading(); setMonthFilter(e.target.value); }} 
             className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 rounded-xl outline-none focus:border-primary cursor-pointer" />
 
           <button className="flex items-center gap-2 bg-slate-900 hover:bg-primary text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95">
@@ -75,6 +85,8 @@ const Payroll: React.FC = () => {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
           <p className="font-bold">Processando base de cálculo...</p>
         </div>
+      ) : loadError ? (
+        <ErrorAlert message={loadError} onRetry={retry} />
       ) : (
         <>
           <PayrollSummaryCards metrics={dynamicMetrics} />

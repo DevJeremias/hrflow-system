@@ -165,10 +165,10 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         assert.equal((await consultar(antigo)).status, 401);
     });
 
-    it('token expirado continua recusado', async () => {
+    it('token expirado é recusado com 401', async () => {
         const colaborador = await novoColaborador();
         const { id, perfil, empresa_id, funcionario_id, sv } = jwt.decode(colaborador.token);
         const expirado = jwt.sign({ id, perfil, empresa_id, funcionario_id, sv }, process.env.JWT_SECRET, { expiresIn: -10 });
-        assert.equal((await consultar(expirado)).status, 400);
+        assert.equal((await consultar(expirado)).status, 401);
     });
 });

@@ -5,25 +5,30 @@ import ProfileDataTab from '../../components/Portal/ProfileDataTab';
 import ProfileContractTab from '../../components/Portal/ProfileContractTab';
 import ProfileSecurityTab from '../../components/Portal/ProfileSecurityTab';
 import { userService } from '../../services/userService';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const Profile: React.FC = () => {
   const { updateUser } = useAuth();
   const [perfil, setPerfil] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dados' | 'profissional' | 'seguranca'>('dados');
 
   const getToken = () => localStorage.getItem('token');
 
   const carregarPerfil = async () => {
-  try {
-    const data = await userService.getMyPersonalData();
-    setPerfil(data);
-    updateUser({ nome: data.nome, avatar: data.avatar || null });
-  } catch (error) {
-    console.error("Erro ao carregar perfil:", error);
-  } finally {
-    setLoading(false);
-  }
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await userService.getMyPersonalData();
+      setPerfil(data);
+      updateUser({ nome: data.nome, avatar: data.avatar || null });
+    } catch (error) {
+      setLoadError(mensagemDeErro(error, 'Erro ao carregar o perfil'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -41,6 +46,14 @@ const Profile: React.FC = () => {
       <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
         <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
         <p className="font-bold">A carregar perfil...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <ErrorAlert message={loadError} onRetry={carregarPerfil} />
       </div>
     );
   }
