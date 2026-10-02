@@ -77,11 +77,12 @@ export const pontoService = {
     }
   },
 
-  salvarJustificativa: async (id: string, note: string): Promise<void> => {
-    await httpClient(`${API_URL}/justificativa/${id}`, {
-      method: 'POST',
+  // Resolve só depois que o servidor confirma a gravação; qualquer falha propaga como HttpError.
+  salvarJustificativa: async (date: string, texto: string): Promise<void> => {
+    await httpClient(`${API_URL}/justificativa/${date}`, {
+      method: 'PUT',
       auth: true,
-      body: JSON.stringify({ note })
+      body: JSON.stringify({ texto })
     });
   },
 

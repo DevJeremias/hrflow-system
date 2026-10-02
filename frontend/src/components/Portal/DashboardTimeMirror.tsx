@@ -9,11 +9,13 @@ interface NoteModalProps {
   dateRef: string;
   noteText: string;
   setNoteText: (text: string) => void;
+  isSaving: boolean;
+  error: string;
   onClose: () => void;
   onSave: () => void;
 }
 
-const TimeNoteModal: React.FC<NoteModalProps> = ({ dateRef, noteText, setNoteText, onClose, onSave }) => (
+const TimeNoteModal: React.FC<NoteModalProps> = ({ dateRef, noteText, setNoteText, isSaving, error, onClose, onSave }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
     <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative z-10 p-8 animate-in zoom-in-95 duration-300">
@@ -32,12 +34,15 @@ const TimeNoteModal: React.FC<NoteModalProps> = ({ dateRef, noteText, setNoteTex
           </p>
         </div>
         <textarea 
-          value={noteText} onChange={(e) => setNoteText(e.target.value)}
+          value={noteText} onChange={(e) => setNoteText(e.target.value)} disabled={isSaving} maxLength={1000}
           placeholder="Ex: Fui ao médico e tenho atestado..."
           className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-primary resize-none h-32 text-sm font-medium text-slate-700"
         />
-        <button onClick={onSave} className="w-full py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl transition-all active:scale-95">
-          Salvar Anotação
+        {error && (
+          <p role="alert" className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3">{error}</p>
+        )}
+        <button onClick={onSave} disabled={isSaving || !noteText.trim()} className="w-full py-4 bg-slate-900 hover:bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-xl transition-all active:scale-95">
+          {isSaving ? 'Enviando...' : 'Enviar Justificativa'}
         </button>
       </div>
     </div>
@@ -53,21 +58,38 @@ interface Props {
   historyData: HistoryDay[];
   weeklyData: WeeklyTotal[];
   monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> | null;
-  onSaveNote: (id: string, note: string) => void;
+  onSaveNote: (id: string, note: string) => Promise<void>;
 }
 
 const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, weeklyData, monthlySummary, onSaveNote }) => {
   const [selectedDay, setSelectedDay] = useState<HistoryDay | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const handleOpenNote = (day: HistoryDay) => {
     setSelectedDay(day);
     setNoteText(day.note);
+    setSaveError('');
   };
 
-  const handleSave = () => {
-    if (selectedDay) onSaveNote(selectedDay.id, noteText);
-    setSelectedDay(null);
+  const handleClose = () => {
+    if (!isSaving) setSelectedDay(null);
+  };
+
+  // O modal só fecha depois que o servidor confirma; na falha ele fica aberto com o texto e o erro.
+  const handleSave = async () => {
+    if (!selectedDay) return;
+    setIsSaving(true);
+    setSaveError('');
+    try {
+      await onSaveNote(selectedDay.id, noteText);
+      setSelectedDay(null);
+    } catch (error) {
+      setSaveError(error instanceof Error && error.message ? error.message : 'Não foi possível enviar a justificativa. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -199,7 +221,7 @@ const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, we
         <TimeNoteModal 
           dateRef={selectedDay.date.split('-').reverse().join('/')} 
           noteText={noteText} setNoteText={setNoteText} 
-          onClose={() => setSelectedDay(null)} onSave={handleSave} 
+          isSaving={isSaving} error={saveError} onClose={handleClose} onSave={handleSave} 
         />
       )}
     </div>
