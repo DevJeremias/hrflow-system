@@ -144,6 +144,13 @@ export const listarHistorico = async ({ empresaId, funcionarioId, mes }: Consult
 
     const dias: Record<string, DiaDoHistorico> = {};
 
+    justificativas.forEach((j) => {
+        dias[j.dia] = {
+            id: j.dia, date: j.dia, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
+            totalHours: '--:--', status: 'OK', note: j.texto, negativeAdjust: '00:00', positiveAdjust: '00:00'
+        };
+    });
+
     pontos.forEach(p => {
         const dataStr = fuso.diaLocal(p.instante);
         const horaStr = fuso.horaLocal(p.instante).slice(0, 5);
