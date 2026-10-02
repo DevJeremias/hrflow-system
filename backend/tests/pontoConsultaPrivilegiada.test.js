@@ -10,6 +10,8 @@ const banco = require('./support/bancoDeTeste');
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
 const pontoRoutes = require('../routes/pontoRoutes');
+const pontoController = require('../controllers/pontoController');
+const fuso = require('../utils/fusoPonto');
 
 const semBanco = banco.skip;
 const MES = '2026-03';
@@ -38,10 +40,12 @@ const novoPonto = (funcionarioId, empresaId, tipo, dataHora) =>
         [funcionarioId, empresaId, tipo, dataHora]
     );
 
+// "Hoje" é o dia de Belém no instante fixado aqui, para o teste não atravessar a virada do dia.
+const AGORA = Math.floor(Date.now() / 1000);
 const novoPontoHoje = (funcionarioId, empresaId, tipo, hora) =>
     db.query(
-        'INSERT INTO registro_pontos (funcionario_id, empresa_id, tipo_registro, data_hora_oficial) VALUES (?, ?, ?, CURDATE() + INTERVAL ? HOUR)',
-        [funcionarioId, empresaId, tipo, hora]
+        'INSERT INTO registro_pontos (funcionario_id, empresa_id, tipo_registro, data_hora_oficial) VALUES (?, ?, ?, FROM_UNIXTIME(?))',
+        [funcionarioId, empresaId, tipo, fuso.limitesDoDia(fuso.diaLocal(AGORA)).inicio + hora * 3600]
     );
 
 const token = (usuario) => jwt.sign(usuario, process.env.JWT_SECRET);
@@ -53,6 +57,7 @@ const get = async (caminho, usuario) => {
 
 test.before(async () => {
     if (semBanco) return;
+    pontoController.relogio.agora = () => AGORA * 1000;
     await banco.preparar();
 
     const sufixo = `${process.pid}-${Date.now()}`;
