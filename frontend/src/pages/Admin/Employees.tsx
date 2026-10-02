@@ -1,38 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
 import { Employee, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 
+const PAGE_SIZE = 50;
+
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [totalEmployees, setTotalEmployees] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
 
-  useEffect(() => {
-    loadEmployees();
-  }, []);
-
-  const loadEmployees = async () => {
+  const loadEmployees = useCallback(async (requestedPage: number) => {
     setLoading(true);
     setLoadError(null);
     try {
-      setEmployees(await employeeService.getAll());
+      const result = await employeeService.getPage(requestedPage, PAGE_SIZE);
+      setEmployees(result.employees);
+      setTotalEmployees(result.total);
+      setPage(requestedPage);
     } catch (error) {
       setLoadError(mensagemDeErro(error, 'Erro ao buscar colaboradores'));
+      setEmployees([]);
+      setTotalEmployees(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    Promise.resolve().then(() => loadEmployees(1));
+  }, [loadEmployees]);
 
   const handleSave = async (employeeData: Partial<Employee>) => {
     try {
       await employeeService.save(employeeData);
-      await loadEmployees(); 
+      await loadEmployees(page);
       setIsModalOpen(false);
     } catch {
       alert("Erro ao guardar colaborador.");
@@ -43,7 +52,7 @@ const Employees: React.FC = () => {
     if (window.confirm('Tem a certeza que deseja excluir este colaborador?')) {
       try {
         await employeeService.delete(id);
-        setEmployees(prev => prev.filter(emp => emp.id !== id));
+        await loadEmployees(page - (employees.length === 1 && page > 1 ? 1 : 0));
       } catch (error) {
         alert(mensagemDeErro(error, 'Erro ao excluir colaborador.'));
       }
@@ -92,7 +101,7 @@ const Employees: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
             type="text"
-            placeholder="Buscar por nome ou cargo..."
+            placeholder="Buscar nesta página por nome ou cargo..."
             className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -100,7 +109,7 @@ const Employees: React.FC = () => {
         </div>
       </div>
 
-      {loadError && <ErrorAlert message={loadError} onRetry={loadEmployees} />}
+      {loadError && <ErrorAlert message={loadError} onRetry={() => loadEmployees(page)} />}
 
       {!loadError && (
       <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
@@ -177,6 +186,27 @@ const Employees: React.FC = () => {
           </table>
         </div>
       </div>
+      )}
+      {!loadError && !loading && (
+        <div className="flex items-center justify-between gap-4 text-sm text-slate-600">
+          <span>
+            {totalEmployees === 0 ? 'Nenhum colaborador' : `Página ${page} de ${Math.ceil(totalEmployees / PAGE_SIZE)} · ${totalEmployees} colaboradores`}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => loadEmployees(page - 1)}
+              disabled={page <= 1}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+            >Anterior</button>
+            <button
+              type="button"
+              onClick={() => loadEmployees(page + 1)}
+              disabled={page >= Math.ceil(totalEmployees / PAGE_SIZE)}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+            >Próxima</button>
+          </div>
+        </div>
       )}
     </div>
   );
