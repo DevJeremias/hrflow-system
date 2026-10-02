@@ -75,3 +75,24 @@ exports.login = async (req, res) => {
         res.status(500).json({ erro: "Erro ao processar login." });
     }
 };
+
+// Quem sou eu: a fonte única da identidade que o front-end exibe e usa para guardar rotas.
+// Lê do banco, não do token: nome e vínculo refletem o estado atual, e um usuário removido
+// deixa de ter sessão (401) em vez de seguir com um token ainda assinado.
+exports.sessao = async (req, res) => {
+    try {
+        const [linhas] = await db.query(
+            `SELECT u.id, u.perfil, u.empresa_id, u.funcionario_id, u.avatar,
+                    COALESCE(f.nome, u.nome) AS nome
+             FROM usuarios u
+             LEFT JOIN funcionarios f ON f.id = u.funcionario_id
+             WHERE u.id = ?`,
+            [req.usuario.id]
+        );
+        if (linhas.length === 0) return res.status(401).json({ erro: 'Sessão encerrada. Faça login novamente.' });
+        res.json(linhas[0]);
+    } catch (error) {
+        console.error("Erro ao consultar a sessão:", error);
+        res.status(500).json({ erro: "Erro ao consultar a sessão." });
+    }
+};
