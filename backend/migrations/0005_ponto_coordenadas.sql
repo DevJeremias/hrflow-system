@@ -2,7 +2,7 @@
 -- latitude e longitude já existiam como colunas, mas nada as impedia de guardar 400 graus ou só
 -- um dos dois valores. NULL nos dois continua permitido: marcações antigas e clientes sem GPS.
 -- O índice atende a consulta do dia e do mês de um colaborador, e o bloqueio da sequência de marcações.
--- Antes de aplicar, 0004_ponto_coordenadas.audit.sql procura linhas que violariam.
+-- Antes de aplicar, 0005_ponto_coordenadas.audit.sql procura linhas que violariam.
 -- CHECK só é aplicado a partir do MySQL 8.0.16.
 
 ALTER TABLE registro_pontos ADD CONSTRAINT ck_registro_pontos_coordenadas CHECK (

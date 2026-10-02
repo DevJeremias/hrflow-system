@@ -4,8 +4,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const banco = require('./support/bancoDeTeste');
+const { criarUsuario } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -33,13 +33,17 @@ const novoFuncionario = async (empresaId, nome) => {
     return r.insertId;
 };
 
-const token = (usuario) => jwt.sign(usuario, process.env.JWT_SECRET);
-const colaborador = (funcionarioId, empresaId = ctx.empresaA) => ({ perfil: 'Colaborador', empresa_id: empresaId, funcionario_id: funcionarioId });
+// O authMiddleware confere o usuário no banco: cada ator é um usuário real, com o token que o login emitiria.
+const ator = async (perfil, funcionarioId, empresaId = ctx.empresaA) => {
+    const { token } = await criarUsuario(db, { empresaId, perfil, funcionarioId });
+    return { funcionario_id: funcionarioId, token };
+};
+const colaborador = (funcionarioId, empresaId = ctx.empresaA) => ator('Colaborador', funcionarioId, empresaId);
 
 const chamar = async (metodo, caminho, usuario, corpo) => {
     const resposta = await fetch(`${baseUrl}${caminho}`, {
         method: metodo,
-        headers: { Authorization: `Bearer ${token(usuario)}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${usuario.token}`, 'Content-Type': 'application/json' },
         body: corpo === undefined ? undefined : JSON.stringify(corpo),
     });
     return { status: resposta.status, corpo: await resposta.json() };
@@ -220,13 +224,13 @@ test('o id do corpo é ignorado: a marcação é do colaborador do token', { ski
 
 test('token com colaborador de outra empresa retorna 404 e nada é gravado', { skip: semBanco }, async () => {
     const id = await novoFuncionario(ctx.empresaA, 'Pessoa Ficticia');
-    const { status } = await registrar(colaborador(id, ctx.empresaB), { tipo: 'Entrada' });
+    const { status } = await registrar(await colaborador(id, ctx.empresaB), { tipo: 'Entrada' });
     assert.equal(status, 404);
     assert.equal((await linhas(id)).length, 0);
 });
 
 test('usuário sem vínculo de colaborador continua com 403', { skip: semBanco }, async () => {
-    const { status } = await registrar({ perfil: 'Administrador', empresa_id: ctx.empresaA, funcionario_id: null }, { tipo: 'Entrada' });
+    const { status } = await registrar(await ator('Administrador', null), { tipo: 'Entrada' });
     assert.equal(status, 403);
 });
 
@@ -289,7 +293,7 @@ test('mês ausente ou malformado no histórico é 400', { skip: semBanco }, asyn
 test('a listagem de RH mostra coordenadas e o relógio de Belém', { skip: semBanco }, async () => {
     const usuario = await novoUsuario();
     await registrar(usuario, { tipo: 'Entrada', latitude: -1.45502, longitude: -48.5024 });
-    const { status, corpo } = await chamar('GET', '/', { perfil: 'RH', empresa_id: ctx.empresaA, funcionario_id: null });
+    const { status, corpo } = await chamar('GET', '/', await ator('RH', null));
     assert.equal(status, 200);
     const meu = corpo.find((p) => p.funcionario_id === usuario.funcionario_id);
     assert.equal(Number(meu.latitude), -1.45502);

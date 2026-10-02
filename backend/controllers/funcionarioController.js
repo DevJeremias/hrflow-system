@@ -138,6 +138,11 @@ exports.atualizarFuncionario = async (req, res) => {
         // Sincroniza o e-mail e o nome atualizado na tabela de credenciais
         await connection.query('UPDATE usuarios SET email = ?, nome = ? WHERE funcionario_id = ? AND empresa_id = ?', [email, nome, id, empresa_id]);
 
+        // Inativar derruba as sessões abertas; sem isso, reativar ressuscitaria tokens antigos.
+        if (status === 'Inativo') {
+            await connection.query('UPDATE usuarios SET sessao_versao = sessao_versao + 1 WHERE funcionario_id = ? AND empresa_id = ?', [id, empresa_id]);
+        }
+
         await connection.commit();
         res.json({ mensagem: "Funcionário atualizado com sucesso!" });
     } catch (error) {

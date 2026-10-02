@@ -1,7 +1,6 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const jwtSecret = require('../config/jwtSecret');
+const { emitirToken } = require('../utils/sessao');
 
 // Cria a Empresa e o Usuário Admin ao mesmo tempo. A entrada já chegou validada pela rota.
 exports.registrarConta = async (req, res) => {
@@ -57,24 +56,18 @@ exports.login = async (req, res) => {
         // Se for Admin, o nome já está em usuario.nome. Se for Colaborador, o nome está na tabela funcionarios.
         let nomeUsuario = usuario.nome; 
         if (usuario.funcionario_id) {
-            const [funcs] = await db.query('SELECT nome FROM funcionarios WHERE id = ?', [usuario.funcionario_id]);
+            const [funcs] = await db.query('SELECT nome, status FROM funcionarios WHERE id = ?', [usuario.funcionario_id]);
             if (funcs.length > 0) {
+                // Só depois da senha correta, para a resposta não revelar o estado de contas alheias.
+                if (funcs[0].status === 'Inativo') {
+                    return res.status(403).json({ erro: "Acesso desativado. Procure o RH da sua empresa." });
+                }
                 nomeUsuario = funcs[0].nome;
             }
         }
 
-        // O PULO DO GATO DEFINITIVO: O Token agora carrega a identidade completa
-        const token = jwt.sign(
-            { 
-                id: usuario.id, 
-                perfil: usuario.perfil, 
-                empresa_id: usuario.empresa_id,
-                funcionario_id: usuario.funcionario_id || null, // Essencial para a tela de Perfil
-                nome: nomeUsuario // Essencial para o cabeçalho e menu lateral não mostrarem "Utilizador"
-            },
-            jwtSecret,
-            { expiresIn: '1d' }
-        );
+        // O Token carrega a identidade completa e a versão da sessão (ver utils/sessao.js)
+        const token = emitirToken(usuario, nomeUsuario);
 
         res.json({ token, perfil: usuario.perfil, nome: nomeUsuario });
     } catch (error) {

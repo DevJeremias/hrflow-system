@@ -1,4 +1,4 @@
--- Auditoria da migração 0004: devolve uma linha por marcação com coordenadas fora do intervalo
+-- Auditoria da migração 0005: devolve uma linha por marcação com coordenadas fora do intervalo
 -- válido ou com só um dos dois valores. Só ids, nunca coordenadas. Vazio significa seguro aplicar.
 SELECT 'registro_pontos tem latitude sem longitude, ou longitude sem latitude' AS violacao, id AS registro_id
 FROM registro_pontos

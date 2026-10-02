@@ -137,7 +137,8 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal((await chamar('PUT', '/api/perfil/alterar-senha', estado.colaborador, {
             senhaAtual: 'outra-senha-ficticia', novaSenha: 'terceira-senha-ficticia',
         })).status, 200);
-        await entrar('colaborador@limpa.exemplo.invalid', 'terceira-senha-ficticia');
+        // A troca de senha encerra a sessão: o token novo vem do login com a senha nova.
+        estado.colaborador = await entrar('colaborador@limpa.exemplo.invalid', 'terceira-senha-ficticia');
     });
 
     it('o administrador tem perfil próprio sem funcionário', async () => {
