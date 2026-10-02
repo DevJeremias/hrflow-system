@@ -8,7 +8,7 @@ const banco = require('./support/bancoDeTeste');
 const migrator = require('../db/migrator');
 const { carregarFixtures } = require('../seeds/fixtures');
 
-const TABELAS = ['empresas', 'departamentos', 'cargos', 'funcionarios', 'usuarios', 'registro_pontos', 'schema_migrations'];
+const TABELAS = ['empresas', 'departamentos', 'cargos', 'funcionarios', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'schema_migrations'];
 
 describe('migrations', { skip: banco.skip }, () => {
     const principal = banco.config;
@@ -215,7 +215,7 @@ describe('migrations', { skip: banco.skip }, () => {
             assert.equal((await migrator.status(parcial)).find((m) => m.versao === '0005').estado, 'pendente');
 
             await alvo.query('DELETE FROM registro_pontos WHERE id IN (?)', [[ids(semLongitude), ids(latitudeAlta), ids(longitudeBaixa)]]);
-            assert.deepEqual(await migrator.migrar(parcial), ['0005']);
+            assert.deepEqual(await migrator.migrar(parcial, () => {}, { ate: '0005' }), ['0005']);
         });
 
         it('depois da 0005 o banco recusa coordenadas fora do intervalo e pares incompletos', async () => {

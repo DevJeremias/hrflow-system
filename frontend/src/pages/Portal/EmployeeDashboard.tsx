@@ -83,13 +83,10 @@ const EmployeeDashboard: React.FC = () => {
     );
   };
 
+  // O erro sobe para o modal, que o mostra e mantém o texto digitado; a lista só muda após o servidor confirmar.
   const handleSaveNote = async (id: string, note: string) => {
-    try {
-      await pontoService.salvarJustificativa(id, note);
-      setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note } : day));
-    } catch {
-      alert("Erro ao salvar justificativa.");
-    }
+    await pontoService.salvarJustificativa(id, note);
+    setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note: note.trim() } : day));
   };
 
   const firstName = user?.nome?.split(' ')[0] || 'Utilizador';

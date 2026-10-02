@@ -1,12 +1,19 @@
 const db = require('../config/db');
 const fuso = require('../utils/fusoPonto');
 const regras = require('../utils/pontoRegras');
+const { responderErro } = require('../utils/erros');
 
 // Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia em Belém.
 exports.relogio = { agora: () => Date.now() };
 const agoraEmSegundos = () => Math.floor(exports.relogio.agora() / 1000);
 
 const intervaloDoDia = (segundos) => fuso.limitesDoDia(fuso.diaLocal(segundos));
+
+// Primeiro dia do mês seguinte a 'AAAA-MM', como 'AAAA-MM-01'.
+const proximoMes = (mes) => {
+    const [ano, m] = mes.split('-').map(Number);
+    return m === 12 ? `${ano + 1}-01-01` : `${ano}-${String(m + 1).padStart(2, '0')}-01`;
+};
 
 const montarRegistro = (id, tipo, segundos) => ({
     id: id.toString(),
@@ -146,6 +153,14 @@ exports.listarHistorico = async (req, res) => {
             [funcionario_id, empresa_id, inicio, fim]
         );
 
+        const [justificativas] = await db.query(
+            `SELECT DATE_FORMAT(data_referencia, '%Y-%m-%d') AS dia, texto
+             FROM justificativas_ponto
+             WHERE funcionario_id = ? AND empresa_id = ? AND data_referencia >= ? AND data_referencia < ?`,
+            [funcionario_id, empresa_id, `${mes}-01`, proximoMes(mes)]
+        );
+        const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j.texto]));
+
         const dias = {};
         
         pontos.forEach(p => {
@@ -155,7 +170,7 @@ exports.listarHistorico = async (req, res) => {
             if (!dias[dataStr]) {
                 dias[dataStr] = {
                     id: dataStr, date: dataStr, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
-                    totalHours: '--:--', status: 'OK', note: p.observacao || '', negativeAdjust: '00:00', positiveAdjust: '00:00'
+                    totalHours: '--:--', status: 'OK', note: justificativaDoDia.get(dataStr) ?? (p.observacao || ''), negativeAdjust: '00:00', positiveAdjust: '00:00'
                 };
             }
 
@@ -205,5 +220,74 @@ exports.listarPontos = async (req, res) => {
     } catch (erro) {
         console.error('Erro ao listar pontos:', erro);
         res.status(500).json({ erro: 'Erro interno ao buscar os registros.' });
+    }
+};
+
+// O colaborador e a empresa vêm do token: o corpo e a URL só dizem o dia e o texto.
+exports.enviarJustificativa = async (req, res) => {
+    try {
+        const { empresa_id, funcionario_id } = req.usuario;
+        if (!funcionario_id) {
+            return res.status(403).json({ erro: 'Acesso negado. Apenas colaboradores vinculados podem justificar o ponto.' });
+        }
+        const { data } = req.dadosValidados.params;
+        const { texto } = req.dadosValidados.body;
+
+        const [dono] = await db.query(
+            'SELECT id FROM funcionarios WHERE id = ? AND empresa_id = ?',
+            [funcionario_id, empresa_id]
+        );
+        if (dono.length === 0) {
+            return res.status(404).json({ erro: 'Colaborador não encontrado nesta empresa.' });
+        }
+
+        await db.query(
+            `INSERT INTO justificativas_ponto (empresa_id, funcionario_id, data_referencia, texto)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE texto = VALUES(texto)`,
+            [empresa_id, funcionario_id, data, texto]
+        );
+
+        const [[salva]] = await db.query(
+            `SELECT UNIX_TIMESTAMP(atualizado_em) AS instante
+             FROM justificativas_ponto WHERE funcionario_id = ? AND data_referencia = ?`,
+            [funcionario_id, data]
+        );
+        res.json({ date: data, note: texto, updatedAt: new Date(salva.instante * 1000).toISOString() });
+    } catch (erro) {
+        responderErro(res, erro, 'Erro interno ao salvar a justificativa.');
+    }
+};
+
+exports.listarJustificativas = async (req, res) => {
+    try {
+        const empresa_id = req.usuario.empresa_id;
+        const { mes, funcionarioId } = req.dadosValidados.query;
+
+        const filtros = ['j.empresa_id = ?', 'j.data_referencia >= ?', 'j.data_referencia < ?'];
+        const valores = [empresa_id, `${mes}-01`, proximoMes(mes)];
+        if (funcionarioId) {
+            filtros.push('j.funcionario_id = ?');
+            valores.push(funcionarioId);
+        }
+
+        const [linhas] = await db.query(
+            `SELECT j.id, j.funcionario_id, f.nome AS nome_funcionario,
+                    DATE_FORMAT(j.data_referencia, '%Y-%m-%d') AS date, j.texto AS note,
+                    UNIX_TIMESTAMP(j.criado_em) AS criado, UNIX_TIMESTAMP(j.atualizado_em) AS atualizado
+             FROM justificativas_ponto j
+             JOIN funcionarios f ON f.id = j.funcionario_id AND f.empresa_id = j.empresa_id
+             WHERE ${filtros.join(' AND ')}
+             ORDER BY j.data_referencia DESC, f.nome ASC, j.id ASC`,
+            valores
+        );
+
+        res.json(linhas.map(({ criado, atualizado, ...j }) => ({
+            ...j,
+            createdAt: new Date(criado * 1000).toISOString(),
+            updatedAt: new Date(atualizado * 1000).toISOString(),
+        })));
+    } catch (erro) {
+        responderErro(res, erro, 'Erro interno ao buscar as justificativas.');
     }
 };
