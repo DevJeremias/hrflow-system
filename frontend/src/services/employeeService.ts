@@ -1,4 +1,4 @@
-import httpClient from './httpClient';
+import httpClient from './httpClient.ts';
 
 // frontend/src/services/employeeService.ts
 
@@ -29,33 +29,46 @@ export interface Employee {
 
 const API_URL = '/funcionarios';
 
+export interface EmployeePage {
+  employees: Employee[];
+  total: number;
+}
+
+const mapEmployee = (d: any): Employee => ({
+  id: d.id?.toString() || '',
+  nomeCompleto: d.nome || '',
+  emailPessoal: d.email || '',
+  telefone: d.telefone || '',
+  cpf: d.cpf || '',
+  cargo: d.cargo_nome || d.cargo_id?.toString() || 'Não definido',
+  departamento: d.departamento_nome || d.departamento_id?.toString() || 'Não definido',
+  status: d.status || 'Ativo',
+  dataAdmissao: d.data_admissao ? d.data_admissao.split('T')[0] : '',
+  dataNascimento: d.data_nascimento ? d.data_nascimento.split('T')[0] : '',
+  enderecoCompleto: d.endereco || '',
+  banco: d.banco || '',
+  agencia: d.agencia || '',
+  conta: d.conta || '',
+  tipoConta: d.tipo_conta || '',
+  nivel: d.nivel || '',
+  tipoContrato: d.tipo_contrato || 'CLT',
+  salarioBase: d.salario_base || ''
+});
+
 export const employeeService = {
-  getAll: async (): Promise<Employee[]> => {
-    const data = await httpClient<any[]>(API_URL, { auth: true, errorMessage: 'Erro ao buscar colaboradores' });
-    
-    return data.map((d: any) => ({
-      id: d.id?.toString() || '',
-      nomeCompleto: d.nome || '',
-      emailPessoal: d.email || '',
-      telefone: d.telefone || '',
-      cpf: d.cpf || '',
-      cargo: d.cargo_nome || d.cargo_id?.toString() || 'Não definido', 
-      departamento: d.departamento_nome || d.departamento_id?.toString() || 'Não definido',
-      status: d.status || 'Ativo',
-      dataAdmissao: d.data_admissao ? d.data_admissao.split('T')[0] : '',
-      
-      dataNascimento: d.data_nascimento ? d.data_nascimento.split('T')[0] : '',
-      enderecoCompleto: d.endereco || '',
-      
-      banco: d.banco || '',
-      agencia: d.agencia || '',
-      conta: d.conta || '',
-      tipoConta: d.tipo_conta || '',
-      
-      nivel: d.nivel || '',
-      tipoContrato: d.tipo_contrato || 'CLT',
-      salarioBase: d.salario_base || ''
-    }));
+  getPage: async (pagina: number, limite: number): Promise<EmployeePage> => {
+    let total = 0;
+    const data = await httpClient<any[]>(`${API_URL}?pagina=${pagina}&limite=${limite}`, {
+      auth: true,
+      errorMessage: 'Erro ao buscar colaboradores',
+      onResponse: (response) => {
+        const header = response.headers.get('X-Total-Count');
+        if (header === null || !/^\d+$/.test(header)) throw new Error('Resposta da API sem total válido de colaboradores');
+        total = Number(header);
+      }
+    });
+
+    return { employees: data.map(mapEmployee), total };
   },
 
   save: async (data: any): Promise<void> => {

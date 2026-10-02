@@ -48,11 +48,6 @@
       "count": 1
     }
   },
-  "src/pages/Admin/Employees.tsx": {
-    "react-hooks/immutability": {
-      "count": 1
-    }
-  },
   "src/pages/Admin/OrgStructure.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 5

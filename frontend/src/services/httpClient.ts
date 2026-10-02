@@ -22,6 +22,7 @@ type ErrorMessage = string | ((data: any, status: number) => string);
 export interface HttpRequestOptions extends RequestInit {
   auth?: boolean;
   errorMessage?: ErrorMessage;
+  onResponse?: (response: Response) => void;
 }
 
 export class HttpError extends Error {
@@ -53,7 +54,7 @@ const parseResponse = async (response: Response): Promise<any> => {
 };
 
 export const httpClient = async <T = any>(path: string, options: HttpRequestOptions = {}): Promise<T> => {
-  const { auth = false, errorMessage, headers: optionHeaders, ...requestOptions } = options;
+  const { auth = false, errorMessage, onResponse, headers: optionHeaders, ...requestOptions } = options;
   const headers = new Headers(optionHeaders);
 
   if ((auth || requestOptions.body !== undefined) && !headers.has('Content-Type')) {
@@ -95,6 +96,7 @@ export const httpClient = async <T = any>(path: string, options: HttpRequestOpti
     throw new HttpError(message, response.status, data);
   }
 
+  onResponse?.(response);
   return data as T;
 };
 
