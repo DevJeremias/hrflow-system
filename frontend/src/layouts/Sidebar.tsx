@@ -31,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/admin/estrutura', icon: <Building2 size={20} />, label: 'Depto & Cargos' },
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
     { path: '/admin/gestao-ponto', icon: <Clock size={20} />, label: 'Gestão de Ponto' }, // Funcionalidade protegida no merge
+    { path: '/admin/perfil', icon: <UserIcon size={20} />, label: 'Meu Perfil' },
   ];
 
   const employeeMenu = [

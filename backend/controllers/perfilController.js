@@ -2,51 +2,42 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { responderErro } = require('../utils/erros');
 
+// Sem funcionário vinculado não há cargo nem departamento reais: o Administrador de conta
+// recém-criada e um usuário ainda sem vínculo recebem um rótulo no lugar.
+const ROTULOS_SEM_VINCULO = {
+    Administrador: { cargo: 'Gestão do Sistema', departamento: 'Administração' },
+    RH: { cargo: 'Vínculo Pendente', departamento: 'Não atrelado' },
+    Colaborador: { cargo: 'Vínculo Pendente', departamento: 'Não atrelado' },
+};
+
+// Uma única resposta para todos os perfis: o que depende do vínculo com o funcionário vem null
+// quando ele não existe, e `vinculado` diz ao cliente se há contrato e dados bancários a mostrar.
 exports.obterMeuPerfil = async (req, res) => {
-    const funcionario_id = req.usuario.funcionario_id;
-    const empresa_id = req.usuario.empresa_id;
-    const perfil_usuario = req.usuario.perfil;
-
-    if (!funcionario_id) {
-        if (perfil_usuario === 'Administrador') {
-            try {
-                const [admin] = await db.query('SELECT nome, email, avatar FROM usuarios WHERE id = ?', [req.usuario.id]);
-                return res.json({
-                    nome: admin[0]?.nome || "Administrador Geral",
-                    email: admin[0]?.email || '',
-                    avatar: admin[0]?.avatar || null,
-                    cargo: "Gestão do Sistema",
-                    departamento: "Administração",
-                    isAdmin: true
-                });
-            } catch (error) {
-                return responderErro(res, error, "Erro ao buscar perfil administrativo.");
-            }
-        } else {
-            return res.json({
-                nome: "Colaborador sem Vínculo",
-                email: "",
-                cargo: "Vínculo Pendente",
-                departamento: "Não atrelado",
-                isAdmin: false
-            });
-        }
-    }
-
     try {
         const sql = `
-            SELECT f.nome, f.email, f.telefone, f.cpf, f.data_nascimento, f.endereco, f.avatar,
-                   c.nome as cargo, d.nome as departamento
-            FROM funcionarios f
-            LEFT JOIN cargos c ON f.cargo_id = c.id
-            LEFT JOIN departamentos d ON f.departamento_id = d.id
-            WHERE f.id = ? AND f.empresa_id = ?
+            SELECT u.perfil, COALESCE(f.nome, u.nome) AS nome, u.email, u.avatar, f.id AS funcionario_id,
+                   f.telefone, f.cpf,
+                   DATE_FORMAT(f.data_nascimento, '%Y-%m-%d') AS data_nascimento,
+                   DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS data_admissao,
+                   f.endereco, f.tipo_contrato, COALESCE(f.nivel, c.nivel) AS nivel,
+                   f.banco, f.agencia, f.conta, f.tipo_conta,
+                   c.nome AS cargo, d.nome AS departamento
+            FROM usuarios u
+            LEFT JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
+            LEFT JOIN cargos c ON c.id = f.cargo_id AND c.empresa_id = f.empresa_id
+            LEFT JOIN departamentos d ON d.id = f.departamento_id AND d.empresa_id = f.empresa_id
+            WHERE u.id = ? AND u.empresa_id = ?
         `;
-        const [rows] = await db.query(sql, [funcionario_id, empresa_id]);
-        
+        const [rows] = await db.query(sql, [req.usuario.id, req.usuario.empresa_id]);
         if (rows.length === 0) return res.status(404).json({ erro: "Perfil não encontrado." });
-        
-        res.json({ ...rows[0], isAdmin: false });
+
+        const { funcionario_id, ...perfil } = rows[0];
+        const vinculado = funcionario_id !== null;
+        res.json({
+            ...perfil,
+            ...(vinculado ? {} : ROTULOS_SEM_VINCULO[perfil.perfil]),
+            vinculado,
+        });
     } catch (error) {
         responderErro(res, error, "Erro interno ao buscar perfil.");
     }

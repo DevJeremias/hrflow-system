@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import httpClient from '../../services/httpClient';
+import { userService } from '../../services/userService';
+import { mensagemDeErro } from '../../utils/erros';
 
-interface Props {
-  getToken: () => string | null;
-}
-
-const ProfileSecurityTab: React.FC<Props> = () => {
+const ProfileSecurityTab: React.FC = () => {
   const [senhas, setSenhas] = useState({ atual: '', nova: '', confirmacao: '' });
   const [status, setStatus] = useState({ loading: false, erro: '', sucesso: '' });
 
@@ -16,18 +13,13 @@ const ProfileSecurityTab: React.FC<Props> = () => {
     if (senhas.nova !== senhas.confirmacao) return setStatus({ loading: false, erro: 'As senhas não coincidem.', sucesso: '' });
     
     try {
-      const data = await httpClient<any>('/perfil/alterar-senha', {
-        method: 'PUT',
-        auth: true,
-        body: JSON.stringify({ senhaAtual: senhas.atual, novaSenha: senhas.nova }),
-        errorMessage: (response) => response?.erro || 'Erro ao alterar senha'
-      });
-      
-      setStatus({ loading: false, erro: '', sucesso: data.mensagem || 'Senha atualizada com sucesso!' });
+      const mensagem = await userService.changeMyPassword(senhas.atual, senhas.nova);
+
+      setStatus({ loading: false, erro: '', sucesso: mensagem });
       setSenhas({ atual: '', nova: '', confirmacao: '' });
       setTimeout(() => setStatus(s => ({ ...s, sucesso: '' })), 4000);
-    } catch (error: any) {
-      setStatus({ loading: false, erro: error.message, sucesso: '' });
+    } catch (error) {
+      setStatus({ loading: false, erro: mensagemDeErro(error, 'Erro ao alterar senha'), sucesso: '' });
     }
   };
 
