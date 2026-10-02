@@ -54,6 +54,39 @@ describe('migrations', { skip: banco.skip }, () => {
         assert.deepEqual(await migrator.migrar(principal), []);
     });
 
+    it('audita vínculos usuário/funcionário legados antes de aplicar a 0007', async () => {
+        await migrator.removerBanco(parcial);
+        await migrator.criarBanco(parcial);
+        await migrator.migrar(parcial, () => {}, { ate: '0006' });
+        const alvo = await migrator.conectar(parcial);
+        let usuario;
+        try {
+            const empresaLocal = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Local Ficticia'], alvo);
+            const empresaExterna = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Externa Ficticia'], alvo);
+            const funcionario = await inserir(
+                'INSERT INTO funcionarios (nome, email, empresa_id) VALUES (?, ?, ?)', ['Funcionário Externo Fictício', 'auditoria.funcionario@exemplo.invalid', empresaExterna], alvo
+            );
+            await alvo.query('SET FOREIGN_KEY_CHECKS = 0');
+            usuario = await inserir(
+                'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id, funcionario_id) VALUES (?, ?, ?, ?, ?, ?)',
+                ['Usuário Fictício', 'auditoria.vinculo@exemplo.invalid', 'hash-ficticio', 'Colaborador', empresaLocal, funcionario], alvo
+            );
+            await alvo.query('SET FOREIGN_KEY_CHECKS = 1');
+
+            const resultados = await migrator.auditarBanco(parcial);
+            const auditoria = resultados.find((r) => r.migracao === '0007_vinculo_usuario_funcionario_empresa');
+            assert.deepEqual(auditoria.violacoes.map(({ violacao, registro_id }) => [violacao, registro_id]), [
+                ['usuarios.funcionario_id pertence a outra empresa', usuario],
+            ]);
+            await assert.rejects(migrator.migrar(parcial), (erro) => erro.name === 'ErroDeAuditoria');
+        } finally {
+            await alvo.query('SET FOREIGN_KEY_CHECKS = 1');
+            if (usuario) await alvo.query('DELETE FROM usuarios WHERE id = ?', [usuario]);
+            await alvo.end();
+        }
+        assert.deepEqual(await migrator.migrar(parcial, () => {}, { ate: '0007' }), ['0007']);
+    });
+
     it('recusa uma migration alterada depois de aplicada', async () => {
         await migrator.removerBanco(parcial);
         await migrator.criarBanco(parcial);

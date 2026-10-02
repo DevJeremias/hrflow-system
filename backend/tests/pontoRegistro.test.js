@@ -222,10 +222,9 @@ test('o id do corpo é ignorado: a marcação é do colaborador do token', { ski
     assert.equal((await linhas(outro.funcionario_id)).length, 0);
 });
 
-test('token com colaborador de outra empresa retorna 404 e nada é gravado', { skip: semBanco }, async () => {
+test('o banco recusa ator vinculado a colaborador de outra empresa antes de registrar ponto', { skip: semBanco }, async () => {
     const id = await novoFuncionario(ctx.empresaA, 'Pessoa Ficticia');
-    const { status } = await registrar(await colaborador(id, ctx.empresaB), { tipo: 'Entrada' });
-    assert.equal(status, 404);
+    await assert.rejects(colaborador(id, ctx.empresaB), { code: 'ER_NO_REFERENCED_ROW_2' });
     assert.equal((await linhas(id)).length, 0);
 });
 

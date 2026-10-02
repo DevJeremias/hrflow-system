@@ -34,7 +34,7 @@ module.exports = async (req, res, next) => {
         const [linhas] = await db.query(
             `SELECT u.sessao_versao, f.status AS funcionario_status
              FROM usuarios u
-             LEFT JOIN funcionarios f ON f.id = u.funcionario_id
+             LEFT JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
              WHERE u.id = ?`,
             [verified.id]
         );

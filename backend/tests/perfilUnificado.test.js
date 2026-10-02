@@ -4,6 +4,7 @@
 // O perfil tem uma única API (/api/perfil): a mesma resposta para Administrador, RH e Colaborador.
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const bcrypt = require('bcryptjs');
 const express = require('express');
 const banco = require('./support/bancoDeTeste');
 const { criarUsuario } = require('./support/sessao');
@@ -59,8 +60,7 @@ test.before(async () => {
 
     ctx.colaborador = await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador', funcionarioId: ctx.funcionario });
     ctx.admin = await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Administrador' });
-    // Vínculo para um funcionário de outra empresa: dado inconsistente, que não pode vazar.
-    ctx.cruzado = await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador', funcionarioId: ctx.funcionarioDeOutraEmpresa });
+    ctx.cruzado = await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador' });
 
     const app = express();
     app.use('/api/auth', authRoutes);
@@ -130,11 +130,54 @@ test('o avatar gravado volta no perfil e na sessão, para o administrador e para
     }
 });
 
-test('não mostra o funcionário de outra empresa mesmo com o vínculo inconsistente', { skip: semBanco }, async () => {
-    const { status, corpo } = await chamar('GET', '/perfil/meus-dados', ctx.cruzado.token);
-    assert.equal(status, 200);
-    assert.equal(corpo.vinculado, false);
-    assert.equal(corpo.banco, null);
-    assert.equal(corpo.cpf, null);
-    assert.notEqual(corpo.nome, 'Eva Externa Ficticia');
+test('o banco recusa vincular usuário e funcionário de empresas diferentes', { skip: semBanco }, async () => {
+    await assert.rejects(
+        db.query(
+            'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id, funcionario_id) VALUES (?, ?, ?, ?, ?, ?)',
+            ['Usuário Cruzado Fictício', 'cruzado.insert@exemplo.invalid', 'hash-ficticio', 'Colaborador', ctx.empresaA, ctx.funcionarioDeOutraEmpresa]
+        ),
+        { code: 'ER_NO_REFERENCED_ROW_2' }
+    );
+});
+
+test('login, sessão e atualização de perfil não acessam funcionário de outra empresa mesmo com vínculo legado inconsistente', { skip: semBanco }, async () => {
+    const senha = 'senha-ficticia-regressao';
+    const hash = await bcrypt.hash(senha, 4);
+    const connection = await db.getConnection();
+    try {
+        await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+        await connection.query('UPDATE usuarios SET funcionario_id = ?, senha = ? WHERE id = ?', [
+            ctx.funcionarioDeOutraEmpresa, hash, ctx.cruzado.usuario.id,
+        ]);
+        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+    } finally {
+        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+        connection.release();
+    }
+
+    const login = await fetch(`${baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: ctx.cruzado.usuario.email, senha }),
+    });
+    const credencial = await login.json();
+    assert.equal(login.status, 200);
+    assert.equal(credencial.nome, ctx.cruzado.usuario.nome);
+
+    const sessao = await chamar('GET', '/auth/sessao', credencial.token);
+    assert.equal(sessao.status, 200);
+    assert.equal(sessao.corpo.nome, ctx.cruzado.usuario.nome);
+
+    const perfil = await chamar('GET', '/perfil/meus-dados', credencial.token);
+    assert.equal(perfil.status, 200);
+    assert.equal(perfil.corpo.vinculado, false);
+    assert.equal(perfil.corpo.banco, null);
+    assert.notEqual(perfil.corpo.nome, 'Eva Externa Ficticia');
+
+    const atualizacao = await chamar('PUT', '/perfil/meus-dados', credencial.token, {
+        nome: 'Nome Atualizado Fictício', email: ctx.cruzado.usuario.email, telefone: '0000000000', avatar: null,
+    });
+    assert.equal(atualizacao.status, 200);
+    const [[funcionario]] = await db.query('SELECT nome, telefone, banco FROM funcionarios WHERE id = ?', [ctx.funcionarioDeOutraEmpresa]);
+    assert.deepEqual(funcionario, { nome: 'Eva Externa Ficticia', telefone: null, banco: 'Banco Alheio Ficticio' });
 });
