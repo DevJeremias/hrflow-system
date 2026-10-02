@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
+const { responderErro } = require('../utils/erros');
 
 exports.obterMeuPerfil = async (req, res) => {
     const funcionario_id = req.usuario.funcionario_id;
@@ -19,7 +20,7 @@ exports.obterMeuPerfil = async (req, res) => {
                     isAdmin: true
                 });
             } catch (error) {
-                return res.status(500).json({ erro: "Erro ao buscar perfil administrativo." });
+                return responderErro(res, error, "Erro ao buscar perfil administrativo.");
             }
         } else {
             return res.json({
@@ -47,19 +48,15 @@ exports.obterMeuPerfil = async (req, res) => {
         
         res.json({ ...rows[0], isAdmin: false });
     } catch (error) {
-        res.status(500).json({ erro: "Erro interno ao buscar perfil." });
+        responderErro(res, error, "Erro interno ao buscar perfil.");
     }
 };
 
 exports.atualizarMeusDados = async (req, res) => {
     // Agora aceitamos a alteração de Nome diretamente
-    const { nome, email, telefone, avatar } = req.body;
+    const { nome, email, telefone, avatar } = req.dadosValidados.body;
     const usuario_id = req.usuario.id;
     const funcionario_id = req.usuario.funcionario_id;
-
-    if (!email || !nome) {
-        return res.status(400).json({ erro: "Nome e e-mail são obrigatórios." });
-    }
 
     const connection = await db.getConnection();
     try {
@@ -72,13 +69,13 @@ exports.atualizarMeusDados = async (req, res) => {
         }
 
         // Atualiza a tabela de usuários (Aplica-se ao Admin e login do Colaborador)
-        await connection.query('UPDATE usuarios SET email = ?, nome = ?, avatar = ? WHERE id = ?', [email, nome, avatar || null, usuario_id]);
+        await connection.query('UPDATE usuarios SET email = ?, nome = ?, avatar = ? WHERE id = ?', [email, nome, avatar, usuario_id]);
 
         // Sincroniza a tabela de RH (Aplica-se apenas ao Colaborador)
         if (funcionario_id) {
             await connection.query(
                 'UPDATE funcionarios SET email = ?, nome = ?, telefone = ?, avatar = ? WHERE id = ?', 
-                [email, nome, telefone || null, avatar || null, funcionario_id]
+                [email, nome, telefone, avatar, funcionario_id]
             );
         }
 
@@ -86,17 +83,15 @@ exports.atualizarMeusDados = async (req, res) => {
         res.json({ mensagem: "Os seus dados foram atualizados com sucesso!" });
     } catch (error) {
         await connection.rollback();
-        res.status(500).json({ erro: "Erro interno ao atualizar os dados." });
+        responderErro(res, error, "Erro interno ao atualizar os dados.");
     } finally {
         connection.release();
     }
 };
 
 exports.alterarMinhaSenha = async (req, res) => {
-    const { senhaAtual, novaSenha } = req.body;
+    const { senhaAtual, novaSenha } = req.dadosValidados.body;
     const usuario_id = req.usuario.id;
-
-    if (!senhaAtual || !novaSenha) return res.status(400).json({ erro: "Senhas são obrigatórias." });
 
     try {
         const [user] = await db.query('SELECT senha FROM usuarios WHERE id = ?', [usuario_id]);
@@ -109,6 +104,6 @@ exports.alterarMinhaSenha = async (req, res) => {
         await db.query('UPDATE usuarios SET senha = ?, sessao_versao = sessao_versao + 1 WHERE id = ?', [senhaCriptografada, usuario_id]);
         res.json({ mensagem: "Senha atualizada com sucesso! Entre novamente." });
     } catch (error) {
-        res.status(500).json({ erro: "Erro interno ao trocar a senha." });
+        responderErro(res, error, "Erro interno ao trocar a senha.");
     }
 };

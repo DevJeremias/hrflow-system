@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const db = require('./config/db');
 const { interpretarTrustProxy } = require('./utils/trustProxy');
+const tratarErros = require('./middlewares/tratarErros');
 
 // Importação das Rotas
 const authRoutes = require('./routes/authRoutes');
@@ -23,14 +24,14 @@ const app = express();
 app.set('trust proxy', interpretarTrustProxy(process.env.TRUST_PROXY));
 
 // Middlewares Globais
-app.use(cors());
+app.use(cors({ exposedHeaders: ['X-Total-Count'] }));
 
 // Autenticação vem antes do parser global: tem corpo pequeno e limite próprio (middlewares/limitesAuth.js)
 app.use('/api/auth', authRoutes);
 
-// CORREÇÃO CRÍTICA AQUI: Aumentando o limite para suportar imagens Base64
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// O maior corpo legítimo é o avatar em base64: 2 MB de imagem viram cerca de 2,7 MB de texto (utils/validacaoAvatar.js)
+app.use(express.json({ limit: '4mb' }));
+app.use(express.urlencoded({ limit: '4mb', extended: true }));
 
 // Rota de Teste de Conexão com Banco
 db.query('SELECT 1 + 1 AS result')
@@ -51,6 +52,9 @@ app.use('/api/usuarios', authMiddleware, usuarioRoutes);
 app.get('/api', (req, res) => {
     res.json({ mensagem: 'API do HRFlow está online e protegida! 🚀' });
 });
+
+// Precisa vir depois de todas as rotas: devolve JSON para os erros dos parsers e dos controllers
+app.use(tratarErros);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

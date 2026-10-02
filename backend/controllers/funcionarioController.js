@@ -1,6 +1,8 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { cargoDaEmpresa, departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
+const { responderErro } = require('../utils/erros');
+const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
 
 // Devolve a mensagem de erro quando cargo ou departamento informado não é da empresa.
 const validarReferencias = async (executor, cargo_id, departamento_id, empresa_id) => {
@@ -22,12 +24,14 @@ exports.listarFuncionarios = async (req, res) => {
             LEFT JOIN cargos c ON f.cargo_id = c.id AND c.empresa_id = f.empresa_id
             LEFT JOIN departamentos d ON f.departamento_id = d.id AND d.empresa_id = f.empresa_id
             WHERE f.empresa_id = ?
+            ORDER BY f.id
+            LIMIT ? OFFSET ?
         `;
-        const [rows] = await db.query(sql, [empresa_id]);
-        res.json(rows);
+        const [rows] = await db.query(sql, [empresa_id, ...limiteEDeslocamento(req.dadosValidados.query)]);
+        const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM funcionarios WHERE empresa_id = ?', [empresa_id]);
+        enviarPagina(res, rows, total);
     } catch (error) {
-        console.error("Erro ao listar funcionários:", error);
-        res.status(500).json({ erro: "Erro ao buscar funcionários." });
+        responderErro(res, error, "Erro ao buscar funcionários.");
     }
 };
 
@@ -38,11 +42,7 @@ exports.criarFuncionario = async (req, res) => {
         nome, cpf, email, telefone, data_admissao, data_nascimento, 
         endereco, banco, agencia, conta, tipo_conta, 
         cargo_id, departamento_id, tipo_contrato, salario_base, senha 
-    } = req.body;
-
-    if (!nome || !email || !senha) {
-        return res.status(400).json({ erro: "Nome, e-mail e senha são campos obrigatórios." });
-    }
+    } = req.dadosValidados.body;
 
     const connection = await db.getConnection();
     try {
@@ -71,10 +71,10 @@ exports.criarFuncionario = async (req, res) => {
         `;
         
         const [resultFunc] = await connection.query(sqlFuncionario, [
-            nome, cpf || null, email, telefone || null, data_admissao || null, 
-            data_nascimento || null, endereco || null, banco || null, agencia || null, 
-            conta || null, tipo_conta || null, cargo_id || null, departamento_id || null, 
-            tipo_contrato || null, salario_base || null, empresa_id
+            nome, cpf, email, telefone, data_admissao, 
+            data_nascimento, endereco, banco, agencia, 
+            conta, tipo_conta, cargo_id, departamento_id, 
+            tipo_contrato, salario_base, empresa_id
         ]);
 
         const funcionarioId = resultFunc.insertId;
@@ -94,21 +94,20 @@ exports.criarFuncionario = async (req, res) => {
 
     } catch (error) {
         await connection.rollback();
-        console.error("Erro ao criar colaborador:", error);
-        res.status(500).json({ erro: "Erro interno ao processar o cadastro." });
+        responderErro(res, error, "Erro interno ao processar o cadastro.");
     } finally {
         connection.release();
     }
 };
 
 exports.atualizarFuncionario = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.dadosValidados.params;
     const empresa_id = req.usuario.empresa_id;
     const { 
         nome, cpf, email, telefone, data_admissao, data_nascimento, 
         endereco, banco, agencia, conta, tipo_conta,
         cargo_id, departamento_id, tipo_contrato, salario_base, status 
-    } = req.body;
+    } = req.dadosValidados.body;
 
     const connection = await db.getConnection();
     try {
@@ -128,12 +127,17 @@ exports.atualizarFuncionario = async (req, res) => {
             WHERE id = ? AND empresa_id = ?
         `;
         
-        await connection.query(sql, [
-            nome, cpf || null, email, telefone || null, data_admissao || null, data_nascimento || null, 
-            endereco || null, banco || null, agencia || null, conta || null, tipo_conta || null,
-            cargo_id || null, departamento_id || null, tipo_contrato || null, salario_base || null, 
-            status || 'Ativo', id, empresa_id
+        const [result] = await connection.query(sql, [
+            nome, cpf, email, telefone, data_admissao, data_nascimento, 
+            endereco, banco, agencia, conta, tipo_conta,
+            cargo_id, departamento_id, tipo_contrato, salario_base, 
+            status, id, empresa_id
         ]);
+
+        if (result.affectedRows === 0) {
+            await connection.rollback();
+            return res.status(404).json({ erro: "Funcionário não encontrado." });
+        }
 
         // Sincroniza o e-mail e o nome atualizado na tabela de credenciais
         await connection.query('UPDATE usuarios SET email = ?, nome = ? WHERE funcionario_id = ? AND empresa_id = ?', [email, nome, id, empresa_id]);
@@ -147,15 +151,14 @@ exports.atualizarFuncionario = async (req, res) => {
         res.json({ mensagem: "Funcionário atualizado com sucesso!" });
     } catch (error) {
         await connection.rollback();
-        console.error("Erro ao atualizar funcionário:", error);
-        res.status(500).json({ erro: "Erro ao modificar o funcionário." });
+        responderErro(res, error, "Erro ao modificar o funcionário.");
     } finally {
         connection.release();
     }
 };
 
 exports.deletarFuncionario = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.dadosValidados.params;
     const empresa_id = req.usuario.empresa_id;
 
     const connection = await db.getConnection();
@@ -175,8 +178,7 @@ exports.deletarFuncionario = async (req, res) => {
         res.json({ mensagem: "Funcionário removido com sucesso!" });
     } catch (error) {
         await connection.rollback();
-        console.error("Erro ao deletar funcionário:", error);
-        res.status(500).json({ erro: "Erro ao remover o funcionário." });
+        responderErro(res, error, "Erro ao remover o funcionário.");
     } finally {
         connection.release();
     }

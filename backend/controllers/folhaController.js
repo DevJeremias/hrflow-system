@@ -1,4 +1,6 @@
 const db = require('../config/db');
+const { responderErro } = require('../utils/erros');
+const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
 
 exports.processarFolha = async (req, res) => {
     try {
@@ -10,8 +12,13 @@ exports.processarFolha = async (req, res) => {
             LEFT JOIN cargos c ON f.cargo_id = c.id
             LEFT JOIN departamentos d ON f.departamento_id = d.id
             WHERE f.empresa_id = ? AND f.status = 'Ativo'
+            ORDER BY f.id
+            LIMIT ? OFFSET ?
         `;
-        const [funcionarios] = await db.query(sql, [empresa_id]);
+        const [funcionarios] = await db.query(sql, [empresa_id, ...limiteEDeslocamento(req.dadosValidados.query)]);
+        const [[{ total }]] = await db.query(
+            "SELECT COUNT(*) AS total FROM funcionarios WHERE empresa_id = ? AND status = 'Ativo'", [empresa_id]
+        );
 
         const folhaProcessada = funcionarios.map(emp => {
             const baseSalary = parseFloat(emp.salario_base) || 0;
@@ -34,10 +41,9 @@ exports.processarFolha = async (req, res) => {
             };
         });
 
-        res.json(folhaProcessada);
+        enviarPagina(res, folhaProcessada, total);
     } catch (error) {
-        console.error("Erro ao processar folha:", error);
-        res.status(500).json({ erro: "Erro ao processar folha de pagamento" });
+        responderErro(res, error, "Erro ao processar folha de pagamento");
     }
 };
 
@@ -81,8 +87,7 @@ exports.meuHolerite = async (req, res) => {
         }]);
 
     } catch (error) {
-        console.error("Erro ao buscar meu holerite:", error);
-        res.status(500).json({ erro: "Erro ao buscar holerite" });
+        responderErro(res, error, "Erro ao buscar holerite");
     }
 };
 
