@@ -14,6 +14,7 @@ import {
   Command
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { ehGestao } from '../utils/sessao';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -39,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
   ];
 
-  const menuItems = user?.role === 'Administrador' ? adminMenu : employeeMenu;
+  const menuItems = ehGestao(user?.role) ? adminMenu : employeeMenu;
   const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : 'U';
 
   return (

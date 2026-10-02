@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import { Perfil, rotaInicial } from './utils/sessao';
+import ErrorAlert from './components/ErrorAlert';
 
 import Landing from './pages/Landing/Home';
 import Login from './pages/Auth/Login';
@@ -16,14 +18,29 @@ import Payslips from './pages/Portal/Payslips';
 import Requests from './pages/Portal/Requests';
 import Profile from './pages/Portal/Profile';
 
-const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole?: string }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: readonly Perfil[] }) => {
+  const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  
-  if (allowedRole && user?.role !== allowedRole) {
-    return <Navigate to={user?.role === 'Administrador' ? '/admin' : '/meu-painel'} replace />;
+
+  // O servidor não recusou a sessão, só não foi possível confirmá-la: não é motivo para deslogar.
+  if (sessionError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6 bg-slate-50">
+        <div className="w-full max-w-md space-y-4">
+          <ErrorAlert message={sessionError} onRetry={retrySession} />
+          <button onClick={logout} className="text-sm font-bold text-slate-500 hover:text-slate-700 underline underline-offset-4">
+            Sair e entrar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to={rotaInicial(user.role)} replace />;
   }
 
   return <>{children}</>;
@@ -38,7 +55,7 @@ function App() {
       <Route 
         path="/admin" 
         element={
-          <ProtectedRoute allowedRole="Administrador">
+          <ProtectedRoute allowedRoles={['Administrador', 'RH']}>
             <Layout /> 
           </ProtectedRoute>
         }
@@ -54,7 +71,7 @@ function App() {
       <Route 
         path="/meu-painel" 
         element={
-          <ProtectedRoute allowedRole="Colaborador">
+          <ProtectedRoute allowedRoles={['Colaborador']}>
             <Layout /> 
           </ProtectedRoute>
         }

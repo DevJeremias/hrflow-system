@@ -10,7 +10,7 @@ const Login: React.FC = () => {
   const [erro, setErro] = useState(''); 
   const [isSubmitting, setIsSubmitting] = useState(false); 
   
-  const { login } = useAuth();
+  const { login, sessionNotice } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +106,13 @@ const Login: React.FC = () => {
                 Esqueceu a senha?
               </a>
             </div>
+
+            {sessionNotice && !erro && (
+              <div role="status" className="flex items-center gap-2 p-4 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold border border-amber-100">
+                <AlertCircle size={18} />
+                <p>{sessionNotice}</p>
+              </div>
+            )}
 
             {erro && (
               <div className="flex items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100">

@@ -59,8 +59,10 @@ hrflow-system/
     ├── src/
     │   ├── components/    # Componentes React (Admin, Portal, UI)
     │   ├── services/      # Comunicação com a API (fetch)
-    │   ├── AuthContext.tsx# Gestão de estado global de Autenticação
+    │   ├── contexts/      # AuthContext: sessão (hidratada por GET /api/auth/sessao)
+    │   ├── utils/         # Validação da sessão e perfis (sessao.ts)
     │   └── App.tsx        # Rotas do Front-end (React Router)
+    ├── tests/             # Testes do cliente HTTP e da sessão (node:test, sem navegador)
     ├── vite.config.ts
     └── package.json
 
@@ -169,9 +171,13 @@ HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflo
 
 `HRFLOW_TEST_DB_PORT` é opcional (padrão 3306). Sem `HRFLOW_TEST_DB_HOST` os testes são marcados como ignorados, nunca como aprovados.
 
+### Testes do front-end
+
+Os testes do cliente HTTP e da validação da sessão rodam no Node, sem banco e sem navegador (`bun run test` na raiz roda o back-end e depois o front-end; `npm run test --workspace frontend` roda só o front-end).
+
 ### Verificação completa (`verify`)
 
-`bun run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes de back-end, todas as etapas, e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam.
+`bun run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes (back-end e front-end), todas as etapas, e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam.
 
 ```bash
 HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflow-dev bun run verify
@@ -183,7 +189,6 @@ Sobre o lint do front-end (`frontend/eslint.config.js`):
 
 * Cobre todo o código ativo, inclusive `.ts` e `.tsx`, com `--max-warnings 0`.
 * `eslint-suppressions.json` registra as violações que já existiam de `no-explicit-any` e de algumas regras do React que exigem mudar o comportamento do componente para serem corrigidas. Elas não bloqueiam, mas nenhuma violação nova passa. Ao corrigir uma, rode `npm run lint:prune --workspace frontend` para tirá-la da lista; o lint avisa quando sobra supressão que não ocorre mais.
-
 ---
 
 ## 👥 Equipa de Desenvolvimento

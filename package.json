@@ -15,7 +15,7 @@
     "lint": "node scripts/run-workspace.mjs frontend lint",
     "typecheck": "node scripts/run-workspace.mjs frontend typecheck",
     "verify": "node scripts/verify.mjs",
-    "test": "node scripts/run-workspace.mjs backend test",
+    "test": "node scripts/run-workspace.mjs backend test && node scripts/run-workspace.mjs frontend test",
     "db:create": "node scripts/db.mjs create",
     "db:migrate": "node scripts/db.mjs migrate",
     "db:status": "node scripts/db.mjs status",
