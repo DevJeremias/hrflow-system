@@ -1,20 +1,80 @@
 // Todo o SQL do ponto. Devolve linhas como o MySQL as entrega (instantes em segundos Unix) e não
 // conhece HTTP nem regra de negócio. As consultas rodam no pool ou, dentro de emTransacao, numa
 // conexão reservada.
-const db = require('../../config/db');
+import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import db from '../../config/db.js';
+import type { TipoRegistro } from './ponto.regras.ts';
 
-const criarRepositorio = (executor) => ({
+export interface UltimoRegistro extends RowDataPacket {
+    tipo_registro: TipoRegistro;
+    instante: number;
+}
+
+export interface RegistroDoColaborador extends UltimoRegistro {
+    id: number;
+    observacao: string | null;
+}
+
+// latitude e longitude são DECIMAL: o mysql2 as entrega como texto.
+export interface RegistroDaEmpresa extends RegistroDoColaborador {
+    funcionario_id: number;
+    empresa_id: number;
+    latitude: string | null;
+    longitude: string | null;
+    nome_funcionario: string;
+}
+
+export interface JustificativaDoDia extends RowDataPacket {
+    dia: string;
+    texto: string;
+}
+
+export interface JustificativaDaEmpresa extends RowDataPacket {
+    id: number;
+    funcionario_id: number;
+    nome_funcionario: string;
+    date: string;
+    note: string;
+    criado: number;
+    atualizado: number;
+}
+
+export interface NovoRegistro {
+    funcionarioId: number;
+    empresaId: number;
+    tipo: TipoRegistro;
+    latitude: number | null;
+    longitude: number | null;
+    instante: number;
+    observacao: string;
+}
+
+export interface NovaJustificativa {
+    empresaId: number;
+    funcionarioId: number;
+    data: string;
+    texto: string;
+}
+
+export interface FiltroDeJustificativas {
+    empresaId: number;
+    de: string;
+    ate: string;
+    funcionarioId: number | null;
+}
+
+const criarRepositorio = (executor: Connection) => ({
     // Com `travar`, bloqueia a linha do colaborador até o fim da transação.
-    async colaboradorExiste(funcionarioId, empresaId, { travar = false } = {}) {
-        const [linhas] = await executor.query(
+    async colaboradorExiste(funcionarioId: number | string, empresaId: number, { travar = false } = {}): Promise<boolean> {
+        const [linhas] = await executor.query<RowDataPacket[]>(
             `SELECT id FROM funcionarios WHERE id = ? AND empresa_id = ?${travar ? ' FOR UPDATE' : ''}`,
             [funcionarioId, empresaId]
         );
         return linhas.length > 0;
     },
 
-    async ultimoRegistroDoDia(funcionarioId, empresaId, inicio, fim) {
-        const [ultimos] = await executor.query(
+    async ultimoRegistroDoDia(funcionarioId: number, empresaId: number, inicio: number, fim: number): Promise<UltimoRegistro | undefined> {
+        const [ultimos] = await executor.query<UltimoRegistro[]>(
             `SELECT tipo_registro, UNIX_TIMESTAMP(data_hora_oficial) AS instante
              FROM registro_pontos
              WHERE funcionario_id = ? AND empresa_id = ?
@@ -26,8 +86,8 @@ const criarRepositorio = (executor) => ({
         return ultimos[0];
     },
 
-    async inserirRegistro({ funcionarioId, empresaId, tipo, latitude, longitude, instante, observacao }) {
-        const [resultado] = await executor.query(
+    async inserirRegistro({ funcionarioId, empresaId, tipo, latitude, longitude, instante, observacao }: NovoRegistro): Promise<number> {
+        const [resultado] = await executor.query<ResultSetHeader>(
             `INSERT INTO registro_pontos
             (funcionario_id, empresa_id, tipo_registro, latitude, longitude, data_hora_oficial, observacao)
             VALUES (?, ?, ?, ?, ?, FROM_UNIXTIME(?), ?)`,
@@ -37,8 +97,8 @@ const criarRepositorio = (executor) => ({
     },
 
     // Registros do colaborador entre dois instantes, do mais antigo ao mais novo.
-    async registrosDoPeriodo(funcionarioId, empresaId, inicio, fim) {
-        const [pontos] = await executor.query(
+    async registrosDoPeriodo(funcionarioId: number | string, empresaId: number, inicio: number, fim: number): Promise<RegistroDoColaborador[]> {
+        const [pontos] = await executor.query<RegistroDoColaborador[]>(
             `SELECT id, tipo_registro, UNIX_TIMESTAMP(data_hora_oficial) AS instante, observacao
              FROM registro_pontos
              WHERE funcionario_id = ? AND empresa_id = ?
@@ -49,8 +109,8 @@ const criarRepositorio = (executor) => ({
         return pontos;
     },
 
-    async registrosDaEmpresa(empresaId) {
-        const [pontos] = await executor.query(
+    async registrosDaEmpresa(empresaId: number): Promise<RegistroDaEmpresa[]> {
+        const [pontos] = await executor.query<RegistroDaEmpresa[]>(
             `SELECT p.id, p.funcionario_id, p.empresa_id, p.tipo_registro, p.latitude, p.longitude, p.observacao,
                     UNIX_TIMESTAMP(p.data_hora_oficial) AS instante, f.nome as nome_funcionario
              FROM registro_pontos p
@@ -63,8 +123,8 @@ const criarRepositorio = (executor) => ({
     },
 
     // Justificativas do colaborador com data de referência em [de, ate), datas 'AAAA-MM-DD'.
-    async justificativasDoColaborador(funcionarioId, empresaId, de, ate) {
-        const [justificativas] = await executor.query(
+    async justificativasDoColaborador(funcionarioId: number | string, empresaId: number, de: string, ate: string): Promise<JustificativaDoDia[]> {
+        const [justificativas] = await executor.query<JustificativaDoDia[]>(
             `SELECT DATE_FORMAT(data_referencia, '%Y-%m-%d') AS dia, texto
              FROM justificativas_ponto
              WHERE funcionario_id = ? AND empresa_id = ? AND data_referencia >= ? AND data_referencia < ?`,
@@ -74,7 +134,7 @@ const criarRepositorio = (executor) => ({
     },
 
     // Uma justificativa por colaborador e dia: reenviar substitui o texto.
-    async salvarJustificativa({ empresaId, funcionarioId, data, texto }) {
+    async salvarJustificativa({ empresaId, funcionarioId, data, texto }: NovaJustificativa): Promise<void> {
         await executor.query(
             `INSERT INTO justificativas_ponto (empresa_id, funcionario_id, data_referencia, texto)
              VALUES (?, ?, ?, ?)
@@ -83,8 +143,8 @@ const criarRepositorio = (executor) => ({
         );
     },
 
-    async instanteDaJustificativa(funcionarioId, data) {
-        const [[salva]] = await executor.query(
+    async instanteDaJustificativa(funcionarioId: number, data: string): Promise<number> {
+        const [[salva]] = await executor.query<(RowDataPacket & { instante: number })[]>(
             `SELECT UNIX_TIMESTAMP(atualizado_em) AS instante
              FROM justificativas_ponto WHERE funcionario_id = ? AND data_referencia = ?`,
             [funcionarioId, data]
@@ -93,15 +153,15 @@ const criarRepositorio = (executor) => ({
     },
 
     // Justificativas da empresa em [de, ate), de todos os colaboradores ou só de `funcionarioId`.
-    async justificativasDaEmpresa({ empresaId, de, ate, funcionarioId }) {
+    async justificativasDaEmpresa({ empresaId, de, ate, funcionarioId }: FiltroDeJustificativas): Promise<JustificativaDaEmpresa[]> {
         const filtros = ['j.empresa_id = ?', 'j.data_referencia >= ?', 'j.data_referencia < ?'];
-        const valores = [empresaId, de, ate];
+        const valores: Array<number | string> = [empresaId, de, ate];
         if (funcionarioId) {
             filtros.push('j.funcionario_id = ?');
             valores.push(funcionarioId);
         }
 
-        const [linhas] = await executor.query(
+        const [linhas] = await executor.query<JustificativaDaEmpresa[]>(
             `SELECT j.id, j.funcionario_id, f.nome AS nome_funcionario,
                     DATE_FORMAT(j.data_referencia, '%Y-%m-%d') AS date, j.texto AS note,
                     UNIX_TIMESTAMP(j.criado_em) AS criado, UNIX_TIMESTAMP(j.atualizado_em) AS atualizado
@@ -115,9 +175,11 @@ const criarRepositorio = (executor) => ({
     },
 });
 
+export type RepositorioDoPonto = ReturnType<typeof criarRepositorio>;
+
 // Roda `trabalho` numa conexão em transação: confirma se terminar, desfaz se lançar erro.
 // O repositório recebido usa essa conexão.
-const emTransacao = async (trabalho) => {
+export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDoPonto) => Promise<T>): Promise<T> => {
     const conexao = await db.getConnection();
     try {
         await conexao.beginTransaction();
@@ -132,4 +194,14 @@ const emTransacao = async (trabalho) => {
     }
 };
 
-module.exports = { ...criarRepositorio(db), emTransacao };
+export const {
+    colaboradorExiste,
+    ultimoRegistroDoDia,
+    inserirRegistro,
+    registrosDoPeriodo,
+    registrosDaEmpresa,
+    justificativasDoColaborador,
+    salvarJustificativa,
+    instanteDaJustificativa,
+    justificativasDaEmpresa,
+} = criarRepositorio(db);

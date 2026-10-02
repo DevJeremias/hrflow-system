@@ -84,7 +84,7 @@ Primeira execução em menos de 15 minutos, a partir de um clone novo e sem nenh
 
 ### Pré-requisitos
 
-* [Node.js](https://nodejs.org/) 22.12.0 ou superior, conforme `.node-version` e a exigência do Vite 8
+* [Node.js](https://nodejs.org/) 22.18.0 ou superior, conforme `.node-version`: o Vite 8 pede 22.12 e o back-end roda TypeScript direto no Node, recurso ligado por padrão a partir da 22.18
 * [Bun](https://bun.sh/) para a instalação recomendada (o npm continua suportado)
 * MySQL 8 ou superior. Se não houver um instalado, o caminho mais curto é o [Docker](https://docs.docker.com/get-docker/), usado no passo 2.
 

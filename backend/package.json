@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "typecheck": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -21,5 +22,10 @@
     "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.18.2",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.5",
+    "typescript": "~6.0"
   }
 }

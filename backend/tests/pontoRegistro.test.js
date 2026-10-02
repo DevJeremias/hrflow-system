@@ -9,8 +9,8 @@ const { criarUsuario } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
-const pontoRoutes = require('../modules/ponto/ponto.routes');
-const { relogio } = require('../modules/ponto/ponto.service');
+const { pontoRoutes } = require('../modules/ponto/index.ts');
+const { relogio } = require('../modules/ponto/ponto.service.ts');
 
 const semBanco = banco.skip;
 const ctx = {};
