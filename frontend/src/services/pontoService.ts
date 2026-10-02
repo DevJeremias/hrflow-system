@@ -23,6 +23,15 @@ export interface HistoryDay {
   positiveAdjust: string;
 }
 
+export interface CompanyPointRecord {
+  id: number;
+  funcionario_id: number;
+  tipo_registro: string;
+  nome_funcionario: string;
+  date: string;
+  time: string;
+}
+
 export interface WeeklyTotal {
   id: string;
   weekLabel: string;
@@ -40,6 +49,15 @@ export interface WeeklyTotal {
 const API_URL = '/ponto'; 
 
 export const pontoService = {
+  getRegistrosDaEmpresa: async (): Promise<CompanyPointRecord[]> => {
+    const data = await httpClient<CompanyPointRecord[]>(API_URL, {
+      auth: true,
+      errorMessage: 'Erro ao buscar os registros de ponto'
+    });
+    if (!Array.isArray(data)) throw new Error('Resposta inválida ao buscar os registros de ponto');
+    return data;
+  },
+
   
   getRegistrosHoje: async (funcionarioId: number): Promise<PointRecord[]> => {
     const data = await httpClient(`${API_URL}/hoje/${funcionarioId}`, { auth: true, errorMessage: 'Erro ao buscar os registros de hoje' });
