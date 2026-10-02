@@ -102,6 +102,14 @@ const enumerado = (rotulo, valores) => z.enum(valores, {
 // O corpo ausente ou que não é objeto (o parser deixa req.body indefinido sem JSON) recebe uma mensagem própria.
 const corpo = (formato) => z.object(formato, { error: 'Envie os dados em JSON.' });
 
+// Como `corpo`, mas recusa chave fora do formato: o que o zod descartaria em silêncio vira 400,
+// para o chamador não achar que um dado foi gravado quando a API o ignorou.
+const corpoEstrito = (formato) => z.strictObject(formato, {
+    error: (issue) => (issue.code === 'unrecognized_keys'
+        ? `Campo desconhecido: ${issue.keys.join(', ')}.`
+        : 'Envie os dados em JSON.'),
+});
+
 module.exports = {
-    z, ausente, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpo, hoje, campo,
+    z, ausente, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpo, corpoEstrito, hoje, campo,
 };

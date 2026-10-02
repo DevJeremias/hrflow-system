@@ -19,6 +19,8 @@ const recusa = (schema, entrada, esperado) => {
 };
 
 const funcionarioValido = () => ({ nome: 'Pessoa Ficticia', email: 'Pessoa@Exemplo.invalid', senha: 'senha-ficticia' });
+// A edição não aceita senha (quem troca é o próprio usuário no perfil).
+const edicaoValida = () => ({ nome: 'Pessoa Ficticia', email: 'Pessoa@Exemplo.invalid' });
 
 describe('schema de cadastro de funcionário', () => {
     it('normaliza uma entrada completa', () => {
@@ -26,7 +28,7 @@ describe('schema de cadastro de funcionário', () => {
             ...funcionarioValido(), nome: '  Pessoa Ficticia  ', cpf: '000.000.000-01', telefone: '(00) 90000-0000',
             data_nascimento: '1990-05-17', data_admissao: '2024-02-29', endereco: 'Rua Ficticia, 1', banco: 'Banco Ficticio',
             agencia: '0001', conta: '12345-6', tipo_conta: 'Corrente', cargo_id: '7', departamento_id: 3,
-            tipo_contrato: 'CLT', salario_base: '3500.50', status: 'Qualquer',
+            nivel: ' Pleno ', tipo_contrato: 'CLT', salario_base: '3500.50', status: 'Qualquer',
         });
         assert.equal(success, true);
         assert.equal(data.nome, 'Pessoa Ficticia');
@@ -34,6 +36,7 @@ describe('schema de cadastro de funcionário', () => {
         assert.equal(data.cargo_id, 7);
         assert.equal(data.salario_base, 3500.5);
         assert.equal(data.status, undefined, 'o status do cadastro novo não vem do cliente');
+        assert.equal(data.nivel, 'Pleno');
     });
 
     it('trata campos em branco como ausentes, como os formulários enviam', () => {
@@ -91,19 +94,19 @@ describe('schema de cadastro de funcionário', () => {
 
 describe('schema de edição de funcionário', () => {
     it('assume Ativo quando o status não vem', () => {
-        assert.equal(atualizarFuncionario.safeParse(funcionarioValido()).data.status, 'Ativo');
-        assert.equal(atualizarFuncionario.safeParse({ ...funcionarioValido(), status: '' }).data.status, 'Ativo');
+        assert.equal(atualizarFuncionario.safeParse(edicaoValida()).data.status, 'Ativo');
+        assert.equal(atualizarFuncionario.safeParse({ ...edicaoValida(), status: '' }).data.status, 'Ativo');
     });
 
     it('aceita os três status do banco', () => {
         for (const status of ['Ativo', 'Inativo', 'Férias']) {
-            assert.equal(atualizarFuncionario.safeParse({ ...funcionarioValido(), status }).data.status, status);
+            assert.equal(atualizarFuncionario.safeParse({ ...edicaoValida(), status }).data.status, status);
         }
     });
 
-    it('recusa status fora do ENUM do banco', () => recusa(atualizarFuncionario, { ...funcionarioValido(), status: 'Demitido' }, /Status deve ser um destes valores: Ativo, Inativo, Férias/));
+    it('recusa status fora do ENUM do banco', () => recusa(atualizarFuncionario, { ...edicaoValida(), status: 'Demitido' }, /Status deve ser um destes valores: Ativo, Inativo, Férias/));
     it('exige e-mail', () => recusa(atualizarFuncionario, { nome: 'Pessoa Ficticia' }, /E-mail é obrigatório/));
-    it('ignora a senha enviada junto', () => assert.equal(atualizarFuncionario.safeParse(funcionarioValido()).data.senha, undefined));
+    it('recusa a senha enviada junto, em vez de ignorá-la em silêncio', () => recusa(atualizarFuncionario, { ...edicaoValida(), senha: 'senha-ficticia' }, /Campo desconhecido: senha/));
 });
 
 describe('schemas de estrutura', () => {

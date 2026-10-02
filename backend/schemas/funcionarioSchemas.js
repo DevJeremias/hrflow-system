@@ -1,4 +1,4 @@
-const { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpo, hoje } = require('./comum');
+const { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } = require('./comum');
 const { LIMITES } = require('../utils/validacaoAuth');
 
 const STATUS = ['Ativo', 'Inativo', 'Férias'];
@@ -27,6 +27,7 @@ const dadosDoFuncionario = {
     tipo_conta: opcional(enumerado('Tipo de conta', TIPOS_CONTA)),
     cargo_id: opcional(inteiroPositivo('Cargo')),
     departamento_id: opcional(inteiroPositivo('Departamento')),
+    nivel: opcional(texto('Nível', 50)),
     tipo_contrato: opcional(enumerado('Tipo de contrato', TIPOS_CONTRATO)),
     salario_base: opcional(dinheiro('Salário base')),
 };
@@ -46,10 +47,10 @@ const admissaoDepoisDoNascimento = (ctx) => {
 
 const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 
-// O status do cadastro novo é sempre Ativo: o campo, se enviado, é ignorado.
-const criarFuncionario = corpo({ ...dadosDoFuncionario, senha: senhaNova }).check(admissaoDepoisDoNascimento);
+// O status do cadastro novo é sempre Ativo: o campo, se enviado, é aceito e ignorado.
+const criarFuncionario = corpoEstrito({ ...dadosDoFuncionario, senha: senhaNova, status: z.unknown().optional().transform(() => undefined) }).check(admissaoDepoisDoNascimento);
 
-const atualizarFuncionario = corpo({
+const atualizarFuncionario = corpoEstrito({
     ...dadosDoFuncionario,
     status: opcional(enumerado('Status', STATUS)).transform((status) => status ?? 'Ativo'),
 }).check(admissaoDepoisDoNascimento);

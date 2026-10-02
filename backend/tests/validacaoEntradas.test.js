@@ -108,6 +108,38 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
             assert.equal(status, 201);
         });
 
+        it('grava o nível hierárquico informado no cadastro e na edição', async () => {
+            const entrada = novoFuncionario({ nivel: 'Pleno' });
+            assert.equal((await chamar('POST', '/api/funcionarios', entrada)).status, 201);
+            const [[criado]] = await pool.query('SELECT id, nivel FROM funcionarios WHERE email = ?', [entrada.email]);
+            assert.equal(criado.nivel, 'Pleno');
+
+            const { senha, ...dados } = entrada;
+            assert.ok(senha);
+            assert.equal((await chamar('PUT', `/api/funcionarios/${criado.id}`, { ...dados, nivel: 'Sênior' })).status, 200);
+            const [[editado]] = await pool.query('SELECT nivel FROM funcionarios WHERE id = ?', [criado.id]);
+            assert.equal(editado.nivel, 'Sênior');
+        });
+
+        it('recusa com 400 o campo que a API não conhece, em vez de descartá-lo', async () => {
+            for (const [metodo, caminho, extra] of [['POST', '/api/funcionarios', novoFuncionario({ rg: '1234567' })], ['PUT', `/api/funcionarios/${funcionarioColaborador}`, { nome: 'Pessoa', email: 'x.desconhecido@exemplo.invalid', perfil: 'Administrador' }]]) {
+                const funcionarios = await contar('funcionarios');
+                const { status, corpo } = await chamar(metodo, caminho, extra);
+                assert.equal(status, 400, metodo);
+                assert.match(corpo.erro, /campo desconhecido: (rg|perfil)/i);
+                assert.equal(await contar('funcionarios'), funcionarios);
+            }
+        });
+
+        it('devolve o campo do e-mail duplicado em detalhes, para a tela abrir a aba certa', async () => {
+            const entrada = novoFuncionario();
+            assert.equal((await chamar('POST', '/api/funcionarios', entrada)).status, 201);
+            const { status, corpo } = await chamar('POST', '/api/funcionarios', { ...entrada, nome: 'Outra Pessoa' });
+            assert.equal(status, 400);
+            assert.equal(corpo.erro, 'Este e-mail já está registado no sistema.');
+            assert.deepEqual(corpo.detalhes, [{ campo: 'email', mensagem: corpo.erro }]);
+        });
+
         const recusas = {
             'data de admissão inexistente': [{ data_admissao: '2024-13-45' }, /Data de admissão/],
             'admissão antes do nascimento': [{ data_nascimento: '2000-01-01', data_admissao: '1999-12-31' }, /anterior à data de nascimento/],
@@ -184,6 +216,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
             const { status, corpo } = await chamar('PUT', `/api/funcionarios/${id}`, { nome: 'Pessoa Dup', email: 'colab.validacao@exemplo.invalid' });
             assert.equal(status, 409);
             assert.match(corpo.erro, /e-mail/i);
+            assert.deepEqual(corpo.detalhes.map((detalhe) => detalhe.campo), ['email']);
             const [[linha]] = await pool.query('SELECT email FROM funcionarios WHERE id = ?', [id]);
             assert.equal(linha.email, 'dup.validacao@exemplo.invalid', 'a transação foi desfeita');
         });

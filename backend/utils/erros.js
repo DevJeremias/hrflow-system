@@ -13,11 +13,12 @@ const VALOR_INVALIDO = (error) => ({
     erro: `Algum valor informado é inválido ou excede o limite permitido${rotuloDaColuna(error)}.`,
 });
 
+const EMAIL_DUPLICADO = 'Este e-mail já está registado no sistema.';
+
 const TRADUCOES = {
-    ER_DUP_ENTRY: (error) => ({
-        status: 409,
-        erro: /email/i.test(error.sqlMessage || '') ? 'Este e-mail já está registado no sistema.' : 'Já existe um registro com estes dados.',
-    }),
+    ER_DUP_ENTRY: (error) => (/email/i.test(error.sqlMessage || '')
+        ? { status: 409, erro: EMAIL_DUPLICADO, detalhes: [{ campo: 'email', mensagem: EMAIL_DUPLICADO }] }
+        : { status: 409, erro: 'Já existe um registro com estes dados.' }),
     ER_DATA_TOO_LONG: VALOR_INVALIDO,
     ER_TRUNCATED_WRONG_VALUE: VALOR_INVALIDO,
     ER_TRUNCATED_WRONG_VALUE_FOR_FIELD: VALOR_INVALIDO,
@@ -46,10 +47,10 @@ const responderErro = (res, error, mensagem500) => {
     const traduzido = traduzirErro(error);
     if (traduzido) {
         if (traduzido.retryAfter) res.set('Retry-After', String(traduzido.retryAfter));
-        return res.status(traduzido.status).json({ erro: traduzido.erro });
+        return res.status(traduzido.status).json({ erro: traduzido.erro, ...(traduzido.detalhes && { detalhes: traduzido.detalhes }) });
     }
     console.error(`${mensagem500}:`, error);
     return res.status(500).json({ erro: mensagem500 });
 };
 
-module.exports = { traduzirErro, responderErro };
+module.exports = { traduzirErro, responderErro, EMAIL_DUPLICADO };
