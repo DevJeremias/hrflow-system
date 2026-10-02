@@ -33,7 +33,7 @@ const FOLGADOS = {
 
 describe('autenticação e cadastro contra abuso', { skip }, () => {
     const dbName = `hrflow_test_${process.pid}`;
-    const jwtSecret = crypto.randomBytes(16).toString('hex');
+    const jwtSecret = crypto.randomBytes(32).toString('hex');
     const senhaFicticia = 'senha-ficticia-1';
     let admin, pool;
     const servidores = [];
@@ -238,6 +238,18 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
             );
             const { status } = await chamar('/login', { email: 'legado@localhost', senha: 'abc' });
             assert.equal(status, 200);
+        });
+
+        it('recusa o hash armazenado quando submetido como senha', async () => {
+            const chamar = await subir();
+            const senhaHash = await require('bcryptjs').hash('abc', 4);
+            await pool.query(
+                'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
+                ['Hash Sintetico', 'hash@localhost', senhaHash, 'Colaborador', 1]
+            );
+            const [[usuario]] = await pool.query('SELECT senha FROM usuarios WHERE email = ?', ['hash@localhost']);
+            const resposta = await chamar('/login', { email: 'hash@localhost', senha: usuario.senha });
+            assert.equal(resposta.status, 401);
         });
     });
 

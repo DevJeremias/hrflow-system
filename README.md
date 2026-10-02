@@ -118,7 +118,7 @@ Login e cadastro (`/api/auth`) têm corpo limitado a 4 KB e limite de tentativas
 cp backend/.env.example backend/.env
 ```
 
-Edite `backend/.env`: preencha `DB_PASS` com a senha do passo 2 e `JWT_SECRET` com uma chave gerada por `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. `JWT_SECRET` vazio impede a API de subir. As demais variáveis já servem para o MySQL do passo 2.
+Edite `backend/.env`: preencha `DB_PASS` com a senha do passo 2 e `JWT_SECRET` com uma chave gerada por `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. `JWT_SECRET` vazio ou com menos de 32 bytes impede a API de subir. As demais variáveis já servem para o MySQL do passo 2.
 
 ### Passo 4: Banco de dados
 
