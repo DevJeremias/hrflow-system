@@ -12,12 +12,15 @@ import {
 import DepartmentCard from '../../components/Admin/OrgDepartmentCard';
 import RolesTable from '../../components/Admin/OrgRolesTable';
 import FormModal from '../../components/Admin/OrgFormModal';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const DepartmentsRoles: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'depts' | 'roles'>('depts');
   const [departments, setDepartments] = useState<Department[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState('Todos');
 
   const [modalConfig, setModalConfig] = useState<{
@@ -32,6 +35,7 @@ const DepartmentsRoles: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [deptsData, rolesData] = await Promise.all([
         getDepartments(),
@@ -40,7 +44,7 @@ const DepartmentsRoles: React.FC = () => {
       setDepartments(deptsData);
       setRoles(rolesData);
     } catch (error) {
-      console.error("Erro ao carregar estrutura organizacional:", error);
+      setLoadError(mensagemDeErro(error, 'Erro ao carregar estrutura organizacional'));
     } finally {
       setLoading(false);
     }
@@ -127,6 +131,8 @@ const DepartmentsRoles: React.FC = () => {
             <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
             <p className="font-bold">A carregar estrutura...</p>
           </div>
+        ) : loadError ? (
+          <ErrorAlert message={loadError} onRetry={loadData} />
         ) : activeTab === 'depts' ? (
           /* Visão de Departamentos (Cards) */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">

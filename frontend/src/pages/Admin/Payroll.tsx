@@ -3,26 +3,31 @@ import { CheckCircle2, Download, Filter } from 'lucide-react';
 import { generateMonthlyPayroll, EmployeePayroll } from '../../services/payrollService';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const Payroll: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [allPayrolls, setAllPayrolls] = useState<EmployeePayroll[]>([]);
   
   const [deptFilter, setDeptFilter] = useState('Todos');
   const [monthFilter, setMonthFilter] = useState('2026-04'); 
 
+  const loadPayrollData = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      setAllPayrolls(await generateMonthlyPayroll());
+    } catch (error) {
+      setAllPayrolls([]);
+      setLoadError(mensagemDeErro(error, 'Erro ao processar folha de pagamento'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadPayrollData = async () => {
-      setLoading(true);
-      try {
-        const data = await generateMonthlyPayroll();
-        setAllPayrolls(data);
-      } catch (error) {
-        console.error("Erro ao processar folha:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadPayrollData();
   }, [monthFilter]); 
 
@@ -75,6 +80,8 @@ const Payroll: React.FC = () => {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
           <p className="font-bold">Processando base de cálculo...</p>
         </div>
+      ) : loadError ? (
+        <ErrorAlert message={loadError} onRetry={loadPayrollData} />
       ) : (
         <>
           <PayrollSummaryCards metrics={dynamicMetrics} />

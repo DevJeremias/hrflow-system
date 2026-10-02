@@ -4,27 +4,31 @@ import PayslipsSummaryCards from '../../components/Portal/PayslipsMetrics';
 import PayslipsHistoryTable from '../../components/Portal/PayslipsTable';
 import HoleriteModal from '../../components/Admin/PayrollSlipModal'; 
 import { FileText } from 'lucide-react';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const MyPayslips: React.FC = () => {
   const [payslips, setPayslips] = useState<EmployeePayroll[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPayslip, setSelectedPayslip] = useState<EmployeePayroll | null>(null);
   const [selectedMonthLabel, setSelectedMonthLabel] = useState('');
 
   const monthsLabels = ['Mês Atual'];
 
+  const loadMyPayslips = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      setPayslips(await getMyPayroll());
+    } catch (error) {
+      setLoadError(mensagemDeErro(error, 'Erro ao buscar meu holerite'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadMyPayslips = async () => {
-      setLoading(true);
-      try {
-        const data = await getMyPayroll();
-        setPayslips(data);
-      } catch (error) {
-        console.error("Erro ao carregar holerite:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadMyPayslips();
   }, []);
 
@@ -48,6 +52,8 @@ const MyPayslips: React.FC = () => {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
           <p className="font-bold">A carregar demonstrativos...</p>
         </div>
+      ) : loadError ? (
+        <ErrorAlert message={loadError} onRetry={loadMyPayslips} />
       ) : payslips.length > 0 ? (
         <>
           {latestPayslip && (

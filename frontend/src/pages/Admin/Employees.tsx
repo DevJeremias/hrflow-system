@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
 import { Employee, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
+import ErrorAlert from '../../components/ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
@@ -16,9 +19,14 @@ const Employees: React.FC = () => {
 
   const loadEmployees = async () => {
     setLoading(true);
-    const data = await employeeService.getAll();
-    setEmployees(data);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      setEmployees(await employeeService.getAll());
+    } catch (error) {
+      setLoadError(mensagemDeErro(error, 'Erro ao buscar colaboradores'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async (employeeData: Partial<Employee>) => {
@@ -33,8 +41,12 @@ const Employees: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Tem a certeza que deseja excluir este colaborador?')) {
-      await employeeService.delete(id);
-      setEmployees(prev => prev.filter(emp => emp.id !== id));
+      try {
+        await employeeService.delete(id);
+        setEmployees(prev => prev.filter(emp => emp.id !== id));
+      } catch (error) {
+        alert(mensagemDeErro(error, 'Erro ao excluir colaborador.'));
+      }
     }
   };
 
@@ -88,6 +100,9 @@ const Employees: React.FC = () => {
         </div>
       </div>
 
+      {loadError && <ErrorAlert message={loadError} onRetry={loadEmployees} />}
+
+      {!loadError && (
       <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -162,6 +177,7 @@ const Employees: React.FC = () => {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };
