@@ -1,31 +1,33 @@
 const jwt = require('jsonwebtoken');
 const jwtSecret = require('../config/jwtSecret');
 const db = require('../config/db');
+const { lerTokenDaSessao, csrfValido, encerrarSessao } = require('../utils/sessao');
+
+const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 module.exports = async (req, res, next) => {
-    // 1. Procura o crachá no cabeçalho da requisição
-    const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-    
-    if (!authHeader) {
-        return res.status(401).json({ erro: 'Acesso negado. Nenhum token foi fornecido.' });
-    }
+    // 1. O crachá vem no cookie HttpOnly da sessão (utils/sessao.js)
+    const token = lerTokenDaSessao(req);
 
-    // 2. O React envia o token no formato "Bearer eyJ...". Precisamos separar a palavra "Bearer" do código.
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-        return res.status(401).json({ erro: 'Token mal formatado.' });
+    if (!token) {
+        return res.status(401).json({ erro: 'Acesso negado. Nenhuma sessão foi encontrada.' });
     }
-
-    const token = parts[1];
 
     let verified;
     try {
-        // 3. Valida o crachá usando a chave secreta validada na subida
+        // 2. Valida o crachá usando a chave secreta validada na subida
         verified = jwt.verify(token, jwtSecret);
     } catch (erro) {
         // Se cair aqui, é porque o crachá expirou ou foi corrompido
         console.error("Erro na verificação do Token:", erro.message);
+        encerrarSessao(req, res);
         return res.status(401).json({ erro: 'Token inválido ou expirado.' });
+    }
+
+    // 3. O cookie vai sozinho em qualquer requisição, inclusive as disparadas por outro site:
+    // quem muda estado precisa provar que veio do front-end devolvendo o token CSRF.
+    if (!METODOS_SEGUROS.has(req.method) && !csrfValido(req, token)) {
+        return res.status(403).json({ erro: 'Requisição recusada: token CSRF ausente ou inválido.' });
     }
 
     try {
@@ -40,6 +42,7 @@ module.exports = async (req, res, next) => {
         );
         const atual = linhas[0];
         if (!atual || atual.sessao_versao !== verified.sv || atual.funcionario_status === 'Inativo') {
+            encerrarSessao(req, res);
             return res.status(401).json({ erro: 'Sessão encerrada. Faça login novamente.' });
         }
 

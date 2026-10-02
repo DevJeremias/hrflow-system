@@ -56,6 +56,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         }).then(async (resposta) => ({
             status: resposta.status,
             retryAfter: resposta.headers.get('retry-after'),
+            cookies: resposta.headers.getSetCookie(),
             corpo: await resposta.json(),
         }));
     };
@@ -170,7 +171,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
 
             const login = await chamar('/login', { email: 'pessoa.maiuscula@exemplo.invalid', senha: senhaFicticia });
             assert.equal(login.status, 200);
-            assert.ok(login.corpo.token);
+            assert.ok(login.cookies.some((c) => c.startsWith('hrflow_sessao=') && /;\s*HttpOnly/i.test(c)));
         });
 
         it('não deixa empresa órfã quando a criação do usuário falha', async () => {

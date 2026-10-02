@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const banco = require('./support/bancoDeTeste');
 const { dataUrl } = require('./support/imagens');
-const { criarUsuario } = require('./support/sessao');
+const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 
 describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
     let server, baseUrl, pool;
@@ -18,7 +18,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
     const chamar = async (metodo, caminho, corpo, { jwt = tokenAdmin(), bruto } = {}) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, {
             method: metodo,
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+            headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(jwt) },
             body: bruto ?? (corpo === undefined ? undefined : JSON.stringify(corpo)),
         });
         const texto = await resposta.text();

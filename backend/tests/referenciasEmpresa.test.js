@@ -7,7 +7,7 @@ const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const banco = require('./support/bancoDeTeste');
-const { criarUsuario } = require('./support/sessao');
+const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 
 describe('referências de cargo e departamento entre empresas', { skip: banco.skip }, () => {
     let server, baseUrl, pool;
@@ -19,7 +19,7 @@ describe('referências de cargo e departamento entre empresas', { skip: banco.sk
     const chamar = async (metodo, caminho, empresa_id, corpo) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, {
             method: metodo,
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenDe(empresa_id)}` },
+            headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(tokenDe(empresa_id)) },
             body: corpo ? JSON.stringify(corpo) : undefined,
         });
         return { status: resposta.status, corpo: await resposta.json() };

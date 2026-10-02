@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const banco = require('./support/bancoDeTeste');
-const { criarUsuario } = require('./support/sessao');
+const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 
 const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -49,7 +49,7 @@ const novoPontoHoje = (funcionarioId, empresaId, tipo, hora) =>
     );
 
 const get = async (caminho, token) => {
-    const resposta = await fetch(`${baseUrl}${caminho}`, { headers: { Authorization: `Bearer ${token}` } });
+    const resposta = await fetch(`${baseUrl}${caminho}`, { headers: { ...cabecalhosDaSessao(token) } });
     return { status: resposta.status, corpo: await resposta.json() };
 };
 
