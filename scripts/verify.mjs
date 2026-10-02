@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { skippedCounts } from "./test-summary.mjs";
 
 // Gate único do que a equipe considera obrigatório: lint, typecheck, build e testes de backend
 // contra um MySQL real e migrado. Roda todas as etapas e falha se qualquer uma falhar.
@@ -22,9 +23,9 @@ const testarBackend = () => {
   }
   const result = executar("test", { capturar: true });
   if (result.error || result.status !== 0) return false;
-  const ignorados = /^(?:ℹ|#)\s*skipped\s+(\d+)/m.exec(result.stdout)?.[1];
-  if (ignorados !== "0") {
-    console.error(`Os testes de backend ignoraram ${ignorados ?? "um número desconhecido de"} casos: verify não aceita testes ignorados.`);
+  const resumos = skippedCounts(result.stdout);
+  if (resumos.length === 0 || resumos.some((ignorados) => ignorados !== 0)) {
+    console.error(`Os testes de backend ignoraram ${resumos.length === 0 ? "um número desconhecido de" : resumos.join(", ")} casos: verify não aceita testes ignorados.`);
     return false;
   }
   return true;

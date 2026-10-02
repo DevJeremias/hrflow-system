@@ -240,6 +240,26 @@ describe('migrations', { skip: banco.skip }, () => {
     });
 
     describe('fixtures sintéticas', () => {
+        it('recusa uma carga parcial sem declarar sucesso nem alterar o estado', async () => {
+            await migrator.removerBanco(parcial);
+            await migrator.criarBanco(parcial);
+            await migrator.migrar(parcial);
+            const alvo = await migrator.conectar(parcial);
+            try {
+                await alvo.query('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia Alfa Ltda']);
+                await assert.rejects(
+                    carregarFixtures(alvo, { senha: 'senha-ficticia' }),
+                    /Carga parcial de fixtures detectada/
+                );
+                const [empresas] = await alvo.query('SELECT id FROM empresas');
+                const [usuarios] = await alvo.query('SELECT id FROM usuarios');
+                assert.equal(empresas.length, 1);
+                assert.equal(usuarios.length, 0);
+            } finally {
+                await alvo.end();
+            }
+        });
+
         it('carrega duas empresas, e não repete na segunda vez', async () => {
             await migrator.removerBanco(parcial);
             await migrator.criarBanco(parcial);
