@@ -132,6 +132,25 @@ test('o histórico do colaborador mostra a justificativa salva', { skip: semBanc
     assert.equal(corpo.find((d) => d.date === DIA).note, 'Texto corrigido.');
 });
 
+test('o histórico inclui justificativa de um dia sem nenhuma marcação', { skip: semBanco }, async () => {
+    const diaSemPonto = '2026-03-12';
+    const pontosDoDia = async () => (await db.query(
+        'SELECT COUNT(*) AS n FROM registro_pontos WHERE funcionario_id = ? AND DATE(data_hora_oficial) = ?',
+        [ctx.outro, diaSemPonto]
+    ))[0][0].n;
+    assert.equal(await pontosDoDia(), 0);
+    const salva = await enviar(diaSemPonto, 'Ausência justificada sem marcação.', ctx.tokenOutro);
+    assert.equal(salva.status, 200);
+    assert.equal(await pontosDoDia(), 0);
+
+    const { status, corpo } = await chamar('GET', `/historico/${ctx.outro}?mes=${MES}`, ctx.tokenOutro);
+    assert.equal(status, 200);
+    assert.deepEqual(corpo.find((dia) => dia.date === diaSemPonto), {
+        id: diaSemPonto, date: diaSemPonto, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
+        totalHours: '--:--', status: 'OK', note: 'Ausência justificada sem marcação.', negativeAdjust: '00:00', positiveAdjust: '00:00',
+    });
+});
+
 test('RH e Administrador consultam as justificativas da própria empresa', { skip: semBanco }, async () => {
     for (const token of [ctx.tokenRH, ctx.tokenAdmin]) {
         const { status, corpo } = await consultar(`?mes=${MES}`, token);
@@ -139,6 +158,7 @@ test('RH e Administrador consultam as justificativas da própria empresa', { ski
         assert.deepEqual(
             corpo.map((j) => [j.date, j.funcionario_id, j.nome_funcionario, j.note]),
             [
+                ['2026-03-12', ctx.outro, 'Dora Colaboradora Ficticia', 'Ausência justificada sem marcação.'],
                 [OUTRO_DIA, ctx.outro, 'Dora Colaboradora Ficticia', 'Minha justificativa.'],
                 [DIA, ctx.alvo, 'Caio Colaborador Ficticio', 'Texto corrigido.'],
             ]

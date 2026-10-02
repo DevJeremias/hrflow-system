@@ -6,6 +6,7 @@ import DashboardTimeline from '../../components/Portal/DashboardTimeline';
 import DashboardTimeMirror from '../../components/Portal/DashboardTimeMirror';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { formatarDataDeBelem, proximosTiposDePonto, type TipoPonto } from '../../utils/ponto';
 
 const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -45,7 +46,7 @@ const EmployeeDashboard: React.FC = () => {
     return () => { ativo = false; };
   }, [funcionarioId, historyMonth, reloadKey]);
 
-  const handlePunchClock = async () => {
+  const handlePunchClock = async (tipo: TipoPonto) => {
     setIsRegistering(true);
 
     if (!navigator.geolocation) {
@@ -57,17 +58,14 @@ const EmployeeDashboard: React.FC = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const types: string[] = ['Entrada', 'Pausa Almoço', 'Retorno Almoço', 'Saída'];
-          const nextType = types[dailyRecords.length] || 'Extra'; 
-          
           const localizacao = {
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
 
-          const newRecord = await pontoService.registrar(nextType, localizacao);
+          const newRecord = await pontoService.registrar(tipo, localizacao);
           
-          setDailyRecords([...dailyRecords, newRecord]);
+          setDailyRecords((registros) => [...registros, newRecord]);
           
         } catch (error: any) {
           alert(error.message || "Erro ao comunicar com o servidor.");
@@ -90,7 +88,8 @@ const EmployeeDashboard: React.FC = () => {
   };
 
   const firstName = user?.nome?.split(' ')[0] || 'Utilizador';
-  const formattedDate = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  const formattedDate = formatarDataDeBelem(new Date());
+  const proximosTipos = proximosTiposDePonto(dailyRecords);
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -107,7 +106,7 @@ const EmployeeDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <DashboardPunchCard 
           isRegistering={isRegistering} 
-          isDayComplete={dailyRecords.length >= 4} 
+          proximosTipos={proximosTipos}
           onPunchClock={handlePunchClock} 
         />
         <DashboardTimeline records={dailyRecords} />
