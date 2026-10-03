@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ehGestao } from '../utils/sessao';
+import { solicitacoesAtivas } from '../utils/recursos';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -37,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const employeeMenu = [
     { path: '/meu-painel', icon: <Clock size={20} />, label: 'Bater Ponto' },
     { path: '/meu-painel/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
-    { path: '/meu-painel/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' },
+    ...(solicitacoesAtivas() ? [{ path: '/meu-painel/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' }] : []),
     { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
   ];
 
