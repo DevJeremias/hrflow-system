@@ -67,6 +67,7 @@ describe('governança do GitHub', () => {
         const ci = ler('.github/workflows/ci.yml');
         for (const job of ['verify', 'audit', 'commitlint']) assert.match(ci, new RegExp(`^  ${job}:`, 'm'));
         assert.match(ci, /npm audit --omit=dev/);
+        assert.match(ci, /node scripts\/guardar-estrutura\.mts/, 'o CI precisa rodar a guarda de estrutura');
         const acoes = [...ci.matchAll(/^\s*- uses: (\S+)/gm)].map((m) => m[1]);
         assert.ok(acoes.length > 0);
         for (const acao of acoes) assert.match(acao, /@[0-9a-f]{40}$/, `${acao} não está fixada por SHA`);

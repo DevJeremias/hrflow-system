@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/run-workspace.mjs frontend build",
-    "lint": "node scripts/run-workspace.mjs frontend lint",
+    "guard:estrutura": "node scripts/guardar-estrutura.mts",
+    "lint": "node scripts/guardar-estrutura.mts && node scripts/run-workspace.mjs frontend lint && node scripts/run-workspace.mjs backend lint",
     "typecheck": "node scripts/run-workspace.mjs frontend typecheck && node scripts/run-workspace.mjs backend typecheck",
     "verify": "node scripts/verify.mjs",
     "test": "node scripts/run-workspace.mjs backend test && node scripts/run-workspace.mjs frontend test",
