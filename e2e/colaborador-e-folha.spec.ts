@@ -16,15 +16,16 @@ test('o RH cadastra um colaborador e ele aparece na folha com o líquido calcula
   await expect(page).toHaveURL(/\/admin\/colaboradores$/);
 
   await page.getByRole('button', { name: /Adicionar Colaborador/ }).click();
-  await page.locator('[name="nomeCompleto"]').fill(nome);
-  await page.locator('[name="emailPessoal"]').fill(email);
-  await page.locator('[name="senhaAcesso"]').fill(SENHA);
+  const cadastro = page.getByRole('dialog');
+  await cadastro.getByLabel('Nome Completo').fill(nome);
+  await cadastro.getByLabel('E-mail Pessoal').fill(email);
+  await cadastro.getByLabel('Senha Provisória').fill(SENHA);
 
-  await page.getByRole('button', { name: /Contrato/i }).click();
-  await page.locator('[name="dataAdmissao"]').fill('2025-03-03');
-  await page.locator('[name="cargoId"]').selectOption({ index: 1 });
-  await page.locator('[name="departamentoId"]').selectOption({ index: 1 });
-  await page.locator('[name="salarioBase"]').fill('3000');
+  await cadastro.getByRole('tab', { name: 'Contrato' }).click();
+  await cadastro.getByLabel('Data de Admissão').fill('2025-03-03');
+  await cadastro.getByLabel('Cargo').selectOption({ index: 1 });
+  await cadastro.getByLabel('Setor / Departamento').selectOption({ index: 1 });
+  await cadastro.getByLabel('Salário Base (Bruto)').fill('3000');
 
   await page.getByRole('button', { name: 'Confirmar Cadastro' }).click();
   await expect(page.getByRole('button', { name: 'Confirmar Cadastro' })).toHaveCount(0);
@@ -44,7 +45,7 @@ test('o RH cadastra um colaborador e ele aparece na folha com o líquido calcula
   expect(reais(descontos)).toBeGreaterThan(0);
   expect(reais(liquido)).toBeCloseTo(reais(salario) + reais(proventos) - reais(descontos), 2);
 
-  await linha.click();
+  await linha.getByRole('button', { name: `Ver holerite de ${nome}` }).click();
   const holerite = page.getByRole('dialog', { name: 'Detalhes do Holerite' });
   await expect(holerite).toContainText(nome);
   await expect(holerite).toContainText('Salário Base');
