@@ -7,7 +7,7 @@
     "start": "node server.ts",
     "dev": "node --watch server.ts",
     "lint": "eslint . --max-warnings 0",
-    "test": "node --test --test-concurrency=1 \"tests/**/*.test.ts\"",
+    "test": "node tests/support/executar.ts",
     "typecheck": "tsc"
   },
   "keywords": [],
