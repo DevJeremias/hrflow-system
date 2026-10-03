@@ -124,8 +124,19 @@ A sessão (8 horas, revogada na troca de senha, na inativação e na exclusão) 
 * O token não vai mais no corpo do login nem no `localStorage`, e `Authorization: Bearer` deixou de ser aceito. O front-end só envia o token CSRF no cabeçalho `X-CSRF-Token` das requisições `POST`, `PUT`, `PATCH` e `DELETE`; sem ele a API responde 403. Leituras (`GET`) não o exigem.
 * Quem estava logado com o token antigo no `localStorage` cai uma vez na tela de login, sem erro: o front-end apaga a chave legada ao carregar.
 * O cookie é `Secure` quando a requisição chega por HTTPS e, com `NODE_ENV=production`, em qualquer host que não seja loopback. Atrás do Caddy, defina `TRUST_PROXY=1` (veja `backend/.env.example`) para a API enxergar o HTTPS informado em `X-Forwarded-Proto`, e `NODE_ENV=production`.
-* Front-end e API precisam ser servidos pela mesma origem, como já acontece: o Vite encaminha `/api` em desenvolvimento e o Caddy faz o mesmo em produção. Não há CORS com credenciais, de propósito.
+* Front-end e API precisam ser servidos pela mesma origem, como já acontece: o Vite encaminha `/api` em desenvolvimento e o Caddy faz o mesmo em produção. A API não habilita CORS, de propósito: nenhuma origem externa consegue ler as respostas.
 * `POST /api/auth/logout` é público para que uma sessão expirada também consiga limpar os cookies.
+
+### Monitoramento
+
+Dois endpoints públicos, sem sessão, para monitor e health check de contêiner:
+
+| Endpoint | Pergunta | Resposta |
+| --- | --- | --- |
+| `GET /api/health` | o processo da API está de pé? Não toca o banco. | `200 {"status":"ok"}` |
+| `GET /api/ready` | a API consegue atender? Faz `SELECT 1` com prazo de 2 s. | `200 {"status":"ok"}` ou `503 {"status":"indisponivel"}` |
+
+Rota de API inexistente responde `404 {"erro":"Rota não encontrada."}`. As respostas da API são comprimidas (gzip) e não trazem `X-Powered-By`.
 
 ### Passo 3: Variáveis de ambiente
 

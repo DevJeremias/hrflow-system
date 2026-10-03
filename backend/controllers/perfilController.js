@@ -92,6 +92,10 @@ exports.alterarMinhaSenha = async (req, res) => {
         const senhaValida = await bcrypt.compare(senhaAtual, user[0].senha);
         if (!senhaValida) return res.status(400).json({ erro: "A senha atual está incorreta." });
 
+        if (await bcrypt.compare(novaSenha, user[0].senha)) {
+            return res.status(400).json({ erro: "A nova senha deve ser diferente da atual." });
+        }
+
         const senhaCriptografada = await bcrypt.hash(novaSenha, 10);
         await db.query('UPDATE usuarios SET senha = ?, sessao_versao = sessao_versao + 1 WHERE id = ?', [senhaCriptografada, usuario_id]);
         res.json({ mensagem: "Senha atualizada com sucesso! Entre novamente." });

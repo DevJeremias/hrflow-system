@@ -9,7 +9,7 @@ interface Props {
 }
 
 const OrgRolesTable: React.FC<Props> = ({ roles, onEdit, onDelete }) => {
-  const getLevelClass = (level: string) => {
+  const getLevelClass = (level: string | null) => {
     const classes: any = {
       'Júnior': 'bg-blue-50 text-blue-600',
       'Pleno': 'bg-purple-50 text-purple-600',
@@ -17,7 +17,7 @@ const OrgRolesTable: React.FC<Props> = ({ roles, onEdit, onDelete }) => {
       'Gestão': 'bg-rose-50 text-rose-600',
       'Coordenação': 'bg-amber-50 text-amber-600',
     };
-    return classes[level] || 'bg-slate-50 text-slate-600';
+    return classes[level ?? ''] || 'bg-slate-50 text-slate-600';
   };
 
   return (
@@ -47,11 +47,11 @@ const OrgRolesTable: React.FC<Props> = ({ roles, onEdit, onDelete }) => {
               <td className="py-4 px-6 text-sm font-semibold text-slate-500">{role.department}</td>
               <td className="py-4 px-6">
                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${getLevelClass(role.level)}`}>
-                  {role.level}
+                  {role.level ?? 'Não informado'}
                 </span>
               </td>
-              <td className="py-4 px-6 font-bold text-slate-900">
-                {role.salary.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              <td className={`py-4 px-6 font-bold ${role.salary === null ? 'text-slate-500' : 'text-slate-900'}`}>
+                {role.salary === null ? 'Sem salário base' : role.salary.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </td>
               <td className="py-4 px-6">
                 <div className="flex items-center gap-2 text-slate-500 font-bold text-sm">
@@ -60,10 +60,10 @@ const OrgRolesTable: React.FC<Props> = ({ roles, onEdit, onDelete }) => {
               </td>
               <td className="py-4 px-6 text-right">
                 <div className="flex justify-end gap-2">
-                  <button onClick={() => onEdit(role)} className="p-2 text-slate-400 hover:text-primary hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-slate-100 transition-all">
+                  <button onClick={() => onEdit(role)} aria-label={`Editar cargo ${role.title}`} className="p-2 text-slate-400 hover:text-primary hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-slate-100 transition-all">
                     <Pencil size={16} />
                   </button>
-                  <button onClick={() => onDelete(role)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-slate-100 transition-all">
+                  <button onClick={() => onDelete(role)} aria-label={`Excluir cargo ${role.title}`} className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-slate-100 transition-all">
                     <Trash2 size={16} />
                   </button>
                 </div>
