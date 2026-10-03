@@ -91,20 +91,20 @@ const Payroll: React.FC = () => {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Folha</h1>
-          <p className="text-slate-500 font-medium mt-1">Folha de {rotulo}: confira os holerites e feche o mês.</p>
+          <p className="text-slate-500 font-medium mt-1">{fechada ? `Folha de ${rotulo}, fechada.` : `Folha de ${rotulo}: confira os holerites e feche o mês.`}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
-            <CalendarDays size={16} className="text-slate-400" />
+          <label className="flex w-full sm:w-auto items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+            <CalendarDays size={16} className="shrink-0 text-slate-400" />
             <span className="sr-only">Competência</span>
             <input aria-label="Competência" type="month" value={competencia} max={mesAtualEmBelem()} onChange={(e) => e.target.value && trocarCompetencia(e.target.value)}
-              className="bg-transparent font-bold text-sm text-slate-700 outline-none cursor-pointer" />
+              className="min-w-0 flex-1 bg-transparent font-bold text-sm text-slate-700 outline-none cursor-pointer" />
           </label>
           {folha && (
-            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
-              <Filter size={16} className="text-slate-400" />
-              <select aria-label="Setor" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-transparent font-bold text-sm text-slate-700 outline-none cursor-pointer">
+            <div className="flex w-full sm:w-auto items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+              <Filter size={16} className="shrink-0 text-slate-400" />
+              <select aria-label="Setor" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="min-w-0 flex-1 bg-transparent font-bold text-sm text-slate-700 outline-none cursor-pointer">
                 <option value="Todos">Todos os Setores</option>
                 {departmentsList.map(dept => <option key={dept} value={dept}>{dept}</option>)}
               </select>
@@ -134,7 +134,7 @@ const Payroll: React.FC = () => {
         <>
           <div className={`flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl border ${fechada ? 'bg-emerald-50/60 border-emerald-100' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="flex items-center gap-3">
-              {fechada ? <Lock size={20} className="text-emerald-600" /> : <CheckCircle2 size={20} className="text-slate-400" />}
+              {fechada ? <Lock size={20} className="shrink-0 text-emerald-600" /> : <CheckCircle2 size={20} className="shrink-0 text-slate-400" />}
               <div>
                 <p className="font-black text-slate-900">{fechada ? 'Folha fechada' : 'Folha aberta'}</p>
                 <p className="text-sm font-medium text-slate-500">
@@ -186,7 +186,9 @@ const Payroll: React.FC = () => {
                 <AlertTriangle size={18} />
                 <h2 className="font-black">Pendências ({folha.pendencias.length})</h2>
               </div>
-              <p className="text-sm font-medium text-amber-800 mb-3">Estes colaboradores não entraram na folha. Corrija o cadastro e processe de novo.</p>
+              <p className="text-sm font-medium text-amber-800 mb-3">
+                {fechada ? 'Estes colaboradores ficaram de fora desta folha e não têm holerite nesta competência.' : 'Estes colaboradores não entraram na folha. Corrija o cadastro e processe de novo.'}
+              </p>
               <ul className="divide-y divide-amber-100 text-sm font-medium text-slate-700">
                 {folha.pendencias.map((pendencia) => (
                   <li key={pendencia.funcionarioId} className="flex flex-wrap justify-between gap-2 py-2">
