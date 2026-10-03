@@ -11,12 +11,12 @@ import express from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 // banco vem antes do pool e do authMiddleware: ele define as variáveis de ambiente que eles leem
 // ao carregar.
-import banco from '../support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao } from '../support/sessao.js';
-import pool from '../../config/db.js';
-import authMiddleware from '../../middlewares/authMiddleware.js';
-import funcionarioRoutes from '../../routes/funcionarioRoutes.js';
-import { estruturaRoutes } from '../../modules/estrutura/index.ts';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
+import pool from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import funcionarioRoutes from '../routes/funcionarioRoutes.js';
+import { estruturaRoutes } from '../modules/estrutura/index.ts';
 
 interface Cargo extends RowDataPacket {
     id: number;

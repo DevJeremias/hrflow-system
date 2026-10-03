@@ -13,5 +13,5 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["modules", "types", "tests/**/*.ts"]
+  "include": ["modules", "types"]
 }
