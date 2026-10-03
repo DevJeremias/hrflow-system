@@ -28,7 +28,7 @@ const Profile = lazy(() => import('./pages/Portal/Profile'));
 
 // `trocaDeSenha` marca a única rota de quem entrou com senha provisória: ela leva todas as outras
 // para si, e quem não tem senha provisória não tem o que fazer nela.
-const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], trocaDeSenha?: boolean }) => {
+export const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], trocaDeSenha?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
   const location = useLocation();
 

@@ -6,18 +6,13 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import bcrypt from 'bcrypt';
-import express from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { dataUrl, imagemReal } from './support/imagens.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
+import { criarApp } from '../app.ts';
 import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import tratarErros from '../shared/middlewares/tratarErros.ts';
-import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
-import { estruturaRoutes } from '../modules/estrutura/index.ts';
-import { folhaRoutes } from '../modules/folha/index.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
 
 describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
     let server: http.Server, baseUrl: string;
@@ -51,14 +46,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        // Mesmo desenho do app.ts: parser global de 4mb e o tratador de erros por último.
-        app.use(express.json({ limit: '4mb' }));
-        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
-        app.use('/api/estrutura', authMiddleware, estruturaRoutes);
-        app.use('/api/folha', authMiddleware, folhaRoutes);
-        app.use('/api/perfil', authMiddleware, perfilRoutes);
-        app.use(tratarErros);
+        const app = criarApp();
         server = http.createServer(app);
         await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
         baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

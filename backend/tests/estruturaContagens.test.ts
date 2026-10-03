@@ -6,16 +6,15 @@ import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import express from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
 // banco vem antes do pool, do authMiddleware e das fixtures: ele define as variáveis de ambiente
 // que eles leem ao carregar.
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
+import { criarApp } from '../app.ts';
 import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { carregarFixtures } from '../shared/db/fixtures.ts';
-import { estruturaRoutes } from '../modules/estrutura/index.ts';
 
 interface Departamento extends RowDataPacket {
     id: number;
@@ -51,9 +50,7 @@ describe('estrutura organizacional: contagens e exclusão', { skip: banco.skip }
         await banco.preparar();
         await carregarFixtures(pool, { senha: 'senha-ficticia-123' });
 
-        const app = express();
-        app.use(express.json());
-        app.use('/api/estrutura', authMiddleware, estruturaRoutes);
+        const app = criarApp();
         const servidor = http.createServer(app);
         server = servidor;
         await new Promise<void>((resolve) => servidor.listen(0, '127.0.0.1', resolve));

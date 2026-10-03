@@ -8,16 +8,12 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import bcrypt from 'bcrypt';
-import express from 'express';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import { imagemReal } from './support/imagens.ts';
 
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import tratarErros from '../shared/middlewares/tratarErros.ts';
-import { authRoutes } from '../modules/auth/index.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
+import { criarApp } from '../app.ts';
 
 const semBanco = banco.skip;
 
@@ -65,11 +61,7 @@ test.before(async () => {
     ctx.admin = await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Administrador' });
     ctx.cruzado = await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador' });
 
-    const app = express();
-    app.use('/api/auth', authRoutes);
-    app.use(express.json({ limit: '4mb' }));
-    app.use('/api/perfil', authMiddleware, perfilRoutes);
-    app.use(tratarErros);
+    const app = criarApp();
     await new Promise((resolve) => { servidor = app.listen(0, '127.0.0.1', resolve); });
     baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api`;
 });

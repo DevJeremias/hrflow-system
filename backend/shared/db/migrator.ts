@@ -31,7 +31,14 @@ interface Violacao extends RowDataPacket {
 
 const DIRETORIO = path.join(import.meta.dirname, '..', '..', 'migrations');
 const NOME_SEGURO = /^[A-Za-z0-9_]+$/;
-const TRAVA = 'hrflow_migracoes';
+
+// O GET_LOCK vale para o servidor inteiro: a trava leva o nome do banco para que bancos diferentes
+// (os dos testes em paralelo, por exemplo) migrem ao mesmo tempo e só duas execuções no mesmo banco se esperem.
+// O MySQL limita o nome da trava a 64 caracteres; um nome de banco comprido entra como hash.
+const travaDoBanco = (banco: string) => {
+    const nome = `hrflow_migracoes_${banco}`;
+    return nome.length <= 64 ? nome : `hrflow_migracoes_${crypto.createHash('sha256').update(banco).digest('hex').slice(0, 40)}`;
+};
 
 export const configDoAmbiente = (env: NodeJS.ProcessEnv = process.env): ConfigDoBanco => ({
     host: env.DB_HOST || 'localhost',
@@ -139,8 +146,9 @@ const registradas = async (conexao: Connection) => {
 export const migrar = async (config: ConfigDoBanco, log: (mensagem: string) => void = () => {}, { ate }: { ate?: string } = {}) => {
     validarNomeDoBanco(config);
     return comConexao(config, {}, async (conexao) => {
-        const [[{ obtida }]] = await conexao.query<(RowDataPacket & { obtida: number })[]>('SELECT GET_LOCK(?, 30) AS obtida', [TRAVA]);
-        if (obtida !== 1) throw new Error('Outra execução de migrations está em andamento neste servidor.');
+        const trava = travaDoBanco(config.database as string);
+        const [[{ obtida }]] = await conexao.query<(RowDataPacket & { obtida: number })[]>('SELECT GET_LOCK(?, 30) AS obtida', [trava]);
+        if (obtida !== 1) throw new Error('Outra execução de migrations está em andamento neste banco.');
         try {
             await garantirTabelaDeControle(conexao);
             const aplicadas = await registradas(conexao);
@@ -175,7 +183,7 @@ export const migrar = async (config: ConfigDoBanco, log: (mensagem: string) => v
             }
             return novas;
         } finally {
-            await conexao.query('SELECT RELEASE_LOCK(?)', [TRAVA]);
+            await conexao.query('SELECT RELEASE_LOCK(?)', [trava]);
         }
     });
 };
