@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Perfil, ROTA_TROCA_DE_SENHA, rotaInicial } from './utils/sessao';
+import { Perfil, ROTA_TROCA_DE_SENHA, rotaInicial, temAreaPessoal } from './utils/sessao';
 import { solicitacoesAtivas } from './utils/recursos';
 import ErrorAlert from './components/ErrorAlert';
 
@@ -15,6 +15,7 @@ import Dashboard from './pages/Admin/Dashboard';
 import Employees from './pages/Admin/Employees';
 import DepartmentsRoles from './pages/Admin/OrgStructure';
 import Payroll from './pages/Admin/Payroll';
+import Users from './pages/Admin/Users';
 import Company from './pages/Admin/Company';
 import TimeTracking from './pages/Admin/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
 
@@ -32,8 +33,10 @@ const SessionLoading = () => (
 );
 
 // `trocaDeSenha` marca a única rota de quem entrou com senha provisória: ela leva todas as outras
-// para si, e quem não tem senha provisória não tem o que fazer nela.
-export const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], trocaDeSenha?: boolean }) => {
+// para si, e quem não tem senha provisória não tem o que fazer nela. `allowedRoles` restringe por
+// perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e holerite próprios) em
+// qualquer perfil.
+export const ProtectedRoute = ({ children, allowedRoles, personalArea = false, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean, trocaDeSenha?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return <SessionLoading />;
@@ -61,6 +64,10 @@ export const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }:
     return <Navigate to={rotaInicial(user.role)} replace />;
   }
 
+  if (personalArea && !temAreaPessoal(user)) {
+    return <Navigate to={rotaInicial(user.role)} replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -83,18 +90,19 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="colaboradores" element={<Employees />} />
-        <Route path="estrutura" element={<DepartmentsRoles />} />
+        <Route path="estrutura" element={<ProtectedRoute allowedRoles={['Administrador']}><DepartmentsRoles /></ProtectedRoute>} />
         <Route path="folha" element={<Payroll />} />
         <Route path="empresa" element={<Company />} />
         <Route path="gestao-ponto" element={<TimeTracking />} /> {/* ROTA OFICIALIZADA */}
+        <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
         <Route path="perfil" element={<Profile />} />
       </Route>
 
-      {/* ÁREA DO COLABORADOR */}
+      {/* ÁREA PESSOAL: ponto e holerite de quem tem cadastro de funcionário, em qualquer perfil */}
       <Route 
         path="/meu-painel" 
         element={
-          <ProtectedRoute allowedRoles={['Colaborador']}>
+          <ProtectedRoute personalArea>
             <Layout /> 
           </ProtectedRoute>
         }

@@ -1,20 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit2, Trash2, KeyRound, UserMinus, UserCheck } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, KeyRound, UserMinus, UserCheck, Lock } from 'lucide-react';
 import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { useAuth } from '../../contexts/AuthContext';
+import { podeGerirCadastro, motivoDeNegacaoDoCadastro } from '../../utils/permissoes';
 
 const PAGE_SIZE = 50;
 
 // 'AAAA-MM-DD' -> 'DD/MM/AAAA', sem passar por Date (o fuso moveria o dia).
 const formatDate = (isoDate: string) => isoDate.split('-').reverse().join('/');
 
-// O RH não age sobre o cadastro de outro RH ou Administrador (nem sobre o próprio, que é de RH).
-const isManageable = (employee: Employee) => employee.perfilAcesso === null || employee.perfilAcesso === 'Colaborador';
-
 const Employees: React.FC = () => {
+  const { user } = useAuth();
+  // Editar segue a matriz de permissões (docs/permissoes.md): o RH não alcança o próprio cadastro
+  // nem o de RH ou Administrador. Situação, senha e exclusão valem para os outros, nunca para o próprio cadastro.
+  const canEdit = (employee: Employee) => podeGerirCadastro(user, employee);
+  const isManageable = (employee: Employee) => canEdit(employee) && !(user?.funcionarioId != null && String(user.funcionarioId) === employee.id);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [page, setPage] = useState(1);
@@ -181,6 +185,12 @@ const Employees: React.FC = () => {
                       )}
                     </td>
                     <td className="py-4 px-6 text-right">
+                      {!canEdit(emp) ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 whitespace-nowrap" title={motivoDeNegacaoDoCadastro(user, emp)}>
+                          <Lock size={14} />
+                          <span>Só o Administrador</span>
+                        </span>
+                      ) : (
                       <div className="flex justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
                         <button 
                           onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}
@@ -230,6 +240,7 @@ const Employees: React.FC = () => {
                           </button>
                         )}
                       </div>
+                      )}
                     </td>
                   </tr>
                 ))
