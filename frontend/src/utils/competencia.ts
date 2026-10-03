@@ -31,9 +31,8 @@ export const mesesAntes = (mes: string, n: number): string => {
   return `${Math.floor(indice / 12)}-${String((indice % 12) + 1).padStart(2, '0')}`;
 };
 
-// 'AAAA-MM' como "mar/26", para o eixo de um gráfico.
-export const rotuloCurtoDoMes = (mes: string): string => {
+// 'AAAA-MM' como "mar", o nome curto do mês para o eixo de um gráfico.
+export const nomeCurtoDoMes = (mes: string): string => {
   const [ano, m] = mes.split('-').map(Number);
-  const nome = new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(ano, m - 1, 1))).replace('.', '');
-  return `${nome}/${String(ano).slice(2)}`;
+  return new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(ano, m - 1, 1))).replace('.', '');
 };

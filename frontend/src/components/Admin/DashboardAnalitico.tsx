@@ -28,7 +28,7 @@ const DashboardAnalitico: React.FC = () => {
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-      <Card as="section" padding="none" aria-labelledby="titulo-headcount" className="xl:col-span-2">
+      <Card as="section" padding="none" aria-label="Colaboradores ativos por mês" className="overflow-hidden xl:col-span-2">
         <CardHeader
           title="Colaboradores ativos por mês"
           icon={<TrendingUp size={20} />}
@@ -55,7 +55,7 @@ const DashboardAnalitico: React.FC = () => {
         </div>
       </Card>
 
-      <Card as="section" padding="none" aria-labelledby="titulo-aniversariantes">
+      <Card as="section" padding="none" aria-label="Aniversariantes do mês" className="overflow-hidden">
         <CardHeader title={`Aniversariantes de ${rotuloDaCompetencia(mes)}`} icon={<Cake size={20} />} />
         <div className="p-5 sm:p-6">
           {aniversariantes.isPending ? (

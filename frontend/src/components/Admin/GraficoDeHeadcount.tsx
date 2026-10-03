@@ -1,6 +1,6 @@
 import React from 'react';
 import type { HeadcountRow } from '../../services/relatoriosService';
-import { rotuloCurtoDoMes, rotuloDaCompetencia } from '../../utils/competencia';
+import { nomeCurtoDoMes, rotuloDaCompetencia } from '../../utils/competencia';
 
 interface Props {
   linhas: readonly HeadcountRow[];
@@ -27,9 +27,13 @@ const GraficoDeHeadcount: React.FC<Props> = ({ linhas, titulo }) => {
             </div>
           ))}
         </div>
+        {/* O ano aparece sob o primeiro mês e sob cada janeiro: o resto é só o nome do mês, que cabe na coluna. */}
         <div aria-hidden="true" className="flex min-w-max gap-2 px-1 pt-2 sm:min-w-0 sm:gap-3">
-          {linhas.map((linha) => (
-            <span key={linha.mes} className="w-10 flex-1 text-center text-xs text-ink-muted sm:w-auto">{rotuloCurtoDoMes(linha.mes)}</span>
+          {linhas.map((linha, indice) => (
+            <span key={linha.mes} className="flex h-8 w-10 min-w-0 flex-1 flex-col items-center text-xs text-ink-muted sm:w-auto">
+              <span>{nomeCurtoDoMes(linha.mes)}</span>
+              {(indice === 0 || linha.mes.endsWith('-01')) && <span className="font-semibold text-ink">{linha.mes.slice(0, 4)}</span>}
+            </span>
           ))}
         </div>
       </div>
