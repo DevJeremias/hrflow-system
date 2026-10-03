@@ -62,10 +62,11 @@ e religue com `start` quando a main estiver boa.
 
 Se o esquema do banco é que precisa voltar, restaure o dump `state/dumps/pre-<sha>-*.sql.gz` (próxima seção).
 
-Ensaio registrado (ensaio local, imagens locais, mesmo `update.sh`, `rollback.sh` e `auto-deploy.sh`): publicar uma versão
-nova levou 14 s; migração falha, subida que não fica saudável e imagem quebrada voltaram sozinhas à versão anterior em 5 a 12 s;
-`rollback.sh <sha>` levou 8 s, bem abaixo de 2 minutos. O ensaio em produção está na tabela
-[testes registrados](#testes-registrados).
+Ensaio registrado, na máquina de produção em 2026-10-03: `rollback.sh <sha>` para outra versão e de volta levou 23 s cada
+trecho (imagens já no disco, nada baixado), com `/api/ready` em 200 logo ao terminar. Num ensaio local do `update.sh` e do
+`auto-deploy.sh` (imagens locais), publicar uma versão nova levou 14 s e a migração com falha, a subida que não fica
+saudável e a imagem quebrada voltaram sozinhas à versão anterior em 5 a 12 s. Tudo bem abaixo de 2 minutos. O primeiro
+rollback depois de uma publicação com imagens baixadas do GHCR entra na tabela de [testes registrados](#testes-registrados).
 
 ## Restaurar o banco
 
@@ -114,6 +115,7 @@ aws --profile claude --region us-east-2 s3 ls s3://hrflow-backups-283609055364/m
 | 2026-10-03 | Ensaio local de `backup.sh` (aws simulado) e restauração em MySQL 8.0 descartável, banco migrado com fixtures | `empresas` 2, `funcionarios` 4, `usuarios` 6, trigger presente: iguais à origem |
 | 2026-10-03 | Produção: `backup.sh` real (dump em `s3://hrflow-backups-283609055364/mysql/hrflow-20261003T192528Z.sql.gz`), baixado e restaurado em MySQL 8.0 descartável na própria máquina | `empresas` 2, `funcionarios` 4, `usuarios` 6, `schema_migrations` 11, triggers 1: iguais à produção |
 | 2026-10-03 | Ensaio local do deploy por pull: publicar, falha de migração, falha de saúde e `rollback.sh` | publicar 14 s; rollbacks automáticos 5 a 12 s; `rollback.sh <sha>` 8 s |
+| 2026-10-03 | Produção: `rollback.sh <sha>` para uma tag de ensaio (as mesmas imagens) e de volta | 23 s cada trecho; `/api/ready` 200 ao fim de cada um |
 
 ## Ligar o deploy por pull (uma vez por máquina)
 
