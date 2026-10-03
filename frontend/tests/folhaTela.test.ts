@@ -157,7 +157,7 @@ const clicar = async (elemento: Element) => {
 };
 
 const botao = (host: ParentNode, texto: RegExp) => {
-  const encontrado = [...host.querySelectorAll('button')].find((candidato) => texto.test(candidato.textContent ?? ''));
+  const encontrado = [...host.querySelectorAll('button')].find((candidato) => texto.test(candidato.textContent ?? '') || texto.test(candidato.getAttribute('aria-label') ?? ''));
   assert.ok(encontrado, `botão ${texto} não está na tela`);
   return encontrado;
 };

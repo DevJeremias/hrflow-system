@@ -70,8 +70,8 @@ const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa, locked 
       ),
     },
     { key: 'base', header: 'Salário Base', cell: (emp) => <span className="font-semibold text-ink-muted">{formatCurrency(emp.baseSalary)}</span> },
-    { key: 'proventos', header: 'Proventos (+ extras)', cell: (emp) => <Badge tone="success">+ {formatCurrency(emp.totalEarnings)}</Badge> },
-    { key: 'descontos', header: 'Descontos', cell: (emp) => <Badge tone="danger">- {formatCurrency(emp.totalDeductions)}</Badge> },
+    { key: 'proventos', header: 'Proventos (+ extras)', cell: (emp) => <Badge tone="success" className="whitespace-nowrap">+ {formatCurrency(emp.totalEarnings)}</Badge> },
+    { key: 'descontos', header: 'Descontos', cell: (emp) => <Badge tone="danger" className="whitespace-nowrap">- {formatCurrency(emp.totalDeductions)}</Badge> },
     { key: 'liquido', header: 'Líquido Final', align: 'right', cell: (emp) => <span className="text-lg font-bold text-ink">{formatCurrency(emp.netSalary)}</span> },
     {
       key: 'acoes',
@@ -79,10 +79,10 @@ const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa, locked 
       align: 'right',
       semRotuloNoCartao: true,
       cell: (emp) => (
-        <span className="flex flex-wrap items-center gap-2 md:justify-end">
-          <Button variant="secondary" size="sm" icon={<FileText size={16} aria-hidden="true" />} aria-label={`Ver holerite de ${emp.name}`} onClick={() => setSelectedEmployee(emp)}>
-            Ver holerite
-          </Button>
+        <span className="flex items-center gap-2 md:justify-end">
+          <IconButton label={`Ver holerite de ${emp.name}`} variant="secondary" size="sm" onClick={() => setSelectedEmployee(emp)}>
+            <FileText size={16} aria-hidden="true" />
+          </IconButton>
           <IconButton label={`Baixar PDF do holerite de ${emp.name}`} variant="secondary" size="sm" onClick={() => downloadPdf(emp)} disabled={downloading !== null}>
             <Download size={16} aria-hidden="true" />
           </IconButton>
