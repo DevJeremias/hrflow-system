@@ -11,13 +11,12 @@ export const useDepartamentos = ({ enabled = true }: { enabled?: boolean } = {})
 export const useCargos = ({ enabled = true }: { enabled?: boolean } = {}) =>
   useQuery({ queryKey: chaves.cargos, queryFn: getRoles, enabled });
 
-// Departamento e cargo aparecem nos colaboradores, na folha e nas contagens do dashboard.
+// Departamento e cargo aparecem nos colaboradores e nas contagens do dashboard.
 const useInvalidarPorEstrutura = () => {
   const queryClient = useQueryClient();
   return () => Promise.all([
     queryClient.invalidateQueries({ queryKey: chaves.estrutura }),
     queryClient.invalidateQueries({ queryKey: chaves.funcionarios }),
-    queryClient.invalidateQueries({ queryKey: chaves.folha }),
     queryClient.invalidateQueries({ queryKey: chaves.dashboard }),
   ]);
 };

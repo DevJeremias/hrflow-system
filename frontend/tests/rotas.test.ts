@@ -48,8 +48,10 @@ const instalarApi = (perfil: 'Administrador' | 'Colaborador', { logado }: { loga
         document.cookie = 'hrflow_csrf=teste; Path=/';
         return json({ perfil, nome: 'Rita Teste' });
       case '/api/auth/sessao': return json(sessao(perfil));
-      case '/api/folha/processar': return json([], { 'X-Total-Count': '0' });
-      default: return json([], { 'X-Total-Count': '0' });
+      default:
+        // A folha da competência ainda não processada: a API responde 404.
+        if (caminho.startsWith('/api/folha/competencias/')) return new Response(JSON.stringify({ erro: 'Folha não processada.' }), { status: 404 });
+        return json([], { 'X-Total-Count': '0' });
     }
   }) as typeof fetch;
 };

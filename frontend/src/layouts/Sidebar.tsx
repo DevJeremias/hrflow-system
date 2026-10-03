@@ -8,6 +8,7 @@ import {
   LogOut,
   X, 
   Building2,
+  Landmark,
   Clock,     
   FileText,  
   User as UserIcon,
@@ -31,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/admin/colaboradores', icon: <Users size={20} />, label: 'Colaboradores' },
     { path: '/admin/estrutura', icon: <Building2 size={20} />, label: 'Depto & Cargos' },
     { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
+    { path: '/admin/empresa', icon: <Landmark size={20} />, label: 'Empresa' },
     { path: '/admin/gestao-ponto', icon: <Clock size={20} />, label: 'Gestão de Ponto' }, // Funcionalidade protegida no merge
     { path: '/admin/perfil', icon: <UserIcon size={20} />, label: 'Meu Perfil' },
   ];

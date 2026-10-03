@@ -20,6 +20,7 @@ const Dashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const Employees = lazy(() => import('./pages/Admin/Employees'));
 const DepartmentsRoles = lazy(() => import('./pages/Admin/OrgStructure'));
 const Payroll = lazy(() => import('./pages/Admin/Payroll'));
+const Company = lazy(() => import('./pages/Admin/Company'));
 const TimeTracking = lazy(() => import('./pages/Admin/TimeTracking'));
 const EmployeeHome = lazy(() => import('./pages/Portal/EmployeeDashboard'));
 const Payslips = lazy(() => import('./pages/Portal/Payslips'));
@@ -96,6 +97,7 @@ function App() {
             <Route path="colaboradores" element={<Employees />} />
             <Route path="estrutura" element={<DepartmentsRoles />} />
             <Route path="folha" element={<Payroll />} />
+            <Route path="empresa" element={<Company />} />
             <Route path="gestao-ponto" element={<TimeTracking />} />
             <Route path="perfil" element={<Profile />} />
             <Route path="*" element={<NotFound />} />

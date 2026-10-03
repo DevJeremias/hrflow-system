@@ -1,7 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { employeeService } from '../src/services/employeeService.ts';
-import { generateMonthlyPayroll } from '../src/services/payrollService.ts';
+import { getPayroll, processPayroll, closePayroll } from '../src/services/payrollService.ts';
 
 const fetchOriginal = globalThis.fetch;
 const memoria = new Map<string, string>();
@@ -50,44 +50,36 @@ test('a busca de colaboradores vai ao servidor com o texto e os filtros, sem par
   assert.equal(requestedUrl, '/api/funcionarios?pagina=1&limite=50');
 });
 
-test('a folha busca todas as páginas quando há mais registros que o limite', async () => {
-  const requestedUrls: string[] = [];
-  globalThis.fetch = (async (url: string | URL | Request) => {
-    const parsed = new URL(String(url), 'http://localhost');
-    requestedUrls.push(`${parsed.pathname}${parsed.search}`);
-    const page = Number(parsed.searchParams.get('pagina'));
-    const start = (page - 1) * 1000;
-    const end = Math.min(start + 1000, 1001);
-    const rows = Array.from({ length: end - start }, (_, index) => ({ id: start + index + 1 }));
-    return new Response(JSON.stringify(rows), {
-      status: 200,
-      headers: { 'X-Total-Count': '1001', 'Content-Type': 'application/json' },
-    });
+test('a folha pede a competência na URL e entende "ainda não processada" como ausência', async () => {
+  const chamadas: string[] = [];
+  globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    chamadas.push(`${init?.method ?? 'GET'} ${url}`);
+    if (String(url).endsWith('/2026-09')) {
+      return new Response(JSON.stringify({ erro: 'A folha de 09/2026 ainda não foi processada.' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({ competencia: '2026-10', status: 'aberta', itens: [], pendencias: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }) as typeof fetch;
 
-  const payroll = await generateMonthlyPayroll();
+  assert.equal(await getPayroll('2026-09'), null);
+  assert.equal((await getPayroll('2026-10'))?.status, 'aberta');
+  await processPayroll('2026-10');
+  await closePayroll('2026-10');
 
-  assert.deepEqual(requestedUrls.sort(), [
-    '/api/folha/processar?pagina=1&limite=1000',
-    '/api/folha/processar?pagina=2&limite=1000',
+  assert.deepEqual(chamadas, [
+    'GET /api/folha/competencias/2026-09',
+    'GET /api/folha/competencias/2026-10',
+    'POST /api/folha/competencias/2026-10/processar',
+    'POST /api/folha/competencias/2026-10/fechar',
   ]);
-  assert.equal(payroll.length, 1001);
-  assert.equal(payroll[1000].id, 1001);
 });
 
-test('a folha de 2.000 colaboradores leva duas chamadas e mantém a ordem das páginas', async () => {
-  let chamadas = 0;
-  globalThis.fetch = (async (url: string | URL | Request) => {
-    chamadas += 1;
-    const pagina = Number(new URL(String(url), 'http://localhost').searchParams.get('pagina'));
-    // A segunda página responde antes da primeira: a ordem final não pode depender da chegada.
-    if (pagina === 1) await new Promise((resolve) => setTimeout(resolve, 20));
-    const rows = Array.from({ length: 1000 }, (_, index) => ({ id: (pagina - 1) * 1000 + index + 1 }));
-    return new Response(JSON.stringify(rows), { status: 200, headers: { 'X-Total-Count': '2000' } });
-  }) as typeof fetch;
+test('as ações da folha mostram a mensagem que a API devolveu', async () => {
+  globalThis.fetch = (async () => new Response(JSON.stringify({ erro: 'A folha de 10/2026 está fechada e não pode ser processada de novo.' }), { status: 409, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+  await assert.rejects(() => processPayroll('2026-10'), /está fechada/);
+  await assert.rejects(() => closePayroll('2026-10'), /está fechada/);
+});
 
-  const payroll = await generateMonthlyPayroll();
-
-  assert.equal(chamadas, 2);
-  assert.deepEqual(payroll.map((p) => p.id).slice(998, 1002), [999, 1000, 1001, 1002]);
+test('uma falha que não é "não processada" não vira folha ausente', async () => {
+  globalThis.fetch = (async () => new Response(JSON.stringify({ erro: 'Erro ao buscar a folha de pagamento' }), { status: 500, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+  await assert.rejects(() => getPayroll('2026-10'), /Erro ao buscar a folha/);
 });

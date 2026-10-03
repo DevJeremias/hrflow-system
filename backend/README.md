@@ -22,7 +22,7 @@ backend/
 └── types/                  # declarações que só o tsc usa (express.d.ts)
 ```
 
-As áreas são `auth`, `dashboard`, `estrutura`, `folha`, `funcionarios`, `perfil`, `ponto` e `saude` (health e ready, só rotas). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
+As áreas são `auth`, `dashboard`, `empresa`, `estrutura`, `folha`, `funcionarios`, `perfil`, `ponto` e `saude` (health e ready, só rotas). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
 
 ## Regras de estrutura
 

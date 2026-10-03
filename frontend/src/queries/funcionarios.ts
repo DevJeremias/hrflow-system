@@ -10,13 +10,12 @@ export const useFuncionarios = (consulta: EmployeeQuery) => useQuery({
   placeholderData: keepPreviousData,
 });
 
-// Cadastro, edição, desligamento e exclusão mudam o que a folha, o dashboard e as contagens da
-// estrutura mostram. As ações do ciclo de vida (modal próprio) a chamam ao terminar.
+// Cadastro, edição, desligamento e exclusão mudam o que o dashboard e as contagens da estrutura
+// mostram (a folha processada só muda quando o RH a processa de novo). As ações do ciclo de vida (modal próprio) a chamam ao terminar.
 export const useInvalidarPorColaboradores = () => {
   const queryClient = useQueryClient();
   return () => Promise.all([
     queryClient.invalidateQueries({ queryKey: chaves.funcionarios }),
-    queryClient.invalidateQueries({ queryKey: chaves.folha }),
     queryClient.invalidateQueries({ queryKey: chaves.dashboard }),
     // Só as contagens da estrutura mudam: marca como desatualizada e deixa a tela de estrutura
     // buscar ao abrir. O modal do colaborador, aberto na hora, não precisa refazer cargos e departamentos.

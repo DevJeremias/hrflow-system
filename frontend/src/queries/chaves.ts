@@ -11,8 +11,8 @@ export const chaves = {
   cargos: ['estrutura', 'cargos'] as const,
 
   folha: ['folha'] as const,
-  folhaDaEmpresa: ['folha', 'empresa'] as const,
-  meuHolerite: ['folha', 'meu-holerite'] as const,
+  folhaDaCompetencia: (competencia: string) => ['folha', 'competencia', competencia] as const,
+  meusHolerites: ['folha', 'meus-holerites'] as const,
 
   dashboard: ['dashboard'] as const,
   resumoDoDashboard: ['dashboard', 'resumo'] as const,
@@ -22,6 +22,8 @@ export const chaves = {
   pontoDeHoje: (funcionarioId: number) => ['ponto', 'hoje', funcionarioId] as const,
   historicoDoMes: (funcionarioId: number, mes: string) => ['ponto', 'historico', funcionarioId, mes] as const,
   totaisDoMes: (funcionarioId: number, mes: string) => ['ponto', 'totais', funcionarioId, mes] as const,
+
+  empresa: ['empresa'] as const,
 
   perfil: ['perfil'] as const,
 

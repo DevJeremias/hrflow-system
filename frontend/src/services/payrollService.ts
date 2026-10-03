@@ -1,41 +1,82 @@
-import httpClient from './httpClient.ts';
-import type { HoleriteApi } from '../types/api.ts';
+import httpClient, { HttpError } from './httpClient.ts';
 
-export type EmployeePayroll = HoleriteApi;
+export interface PayrollLine {
+  description: string;
+  value: number;
+  isPercentage: boolean;
+}
+
+export interface EmployeePayroll {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  contract: string | null;
+  baseSalary: number;
+  totalEarnings: number;
+  totalDeductions: number;
+  totalGross: number;
+  netSalary: number;
+  employerCharges: number;
+  earningsList: PayrollLine[];
+  deductionsList: PayrollLine[];
+}
+
+// Razão social e CNPJ (só dígitos) que a folha copiou da empresa; nulos até alguém preenchê-los.
+export interface PayrollCompany {
+  razaoSocial: string | null;
+  cnpj: string | null;
+}
+
+export interface PayrollPending {
+  funcionarioId: number;
+  nome: string;
+  motivo: string;
+}
+
+export type PayrollStatus = 'aberta' | 'fechada';
+
+export interface MonthlyPayroll {
+  competencia: string;
+  status: PayrollStatus;
+  processadaEm: string;
+  fechadaEm: string | null;
+  empresa: PayrollCompany;
+  totais: { bruto: number; descontos: number; liquido: number; encargos: number };
+  itens: EmployeePayroll[];
+  pendencias: PayrollPending[];
+}
+
+// O holerite que o colaborador vê: o de uma folha fechada, com a competência e a empresa dela.
+export interface Payslip extends EmployeePayroll {
+  competencia: string;
+  empresa: PayrollCompany;
+}
 
 const API_URL = '/folha';
 
-// O maior limite que a API aceita por página: 2.000 colaboradores levam duas chamadas.
-const PAYROLL_PAGE_SIZE = 1000;
+// A mensagem da API (competência futura, folha fechada, empresa sem CNPJ) já diz o que fazer.
+const apiMessage = (fallback: string) => (data: { erro?: string } | undefined) => data?.erro || fallback;
 
-export const generateMonthlyPayroll = async (): Promise<EmployeePayroll[]> => {
-  let total = 0;
-  const firstPage = await httpClient<EmployeePayroll[]>(`${API_URL}/processar?pagina=1&limite=${PAYROLL_PAGE_SIZE}`, {
-    auth: true,
-    errorMessage: 'Erro ao processar folha de pagamento',
-    onResponse: (response) => {
-      const header = response.headers.get('X-Total-Count');
-      if (header === null || !/^\d+$/.test(header)) throw new Error('Resposta da API sem total válido da folha');
-      total = Number(header);
-    }
-  });
-  const totalPages = Math.ceil(total / PAYROLL_PAGE_SIZE);
+const competenciaUrl = (competencia: string) => `${API_URL}/competencias/${competencia}`;
 
-  const remaining = await Promise.all(
-    Array.from({ length: Math.max(0, totalPages - 1) }, (_, i) =>
-      httpClient<EmployeePayroll[]>(`${API_URL}/processar?pagina=${i + 2}&limite=${PAYROLL_PAGE_SIZE}`, {
-        auth: true,
-        errorMessage: 'Erro ao processar folha de pagamento'
-      })
-    )
-  );
-  const payroll = [...firstPage, ...remaining.flat()];
-
-  if (payroll.length !== total) throw new Error('A folha recebida não corresponde ao total informado pela API');
-  return payroll;
+// A folha da competência, ou null se ainda não foi processada (a API responde 404).
+export const getPayroll = async (competencia: string): Promise<MonthlyPayroll | null> => {
+  try {
+    return await httpClient<MonthlyPayroll>(competenciaUrl(competencia), { auth: true, errorMessage: apiMessage('Erro ao buscar a folha de pagamento') });
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) return null;
+    throw error;
+  }
 };
 
-// Nova função para a visão do Colaborador
-export const getMyPayroll = async (): Promise<EmployeePayroll[]> => {
-  return await httpClient<EmployeePayroll[]>(`${API_URL}/meu-holerite`, { auth: true, errorMessage: 'Erro ao buscar meu holerite' });
-};
+// Cria a folha da competência ou, estando ela aberta, recalcula com o cadastro de agora.
+export const processPayroll = (competencia: string): Promise<MonthlyPayroll> =>
+  httpClient<MonthlyPayroll>(`${competenciaUrl(competencia)}/processar`, { method: 'POST', auth: true, errorMessage: apiMessage('Erro ao processar folha de pagamento') });
+
+export const closePayroll = (competencia: string): Promise<MonthlyPayroll> =>
+  httpClient<MonthlyPayroll>(`${competenciaUrl(competencia)}/fechar`, { method: 'POST', auth: true, errorMessage: apiMessage('Erro ao fechar a folha de pagamento') });
+
+// Visão do Colaborador: os holerites das folhas fechadas, do mês mais recente ao mais antigo.
+export const getMyPayslips = (): Promise<Payslip[]> =>
+  httpClient<Payslip[]>(`${API_URL}/meus-holerites`, { auth: true, errorMessage: 'Erro ao buscar meus holerites' });

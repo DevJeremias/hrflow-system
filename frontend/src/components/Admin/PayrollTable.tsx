@@ -1,11 +1,11 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { EmployeePayroll, PayrollCompany } from '../../services/payrollService';
 import PayrollSlipModal from './PayrollSlipModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { competenciaAtual } from '../../utils/competencia';
+import { rotuloDaCompetencia } from '../../utils/competencia';
 
-interface Props { payrolls: EmployeePayroll[]; }
+interface Props { payrolls: EmployeePayroll[]; competencia: string; empresa: PayrollCompany; }
 
 // Só uma página de linhas vai ao DOM: com milhares de colaboradores, desenhar todos trava a tela.
 const PAGE_SIZE = 50;
@@ -16,7 +16,7 @@ const formatCurrency = (val: number) => currency.format(val);
 // Sem acento nem caixa, para a busca achar "Jose" em "José".
 const normalizar = (texto: string) => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
-const PayrollTable: React.FC<Props> = ({ payrolls }) => {
+const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa }) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -58,13 +58,16 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
               </tr>
             </thead>
             <tbody className="text-sm font-medium">
+              {filtered.length === 0 && (
+                <tr><td colSpan={5} className="p-10 text-center font-medium text-slate-500">Nenhum colaborador na folha deste mês.</td></tr>
+              )}
               {visible.map((emp) => (
                 <tr 
                   key={emp.id} 
                   onClick={() => setSelectedEmployee(emp)}
                   className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0 group cursor-pointer"
                 >
-                  <td className="p-6"><div className="font-bold text-slate-900">{emp.name}</div><div className="text-xs text-slate-500">{emp.role}</div></td>
+                  <td className="p-6"><div className="font-bold text-slate-900">{emp.name}</div><div className="text-xs text-slate-500">{emp.role}{emp.contract ? ` · ${emp.contract}` : ''}</div></td>
                   <td className="p-6 text-slate-600 font-bold">{formatCurrency(emp.baseSalary)}</td>
                   <td className="p-6"><span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-100">+ {formatCurrency(emp.totalEarnings)}</span></td>
                   <td className="p-6"><span className="px-3 py-1 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg border border-rose-100">- {formatCurrency(emp.totalDeductions)}</span></td>
@@ -94,8 +97,9 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
         isOpen={!!selectedEmployee} 
         onClose={() => setSelectedEmployee(null)} 
         employee={selectedEmployee} 
-        month={competenciaAtual()}
-        companyName={user?.empresaNome}
+        month={rotuloDaCompetencia(competencia)}
+        companyName={empresa.razaoSocial ?? user?.empresaNome}
+        cnpj={empresa.cnpj}
       />
     </>
   );
