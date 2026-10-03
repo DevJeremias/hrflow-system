@@ -134,6 +134,10 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'ler pontos da empresa', metodo: 'GET', caminho: () => '/api/ponto?mes=2026-03', permitido: GESTAO },
             { rotulo: 'ler justificativas', metodo: 'GET', caminho: () => '/api/ponto/justificativas?mes=2026-03', permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },
+            { rotulo: 'relatório de headcount', metodo: 'GET', caminho: () => '/api/relatorios/headcount?de=2026-01&ate=2026-03', permitido: GESTAO },
+            { rotulo: 'relatório de aniversariantes', metodo: 'GET', caminho: () => '/api/relatorios/aniversariantes', permitido: GESTAO },
+            { rotulo: 'relatório de absenteísmo', metodo: 'GET', caminho: () => '/api/relatorios/absenteismo?mes=2026-03', permitido: GESTAO },
+            { rotulo: 'relatório de custo por departamento', metodo: 'GET', caminho: () => '/api/relatorios/custo-departamento?competencia=2026-10', permitido: GESTAO },
             { rotulo: 'ver o próprio perfil', metodo: 'GET', caminho: () => '/api/perfil/meus-dados', permitido: IDENTIDADES },
             { rotulo: 'ver as próprias notificações', metodo: 'GET', caminho: () => '/api/notificacoes', permitido: IDENTIDADES },
             { rotulo: 'marcar as próprias notificações como lidas', metodo: 'POST', caminho: () => '/api/notificacoes/lidas', permitido: IDENTIDADES },
@@ -179,6 +183,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             assert.deepEqual(PERMISSOES['folha:processar'], GESTAO);
             assert.deepEqual(PERMISSOES['ponto:consultar-empresa'], GESTAO);
             assert.deepEqual(PERMISSOES['dashboard:consultar'], GESTAO);
+            assert.deepEqual(PERMISSOES['relatorios:consultar'], GESTAO);
         });
     });
 

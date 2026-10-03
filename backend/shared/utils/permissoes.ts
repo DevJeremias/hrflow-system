@@ -22,6 +22,8 @@ export const PERMISSOES = {
     'folha:processar': GESTAO,
     'ponto:consultar-empresa': GESTAO,
     'dashboard:consultar': GESTAO,
+    // Os números agregados da empresa (headcount, custo, absenteísmo) e a exportação deles.
+    'relatorios:consultar': GESTAO,
 } as const satisfies Record<string, readonly Perfil[]>;
 
 export type Permissao = keyof typeof PERMISSOES;

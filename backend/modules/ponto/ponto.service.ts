@@ -165,22 +165,15 @@ interface JornadaDoMes extends Jornada {
     saida: string;
 }
 
-// Lê o mês inteiro do colaborador e apura cada dia, inclusive os sem marcação.
-const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }) => {
-    if (!mesValido(mes)) {
-        throw new ErroDePonto('invalido', 'Informe o mês no formato AAAA-MM (ex.: 2026-03).');
-    }
-    const fuso = await fusoDaEmpresa(empresaId);
-    const { inicio, fim } = fuso.limitesDoMes(mes);
-    const { de, ate } = datasDoMes(mes);
-
-    const [registro, pontos, justificativas] = await Promise.all([
-        repositorio.jornadaDoColaborador(funcionarioId, empresaId),
-        repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
-        repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
-    ]);
-    if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
-
+// Apura cada dia do mês de um colaborador, inclusive os sem marcação. É a única conta de dia: a tela do
+// colaborador e os relatórios da empresa passam por aqui.
+const apurarDiasDoMes = ({ fuso, mes, registro, pontos, justificativas }: {
+    fuso: Fuso;
+    mes: string;
+    registro: repositorio.JornadaDoColaborador;
+    pontos: readonly Pick<repositorio.RegistroDoColaborador, 'tipo_registro' | 'instante'>[];
+    justificativas: readonly Pick<repositorio.JustificativaDoDia, 'dia' | 'status'>[];
+}) => {
     const cargaSemanalHoras = Number(registro.carga_semanal);
     const jornada: JornadaDoMes = {
         cargaSemanalHoras,
@@ -196,18 +189,81 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
         const dia = fuso.diaLocal(p.instante);
         marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(fuso, p.instante) }]);
     }
-    const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j]));
+    const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j.status]));
 
     const dias = regras.apurarMes(
         diasDoMes(mes).map((data) => ({
             data,
             marcacoes: marcacoesDoDia.get(data) ?? [],
-            justificativa: justificativaDoDia.get(data)?.status ?? null,
+            justificativa: justificativaDoDia.get(data) ?? null,
         })),
         jornada,
         { hoje: fuso.diaLocal(agoraEmSegundos()), admissao: registro.admissao }
     );
-    return { dias, jornada, justificativaDoDia };
+    return { dias, jornada };
+};
+
+// Lê o mês inteiro do colaborador e apura cada dia.
+const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }) => {
+    if (!mesValido(mes)) {
+        throw new ErroDePonto('invalido', 'Informe o mês no formato AAAA-MM (ex.: 2026-03).');
+    }
+    const fuso = await fusoDaEmpresa(empresaId);
+    const { inicio, fim } = fuso.limitesDoMes(mes);
+    const { de, ate } = datasDoMes(mes);
+
+    const [registro, pontos, justificativas] = await Promise.all([
+        repositorio.jornadaDoColaborador(funcionarioId, empresaId),
+        repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
+        repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
+    ]);
+    if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
+
+    return { ...apurarDiasDoMes({ fuso, mes, registro, pontos, justificativas }), justificativaDoDia: new Map(justificativas.map((j) => [j.dia, j])) };
+};
+
+export interface ColaboradorApurado {
+    funcionarioId: number;
+    nome: string;
+    departamento: string | null;
+    dias: regras.DiaApurado[];
+}
+
+// O mês de todos os colaboradores da empresa, apurado com a mesma regra da tela do colaborador, para os
+// relatórios. Três consultas pela empresa inteira em vez de três por colaborador. O dia depois do
+// desligamento não é do colaborador e sai da apuração.
+export const apurarMesDaEmpresa = async ({ empresaId, mes }: { empresaId: number; mes: string }): Promise<ColaboradorApurado[]> => {
+    const fuso = await fusoDaEmpresa(empresaId);
+    const { inicio, fim } = fuso.limitesDoMes(mes);
+    const { de, ate } = datasDoMes(mes);
+
+    const [colaboradores, pontos, justificativas] = await Promise.all([
+        repositorio.colaboradoresParaApurar(empresaId, de, `${mes}-${String(diasDoMes(mes).length).padStart(2, '0')}`),
+        repositorio.registrosDoMesDaEmpresa(empresaId, inicio, fim),
+        repositorio.justificativasDoMesDaEmpresa(empresaId, de, ate),
+    ]);
+
+    const agrupar = <T extends { funcionario_id: number }>(linhas: T[]): Map<number, T[]> => {
+        const porColaborador = new Map<number, T[]>();
+        for (const linha of linhas) porColaborador.set(linha.funcionario_id, [...(porColaborador.get(linha.funcionario_id) ?? []), linha]);
+        return porColaborador;
+    };
+    const pontosDe = agrupar(pontos);
+    const justificativasDe = agrupar(justificativas);
+
+    return colaboradores.map((colaborador) => {
+        const { dias } = apurarDiasDoMes({
+            fuso, mes, registro: colaborador,
+            pontos: pontosDe.get(colaborador.funcionario_id) ?? [],
+            justificativas: justificativasDe.get(colaborador.funcionario_id) ?? [],
+        });
+        return {
+            funcionarioId: colaborador.funcionario_id,
+            nome: colaborador.nome,
+            departamento: colaborador.departamento,
+            dias: colaborador.desligamento === null ? dias : dias.filter((dia) => dia.data <= colaborador.desligamento!),
+        };
+    });
 };
 
 export const listarHistorico = async (consulta: ConsultaDoColaborador & { mes: unknown }): Promise<DiaDoHistorico[]> => {

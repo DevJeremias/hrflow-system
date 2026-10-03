@@ -34,6 +34,7 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `POST /api/ponto/registrar`, `PUT /api/ponto/justificativa/:data` | 200 se tem cadastro | 200 se tem cadastro | 200 |
 | `GET /api/ponto/hoje\|historico\|totais/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
 | `GET /api/dashboard/resumo` | 200 | 200 | 403 |
+| `GET /api/relatorios/headcount`, `.../aniversariantes`, `.../custo-departamento`, `.../absenteismo` (JSON, e `?formato=csv` ou `?formato=pdf` para exportar) | 200 | 200 | 403 |
 | `GET /api/perfil/meus-dados`, `PUT /api/perfil/meus-dados`, `PUT /api/perfil/alterar-senha` | 200 | 200 | 200 |
 | `GET /api/notificacoes`, `POST /api/notificacoes/lidas`, `POST /api/notificacoes/:id/lida` | 200, só os próprios avisos | 200, só os próprios avisos | 200, só os próprios avisos |
 

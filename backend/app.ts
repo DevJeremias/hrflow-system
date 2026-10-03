@@ -19,6 +19,7 @@ import { folhaRoutes } from './modules/folha/index.ts';
 import { usuariosRoutes } from './modules/usuarios/index.ts';
 import { empresaRoutes } from './modules/empresa/index.ts';
 import { notificacoesRoutes } from './modules/notificacoes/index.ts';
+import { relatoriosRoutes } from './modules/relatorios/index.ts';
 
 // Importação do Middleware de Proteção
 import authMiddleware from './shared/middlewares/authMiddleware.ts';
@@ -74,6 +75,7 @@ export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUS
     app.use('/api/perfil', authMiddleware, perfilRoutes);
     app.use('/api/dashboard', authMiddleware, dashboardRoutes);
     app.use('/api/notificacoes', authMiddleware, notificacoesRoutes);
+    app.use('/api/relatorios', authMiddleware, relatoriosRoutes);
 
     // Rota padrão da API
     app.get('/api', (req, res) => {
