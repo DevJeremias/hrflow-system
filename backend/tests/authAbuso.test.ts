@@ -13,13 +13,14 @@ import bcrypt from 'bcrypt';
 import mysql from 'mysql2/promise';
 import type { Connection, Pool, RowDataPacket } from 'mysql2/promise';
 import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
+import { novoCnpj } from './support/cnpj.ts';
 
 const host = process.env.HRFLOW_TEST_DB_HOST;
 const port = process.env.HRFLOW_TEST_DB_PORT ? Number(process.env.HRFLOW_TEST_DB_PORT) : undefined;
 const skip = host ? false : 'HRFLOW_TEST_DB_HOST não definido: sem MySQL, nada foi exercitado.';
 
 const SCHEMA = [
-    'CREATE TABLE empresas (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL)',
+    'CREATE TABLE empresas (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100) NOT NULL, cnpj CHAR(14) NULL, CONSTRAINT uq_empresas_cnpj UNIQUE (cnpj))',
     `CREATE TABLE usuarios (
         id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100), email VARCHAR(100) NOT NULL UNIQUE,
         senha VARCHAR(255) NOT NULL, perfil VARCHAR(50) NOT NULL, empresa_id INT NOT NULL,
@@ -59,8 +60,8 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     const registro = (extra: Record<string, unknown> = {}) => {
         sequencia += 1;
         return {
-            nomeEmpresa: `Empresa Ficticia ${sequencia}`, nomeAdmin: `Pessoa Ficticia ${sequencia}`,
-            email: `pessoa.${sequencia}@exemplo.invalid`, senha: senhaFicticia, ...extra,
+            nomeEmpresa: `Empresa Ficticia ${sequencia}`, cnpj: novoCnpj(), nomeAdmin: `Pessoa Ficticia ${sequencia}`,
+            email: `pessoa.${sequencia}@exemplo.invalid`, senha: senhaFicticia, confirmacaoSenha: senhaFicticia, ...extra,
         };
     };
 
@@ -126,6 +127,10 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
                 { senha: 'a'.repeat(73) },
                 { nomeEmpresa: 'a'.repeat(101) },
                 { nomeEmpresa: undefined },
+                { cnpj: undefined },
+                { cnpj: '11.111.111/1111-11' },
+                { confirmacaoSenha: undefined },
+                { confirmacaoSenha: 'outra-senha-ficticia' },
             ];
             for (const extra of invalidas) {
                 const { status, corpo } = await chamar('/registrar', registro(extra));
@@ -223,6 +228,39 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
             assert.equal(status, 409);
             assert.match(corpo.erro, /já cadastrado/);
             assert.equal(await contar('empresas'), empresas);
+        });
+    });
+
+    describe('dados da empresa no cadastro', () => {
+        it('recusa CNPJ inválido e confirmação diferente com a mensagem do campo', async () => {
+            const chamar = await subir();
+            const semCnpj = await chamar('/registrar', registro({ cnpj: undefined }));
+            assert.equal(semCnpj.status, 400);
+            assert.equal(semCnpj.corpo.erro, 'CNPJ é obrigatório.');
+            const invalido = await chamar('/registrar', registro({ cnpj: '11.111.111/1111-11' }));
+            assert.equal(invalido.status, 400);
+            assert.match(invalido.corpo.erro, /CNPJ inválido/);
+            const diferente = await chamar('/registrar', registro({ confirmacaoSenha: 'outra-senha-ficticia' }));
+            assert.equal(diferente.status, 400);
+            assert.equal(diferente.corpo.erro, 'A confirmação da senha não confere.');
+            const ausente = await chamar('/registrar', registro({ confirmacaoSenha: undefined }));
+            assert.equal(ausente.corpo.erro, 'Confirme a senha.');
+        });
+
+        it('grava o CNPJ só com dígitos e responde 409 para o CNPJ de outra empresa, sem criar conta', async () => {
+            const chamar = await subir();
+            const cnpj = novoCnpj();
+            const pontuado = `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
+            assert.equal((await chamar('/registrar', registro({ cnpj: pontuado }))).status, 201);
+            const [[empresa]] = await pool.query<RowDataPacket[]>('SELECT cnpj FROM empresas WHERE cnpj = ?', [cnpj]);
+            assert.equal(empresa.cnpj, cnpj);
+
+            const [empresas, usuarios] = [await contar('empresas'), await contar('usuarios')];
+            const repetido = await chamar('/registrar', registro({ cnpj }));
+            assert.equal(repetido.status, 409);
+            assert.equal(repetido.corpo.erro, 'Este CNPJ já está cadastrado em outra empresa.');
+            assert.equal(await contar('empresas'), empresas);
+            assert.equal(await contar('usuarios'), usuarios);
         });
     });
 

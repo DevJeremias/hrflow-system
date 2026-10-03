@@ -22,7 +22,7 @@ O que o sistema faz com dados pessoais, quem responde por quê, quanto tempo cad
 | Pedidos de alteração de nome, e-mail, endereço e banco | `solicitacoes_alteracao` | Aprovação pelo RH |
 | Trilha de auditoria (quem, o quê, quando, IP, antes e depois) | `auditoria` | Rastro de quem mexeu em dados e acessos |
 
-A foto deixou de ficar em base64 em `usuarios.avatar` e `funcionarios.avatar` (migration `0019_lgpd`): `SELECT * FROM funcionarios` não traz imagem e `GET /api/funcionarios` nunca trouxe.
+A foto deixou de ficar em base64 em `usuarios.avatar` e `funcionarios.avatar` (migration `0020_lgpd`): `SELECT * FROM funcionarios` não traz imagem e `GET /api/funcionarios` nunca trouxe.
 
 ## Trilha de auditoria
 

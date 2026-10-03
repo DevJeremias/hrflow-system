@@ -333,7 +333,7 @@ describe('alterações cadastrais por solicitação (B-22)', { skip: banco.skip 
     it('o RH que edita o e-mail de um colaborador pelo cadastro derruba as sessões dele', async () => {
         const caio = await pessoa('Colaborador');
         const versao = (await conta(caio.usuarioId)).sessao_versao;
-        const edicao = await chamar('PUT', `/api/funcionarios/${caio.funcionarioId}`, rita.token, { nome: caio.nome, email: emailNovo() });
+        const edicao = await chamar('PATCH', `/api/funcionarios/${caio.funcionarioId}`, rita.token, { nome: caio.nome, email: emailNovo() });
         assert.equal(edicao.status, 200, JSON.stringify(edicao.corpo));
         assert.equal((await conta(caio.usuarioId)).sessao_versao, versao + 1);
         assert.equal((await chamar('GET', '/api/perfil/meus-dados', caio.token)).status, 401);

@@ -19,7 +19,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           # Banco descartável do job: a senha não protege nada além dele.
           MYSQL_ROOT_PASSWORD: ci-mysql-descartavel
@@ -43,6 +43,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # A configuração que o MySQL 8.4 de produção terá: binlog ligado (padrão da 8.4) e triggers criados por um
+      # usuário sem SUPER (o da aplicação), o que só funciona com esta variável.
+      - name: MySQL com log_bin_trust_function_creators
+        run: mysql -h 127.0.0.1 -uroot -pci-mysql-descartavel -e 'SET GLOBAL log_bin_trust_function_creators = 1'
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -70,7 +75,7 @@ jobs:
 
     services:
       mysql:
-        image: mysql:8.0
+        image: mysql:8.4
         env:
           # Banco descartável do job: a senha não protege nada além dele.
           MYSQL_ROOT_PASSWORD: ci-mysql-descartavel
@@ -91,6 +96,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # A configuração que o MySQL 8.4 de produção terá: binlog ligado (padrão da 8.4) e triggers criados por um
+      # usuário sem SUPER (o da aplicação), o que só funciona com esta variável.
+      - name: MySQL com log_bin_trust_function_creators
+        run: mysql -h 127.0.0.1 -uroot -pci-mysql-descartavel -e 'SET GLOBAL log_bin_trust_function_creators = 1'
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:

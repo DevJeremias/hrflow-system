@@ -13,8 +13,10 @@ const COMANDOS = {
   audit: "procura dados que violariam as constraints novas, sem alterar nada",
   seed: "carrega as fixtures sintéticas de desenvolvimento",
   setup: "create + migrate + seed",
-  reset: "apaga o banco e refaz o setup (exige --confirmar)",
+  reset: "apaga o banco e refaz o setup (exige --banco=<DB_NAME> e DB_HOST local)",
 };
+
+const HOSTS_LOCAIS = new Set(["localhost", "127.0.0.1", "::1"]);
 
 const [comando, ...flags] = process.argv.slice(2);
 if (!COMANDOS[comando]) {
@@ -81,8 +83,12 @@ try {
     await semear();
   } else if (comando === "reset") {
     if (process.env.NODE_ENV === "production") throw new Error("reset recusado com NODE_ENV=production.");
-    if (!flags.includes("--confirmar")) {
-      throw new Error(`reset apaga o banco ${config.database} inteiro. Rode com --confirmar se é isso mesmo.`);
+    // Quem apaga o banco digita o nome dele: um DB_NAME herdado do ambiente errado não passa despercebido.
+    if (!flags.includes(`--banco=${config.database}`)) {
+      throw new Error(`reset apaga o banco ${config.database} inteiro. Rode com --banco=${config.database} se é isso mesmo.`);
+    }
+    if (!HOSTS_LOCAIS.has(config.host)) {
+      throw new Error(`reset recusado: DB_HOST=${config.host} não é uma máquina local. Ele só roda contra o MySQL de desenvolvimento.`);
     }
     await migrator.removerBanco(config);
     await migrator.criarBanco(config);

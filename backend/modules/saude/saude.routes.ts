@@ -5,11 +5,16 @@ export const PRAZO_PRONTIDAO_MS = 2000;
 
 // /health diz se o processo da API responde e nunca toca o banco; /ready diz se ele consegue atender,
 // o que inclui o banco. Ficam fora do authMiddleware porque quem pergunta é um monitor, sem sessão.
-export const criarRouter = (pool: { query: (sql: string) => unknown }, { prazoMs = PRAZO_PRONTIDAO_MS } = {}) => {
+// APP_VERSION é o SHA da imagem em execução (o compose de produção o define): o deploy por pull da máquina e o
+// workflow de publicação perguntam a /health qual versão está no ar. Sem a variável (desenvolvimento) o campo some.
+export const criarRouter = (
+    pool: { query: (sql: string) => unknown },
+    { prazoMs = PRAZO_PRONTIDAO_MS, versao = process.env.APP_VERSION } = {},
+) => {
     const router = express.Router();
 
     router.get('/health', (req, res) => {
-        res.json({ status: 'ok' });
+        res.json(versao ? { status: 'ok', versao } : { status: 'ok' });
     });
 
     router.get('/ready', async (req, res) => {

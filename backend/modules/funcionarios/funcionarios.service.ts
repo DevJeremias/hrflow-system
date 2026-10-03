@@ -4,15 +4,21 @@
 // cargo e departamento no histórico contratual, na mesma transação. Não conhece HTTP (falhas de regra
 // saem como ErroDeFuncionario) e só chega ao banco pelo repositório.
 import bcrypt from 'bcrypt';
+import type { RowDataPacket } from 'mysql2/promise';
 import * as repositorio from './funcionarios.repository.ts';
-import type { AlvoDoCicloDeVida, CadastroAtual, FuncionarioListado, PeriodoContratual, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
+import type { AlvoDoCicloDeVida, DependenteGravado, FuncionarioListado, PeriodoContratual, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
+import { COLUNAS_AUDITADAS } from './funcionarios.repository.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import { gerarSenhaProvisoria } from './funcionarios.regras.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
+import { lerPlanilha, resolverReferencias } from './funcionarios.importacao.ts';
+import { criarFuncionario as schemaDoCadastro } from './funcionarios.schemas.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { diferencas } from '../../shared/utils/auditar.ts';
 import type { Autoria } from '../../shared/utils/auditar.ts';
-import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
+import { EMAIL_DUPLICADO, traduzirErro } from '../../shared/utils/erros.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
+import logger from '../../shared/observabilidade/logger.ts';
+import { registrarNoSentry } from '../../shared/observabilidade/sentry.ts';
 import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
 import { hoje } from '../../shared/utils/relogio.ts';
 
@@ -42,13 +48,28 @@ const exigirNaoAnonimizado = (alvo: AlvoDoCicloDeVida): void => {
 // Editar ou excluir o cadastro segue a matriz de shared/utils/permissoes.ts: o RH não alcança o
 // próprio cadastro nem o de RH ou Administrador; o Administrador alcança todos. Um cadastro que não
 // existe responde 404 antes de qualquer recusa.
-const exigirAlcance = async (repo: RepositorioDeFuncionarios, empresaId: number, id: number, ator: Ator): Promise<void> => {
+const exigirAlcance = async (repo: RepositorioDeFuncionarios, empresaId: number, id: number, ator: Ator): Promise<AlvoDoCicloDeVida> => {
     const alvo = await repo.alvoDoCicloDeVida(id, empresaId);
     if (!alvo) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
 
     const motivo = motivoDeNegacaoDoCadastro({ perfil: ator.perfil, funcionario_id: ator.funcionarioId }, { id, perfilDaConta: alvo.usuario_perfil });
     if (motivo) throw new ErroDeFuncionario('proibido', motivo);
     exigirNaoAnonimizado(alvo);
+    return alvo;
+};
+
+// CPF e matrícula são únicos por empresa (chaves do banco): a corrida entre dois cadastros iguais
+// termina aqui, com a mensagem do campo, e não num 500. Outras falhas seguem como vieram.
+const DUPLICIDADES = [
+    { chave: 'uq_funcionarios_empresa_cpf', campo: 'cpf', mensagem: 'Já existe um colaborador com este CPF nesta empresa.' },
+    { chave: 'uq_funcionarios_empresa_matricula', campo: 'matricula', mensagem: 'Já existe um colaborador com esta matrícula nesta empresa.' },
+];
+
+const traduzirDuplicidade = (erro: unknown): never => {
+    const { code, sqlMessage } = erro as { code?: string; sqlMessage?: string };
+    const duplicidade = code === 'ER_DUP_ENTRY' ? DUPLICIDADES.find(({ chave }) => sqlMessage?.includes(chave)) : undefined;
+    if (!duplicidade) throw erro;
+    throw new ErroDeFuncionario('conflito', duplicidade.mensagem, { detalhes: [{ campo: duplicidade.campo, mensagem: duplicidade.mensagem }] });
 };
 
 export type FuncionarioDaPagina = Omit<FuncionarioListado, 'tem_movimento' | 'anonimizado'> & { tem_movimento: boolean; anonimizado: boolean };
@@ -68,19 +89,18 @@ export const listarFuncionarios = async (empresaId: number, { busca, status, dep
 };
 
 // Cria o funcionário (sempre Ativo) e o acesso dele como Colaborador, ou nenhum dos dois.
-export const criarFuncionario = async (empresaId: number, autoria: Autoria, { senha, ...dados }: CorpoDoCadastro): Promise<void> => {
-    await repositorio.emTransacao(async (repo) => {
+const gravarCadastro = (empresaId: number, autoria: Autoria, dados: Omit<CorpoDoCadastro, 'senha'>, senhaCriptografada: string): Promise<void> =>
+    repositorio.emTransacao(async (repo) => {
         await exigirReferencias(repo, dados.cargo_id, dados.departamento_id, empresaId);
 
         if (await repo.emailEmUso(dados.email)) {
             throw new ErroDeFuncionario('invalido', EMAIL_DUPLICADO, { detalhes: [{ campo: 'email', mensagem: EMAIL_DUPLICADO }] });
         }
 
-        const funcionarioId = await repo.inserirFuncionario({ ...dados, empresaId });
-        const senhaCriptografada = await bcrypt.hash(senha, VOLTAS_DO_HASH);
+        const funcionarioId = await repo.inserirFuncionario({ ...dados, empresaId }).catch(traduzirDuplicidade);
         await repo.inserirUsuarioColaborador({ nome: dados.nome, email: dados.email, senhaCriptografada, empresaId, funcionarioId });
 
-        await registrarVigencia(repo, { empresaId, funcionarioId, salario: dados.salario_base, cargoId: dados.cargo_id, departamentoId: dados.departamento_id, inicio: dados.data_admissao ?? hoje(), autoria });
+        await registrarVigencia(repo, { empresaId, funcionarioId, salario: dados.salario_base ?? null, cargoId: dados.cargo_id ?? null, departamentoId: dados.departamento_id ?? null, inicio: dados.data_admissao ?? hoje(), autoria });
         await repo.auditar(autoria, {
             acao: 'funcionario.criado',
             entidade: 'funcionario',
@@ -88,14 +108,16 @@ export const criarFuncionario = async (empresaId: number, autoria: Autoria, { se
             depois: {
                 nome: dados.nome,
                 email: dados.email,
-                tipo_contrato: dados.tipo_contrato,
-                salario_base: dados.salario_base,
+                tipo_contrato: dados.tipo_contrato ?? null,
+                salario_base: dados.salario_base ?? null,
                 cargo: dados.cargo_id ? await repo.nomeDoCargo(dados.cargo_id, empresaId) : null,
                 departamento: dados.departamento_id ? await repo.nomeDoDepartamento(dados.departamento_id, empresaId) : null,
             },
         });
     });
-};
+
+export const criarFuncionario = async (empresaId: number, autoria: Autoria, { senha, ...dados }: CorpoDoCadastro): Promise<void> =>
+    gravarCadastro(empresaId, autoria, dados, await bcrypt.hash(senha, VOLTAS_DO_HASH));
 
 interface Vigencia {
     empresaId: number;
@@ -135,45 +157,171 @@ const registrarVigencia = async (repo: RepositorioDeFuncionarios, vigencia: Vige
     await repo.abrirPeriodo({ empresaId, funcionarioId, inicio: dia, ...dados });
 };
 
-// Os campos que a trilha compara numa edição. O salário tem linha própria na trilha.
-const CAMPOS_EDITADOS = [
-    'nome', 'email', 'cpf', 'telefone', 'data_nascimento', 'data_admissao', 'endereco', 'banco', 'agencia', 'conta',
-    'tipo_conta', 'nivel', 'tipo_contrato', 'cargo_id', 'departamento_id',
-] as const;
-
+// Altera só os campos enviados: o que faltou no corpo fica como está.
 export const atualizarFuncionario = async (empresaId: number, id: number, ator: Ator, autoria: Autoria, dados: CorpoDaEdicao): Promise<void> => {
     await repositorio.emTransacao(async (repo) => {
-        await exigirAlcance(repo, empresaId, id, ator);
-        await exigirReferencias(repo, dados.cargo_id, dados.departamento_id, empresaId);
+        const alvo = await exigirAlcance(repo, empresaId, id, ator);
+        await exigirReferencias(repo, dados.cargo_id ?? null, dados.departamento_id ?? null, empresaId);
         const atual = (await repo.cadastroAtual(id, empresaId))!;
 
-        if (!await repo.atualizarFuncionario({ ...dados, id, empresaId })) {
+        // A admissão e o nascimento se comparam com o que já está gravado quando só um deles veio.
+        const nascimento = dados.data_nascimento === undefined ? alvo.data_nascimento : dados.data_nascimento;
+        const admissao = dados.data_admissao === undefined ? alvo.data_admissao : dados.data_admissao;
+        if (nascimento && admissao && admissao < nascimento) {
+            const mensagem = 'Data de admissão não pode ser anterior à data de nascimento.';
+            throw new ErroDeFuncionario('invalido', mensagem, { detalhes: [{ campo: 'data_admissao', mensagem }] });
+        }
+
+        if (!await repo.atualizarFuncionario({ ...dados, id, empresaId }).catch(traduzirDuplicidade)) {
             throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
         }
 
-        await repo.sincronizarUsuario(id, empresaId, dados.nome, dados.email);
+        if (dados.nome !== undefined || dados.email !== undefined) {
+            await repo.sincronizarUsuario(id, empresaId, { nome: dados.nome, email: dados.email });
+        }
 
-        await registrarVigencia(repo, { empresaId, funcionarioId: id, salario: dados.salario_base, cargoId: dados.cargo_id, departamentoId: dados.departamento_id, inicio: atual.data_admissao ?? hoje(), autoria });
+        // O que o cadastro passa a ser: o que já estava, com o que veio por cima.
+        const efetivo = { ...atual, ...Object.fromEntries(Object.entries(dados).filter(([, valor]) => valor !== undefined)) } as typeof atual;
+        await registrarVigencia(repo, {
+            empresaId, funcionarioId: id, salario: efetivo.salario_base, cargoId: efetivo.cargo_id, departamentoId: efetivo.departamento_id,
+            inicio: (atual.data_admissao as string | null) ?? hoje(), autoria,
+        });
 
-        const mudancas = diferencas(atual, dados, CAMPOS_EDITADOS);
+        const mudancas = diferencas(atual, efetivo, COLUNAS_AUDITADAS);
         if (mudancas) {
             // Cargo e departamento aparecem na trilha também pelo nome, que é o que quem lê reconhece.
             const { antes, depois } = mudancas;
             if ('cargo_id' in depois) {
                 antes.cargo = atual.cargo_nome;
-                depois.cargo = dados.cargo_id ? await repo.nomeDoCargo(dados.cargo_id, empresaId) : null;
+                depois.cargo = efetivo.cargo_id ? await repo.nomeDoCargo(efetivo.cargo_id, empresaId) : null;
             }
             if ('departamento_id' in depois) {
                 antes.departamento = atual.departamento_nome;
-                depois.departamento = dados.departamento_id ? await repo.nomeDoDepartamento(dados.departamento_id, empresaId) : null;
+                depois.departamento = efetivo.departamento_id ? await repo.nomeDoDepartamento(efetivo.departamento_id, empresaId) : null;
             }
             await repo.auditar(autoria, { acao: 'funcionario.editado', entidade: 'funcionario', entidadeId: id, antes, depois });
         }
-        const salario = diferencas({ salario_base: atual.salario_base === null ? null : Number(atual.salario_base) }, { salario_base: dados.salario_base }, ['salario_base']);
+        const salario = diferencas({ salario_base: atual.salario_base === null ? null : Number(atual.salario_base) }, { salario_base: efetivo.salario_base === null ? null : Number(efetivo.salario_base) }, ['salario_base']);
         if (salario) {
             await repo.auditar(autoria, { acao: 'funcionario.salario_alterado', entidade: 'funcionario', entidadeId: id, antes: salario.antes, depois: salario.depois });
         }
     });
+};
+
+// ==========================================
+// DEPENDENTES
+// ==========================================
+
+export type DependenteDoColaborador = Omit<DependenteGravado, keyof RowDataPacket>;
+
+const DEPENDENTE_NAO_ENCONTRADO = 'Dependente não encontrado.';
+
+const DEPENDENTE_COM_CPF_REPETIDO = 'Este CPF já está cadastrado como dependente deste colaborador.';
+
+const traduzirDuplicidadeDeDependente = (erro: unknown): never => {
+    if ((erro as { code?: string }).code === 'ER_DUP_ENTRY') {
+        throw new ErroDeFuncionario('conflito', DEPENDENTE_COM_CPF_REPETIDO, { detalhes: [{ campo: 'cpf', mensagem: DEPENDENTE_COM_CPF_REPETIDO }] });
+    }
+    throw erro;
+};
+
+// Ver os dependentes vale para quem gere colaboradores; alterá-los segue o alcance sobre o cadastro.
+export const listarDependentes = async (empresaId: number, funcionarioId: number): Promise<DependenteDoColaborador[]> => {
+    return repositorio.emTransacao(async (repo) => {
+        if (!await repo.alvoDoCicloDeVida(funcionarioId, empresaId)) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+        return repo.listarDependentes(funcionarioId, empresaId);
+    });
+};
+
+export const criarDependente = async (empresaId: number, funcionarioId: number, ator: Ator, autoria: Autoria, dados: CorpoDoDependente): Promise<number> => {
+    return repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, funcionarioId, ator);
+        const id = await repo.inserirDependente(funcionarioId, empresaId, dados).catch(traduzirDuplicidadeDeDependente);
+        await repo.auditar(autoria, { acao: 'funcionario.dependente_criado', entidade: 'funcionario', entidadeId: funcionarioId, depois: { nome: dados.nome, parentesco: dados.parentesco } });
+        return id;
+    });
+};
+
+export const atualizarDependente = async (empresaId: number, funcionarioId: number, dependenteId: number, ator: Ator, autoria: Autoria, dados: CorpoDoDependente): Promise<void> => {
+    await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, funcionarioId, ator);
+        if (!await repo.atualizarDependente(dependenteId, funcionarioId, empresaId, dados).catch(traduzirDuplicidadeDeDependente)) {
+            throw new ErroDeFuncionario('inexistente', DEPENDENTE_NAO_ENCONTRADO);
+        }
+        await repo.auditar(autoria, { acao: 'funcionario.dependente_alterado', entidade: 'funcionario', entidadeId: funcionarioId, depois: { nome: dados.nome, parentesco: dados.parentesco } });
+    });
+};
+
+export const excluirDependente = async (empresaId: number, funcionarioId: number, dependenteId: number, ator: Ator, autoria: Autoria): Promise<void> => {
+    await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, funcionarioId, ator);
+        if (!await repo.excluirDependente(dependenteId, funcionarioId, empresaId)) throw new ErroDeFuncionario('inexistente', DEPENDENTE_NAO_ENCONTRADO);
+        await repo.auditar(autoria, { acao: 'funcionario.dependente_excluido', entidade: 'funcionario', entidadeId: funcionarioId });
+    });
+};
+
+// ==========================================
+// IMPORTAÇÃO POR CSV
+// ==========================================
+
+export interface RelatorioDaImportacao {
+    total: number;
+    criados: number;
+    // Uma entrada por linha recusada, com o motivo para quem corrige a planilha.
+    erros: { linha: number; nome: string | null; motivo: string }[];
+    // As senhas provisórias dos colaboradores criados: o banco guarda só o hash, então este
+    // relatório é a única chance de entregá-las.
+    credenciais: { linha: number; nome: string; email: string; senha_provisoria: string }[];
+}
+
+// Uma falha de banco numa linha não derruba o arquivo: vira o motivo daquela linha. O que é
+// incidente (5xx) vai ao log e ao Sentry, como em qualquer rota.
+const motivoDaFalha = (erro: unknown): string => {
+    if (erro instanceof ErroDeFuncionario) return erro.message;
+    const traduzido = traduzirErro(erro);
+    if (traduzido && traduzido.status < 500) return traduzido.erro;
+    logger.error({ err: erro }, 'Erro ao importar uma linha de colaboradores.');
+    registrarNoSentry(erro);
+    return 'Não foi possível gravar esta linha. Tente importá-la de novo.';
+};
+
+// Cada linha vale por si: a inválida é devolvida com o motivo e as demais são criadas, cada uma
+// na sua transação. Todas ganham uma senha provisória (a troca é obrigatória no primeiro acesso).
+export const importarFuncionarios = async (empresaId: number, autoria: Autoria, conteudo: string): Promise<RelatorioDaImportacao> => {
+    const linhas = lerPlanilha(conteudo);
+    const referencias = await repositorio.estruturaDaEmpresa(empresaId);
+    const relatorio: RelatorioDaImportacao = { total: linhas.length, criados: 0, erros: [], credenciais: [] };
+
+    // Valida tudo antes de gravar: o custo do hash só se paga por linha aceita, e em paralelo.
+    const aceitas: { linha: number; dados: Omit<CorpoDoCadastro, 'senha'>; senha: string; hash: Promise<string> }[] = [];
+    for (const { linha, campos } of linhas) {
+        const { cargo, departamento, ...resto } = campos;
+        const nome = resto.nome || null;
+        const referencia = resolverReferencias({ cargo, departamento }, referencias);
+        if ('erro' in referencia) {
+            relatorio.erros.push({ linha, nome, motivo: referencia.erro });
+            continue;
+        }
+        const senha = gerarSenhaProvisoria();
+        const resultado = schemaDoCadastro.safeParse({ ...resto, ...referencia, senha });
+        if (!resultado.success) {
+            relatorio.erros.push({ linha, nome, motivo: [...new Set(resultado.error.issues.map((issue) => issue.message))].join(' ') });
+            continue;
+        }
+        aceitas.push({ linha, dados: resultado.data as Omit<CorpoDoCadastro, 'senha'>, senha, hash: bcrypt.hash(senha, VOLTAS_DO_HASH) });
+    }
+
+    for (const { linha, dados, senha, hash } of aceitas) {
+        try {
+            await gravarCadastro(empresaId, autoria, dados, await hash);
+            relatorio.criados += 1;
+            relatorio.credenciais.push({ linha, nome: dados.nome, email: dados.email, senha_provisoria: senha });
+        } catch (erro) {
+            relatorio.erros.push({ linha, nome: dados.nome, motivo: motivoDaFalha(erro) });
+        }
+    }
+    relatorio.erros.sort((a, b) => a.linha - b.linha);
+    return relatorio;
 };
 
 // Carrega o alvo de uma ação do ciclo de vida e confere se quem opera pode agir sobre ele. O RH

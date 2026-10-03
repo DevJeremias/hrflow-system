@@ -68,7 +68,11 @@ const criarRepositorio = (executor: Connection) => ({
                     f.telefone, f.cpf,
                     DATE_FORMAT(f.data_nascimento, '%Y-%m-%d') AS data_nascimento,
                     DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS data_admissao,
-                    f.endereco, f.tipo_contrato, COALESCE(f.nivel, c.nivel) AS nivel,
+                    COALESCE(
+                        NULLIF(CONCAT_WS(', ', NULLIF(f.logradouro, ''), NULLIF(f.numero, ''), NULLIF(f.complemento, ''), NULLIF(f.bairro, ''),
+                                         NULLIF(CONCAT_WS('/', NULLIF(f.cidade, ''), NULLIF(f.uf, '')), ''), NULLIF(f.cep, '')), ''),
+                        f.endereco) AS endereco,
+                    f.tipo_contrato, COALESCE(f.nivel, c.nivel) AS nivel,
                     f.banco, f.agencia, f.conta, f.tipo_conta,
                     c.nome AS cargo, d.nome AS departamento,
                     e.encarregado_nome, e.encarregado_email

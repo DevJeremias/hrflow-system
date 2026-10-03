@@ -15,6 +15,8 @@ const criarRepositorio = (executor: Connection) => ({
     async cadastro(funcionarioId: number, empresaId: number): Promise<RowDataPacket | undefined> {
         const [linhas] = await executor.query<RowDataPacket[]>(
             `SELECT f.id, f.nome, f.cpf, f.email, f.telefone, f.data_nascimento, f.data_admissao, f.endereco,
+                    f.matricula, f.rg, f.pis, f.ctps, f.cep, f.logradouro, f.numero, f.complemento, f.bairro, f.cidade, f.uf,
+                    f.contato_emergencia_nome, f.contato_emergencia_telefone, f.contato_emergencia_parentesco,
                     f.banco, f.agencia, f.conta, f.tipo_conta, f.nivel, f.tipo_contrato, f.salario_base,
                     f.carga_horaria_semanal, f.hora_entrada, f.hora_saida, f.tolerancia_min,
                     f.status, f.data_desligamento, f.motivo_desligamento, f.criado_em,
@@ -34,6 +36,18 @@ const criarRepositorio = (executor: Connection) => ({
             'SELECT id, nome, email, perfil, criado_em FROM usuarios WHERE funcionario_id = ? AND empresa_id = ?', [funcionarioId, empresaId]
         );
         return linhas;
+    },
+
+    async dependentes(funcionarioId: number, empresaId: number): Promise<RowDataPacket[]> {
+        const [linhas] = await executor.query<RowDataPacket[]>(
+            'SELECT nome, parentesco, data_nascimento, cpf FROM dependentes WHERE funcionario_id = ? AND empresa_id = ? ORDER BY data_nascimento, id', [funcionarioId, empresaId]
+        );
+        return linhas;
+    },
+
+    // Os dependentes são dados de terceiros (nome, nascimento, CPF) ligados ao colaborador: saem com ele.
+    async apagarDependentes(funcionarioId: number, empresaId: number): Promise<void> {
+        await executor.query('DELETE FROM dependentes WHERE funcionario_id = ? AND empresa_id = ?', [funcionarioId, empresaId]);
     },
 
     async temAvatar(funcionarioId: number, empresaId: number): Promise<boolean> {
@@ -101,6 +115,9 @@ const criarRepositorio = (executor: Connection) => ({
         await executor.query(
             `UPDATE funcionarios
              SET nome = ?, email = ?, cpf = NULL, telefone = NULL, data_nascimento = NULL, endereco = NULL,
+                 matricula = NULL, rg = NULL, pis = NULL, ctps = NULL,
+                 cep = NULL, logradouro = NULL, numero = NULL, complemento = NULL, bairro = NULL, cidade = NULL, uf = NULL,
+                 contato_emergencia_nome = NULL, contato_emergencia_telefone = NULL, contato_emergencia_parentesco = NULL,
                  banco = NULL, agencia = NULL, conta = NULL, tipo_conta = NULL, anonimizado_em = CURRENT_TIMESTAMP
              WHERE id = ? AND empresa_id = ?`,
             [nome, email, funcionarioId, empresaId]
@@ -192,4 +209,4 @@ export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDoTitula
     }
 };
 
-export const { cadastro: cadastroDoTitular, contas, temAvatar, historicoContratual, marcacoes, justificativas, holerites, solicitacoes, trilha } = criarRepositorio(db);
+export const { cadastro: cadastroDoTitular, dependentes, contas, temAvatar, historicoContratual, marcacoes, justificativas, holerites, solicitacoes, trilha } = criarRepositorio(db);

@@ -7,6 +7,7 @@ import type { StatusDoPedidoApi } from '../types/api';
 export const chaves = {
   funcionarios: ['funcionarios'] as const,
   paginaDeFuncionarios: (consulta: EmployeeQuery) => ['funcionarios', 'pagina', consulta] as const,
+  dependentes: (funcionarioId: string) => ['funcionarios', 'dependentes', funcionarioId] as const,
 
   estrutura: ['estrutura'] as const,
   departamentos: ['estrutura', 'departamentos'] as const,

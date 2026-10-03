@@ -8,7 +8,7 @@ import type { DadosDoCargo, DadosDoDepartamento, IdDaRota } from './estrutura.sc
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
-const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
+const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404, conflito: 409 };
 
 // Falha de regra vira a resposta que o serviço descreveu; qualquer outra passa por
 // responderErro (shared/utils/erros.ts), que traduz falhas conhecidas do MySQL e devolve 500 com a

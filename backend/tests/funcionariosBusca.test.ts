@@ -63,7 +63,7 @@ describe('busca de funcionários', { skip: banco.skip }, () => {
 
         // 52 colaboradores: em ordem alfabética (e de id) "Gamma Pessoa 52" é o último e fica fora da página de 50.
         for (let i = 1; i <= 51; i += 1) await inserir(empresaA, `Alfa Pessoa ${String(i).padStart(2, '0')}`);
-        await inserir(empresaA, 'Gamma Pessoa 52', { cargo_id: cargo, departamento_id: departamentos[0].id, cpf: '111.222.333-44' });
+        await inserir(empresaA, 'Gamma Pessoa 52', { cargo_id: cargo, departamento_id: departamentos[0].id, cpf: '11122233344' });
         await inserir(empresaB, 'Gamma Pessoa Alheia');
     });
 
@@ -148,9 +148,11 @@ describe('busca de funcionários', { skip: banco.skip }, () => {
     it('a listagem traz o que a tela usa e nunca o avatar', async () => {
         const { corpo } = await listar('?busca=Gamma%20Pessoa%2052');
         assert.deepEqual(Object.keys(corpo[0]).sort(), [
-            'agencia', 'anonimizado', 'banco', 'cargo_id', 'cargo_nome', 'conta', 'cpf', 'data_admissao', 'data_desligamento', 'data_nascimento',
-            'departamento_id', 'departamento_nome', 'email', 'empresa_id', 'endereco', 'id', 'motivo_desligamento', 'nivel', 'nome',
-            'salario_base', 'status', 'telefone', 'tem_movimento', 'tipo_conta', 'tipo_contrato', 'usuario_perfil',
+            'agencia', 'anonimizado', 'bairro', 'banco', 'cargo_id', 'cargo_nome', 'cep', 'cidade', 'complemento', 'conta', 'contato_emergencia_nome',
+            'contato_emergencia_parentesco', 'contato_emergencia_telefone', 'cpf', 'ctps', 'data_admissao', 'data_desligamento',
+            'data_nascimento', 'departamento_id', 'departamento_nome', 'email', 'empresa_id', 'endereco', 'id', 'logradouro', 'matricula',
+            'motivo_desligamento', 'nivel', 'nome', 'numero', 'pis', 'rg', 'salario_base', 'status', 'telefone', 'tem_movimento',
+            'tipo_conta', 'tipo_contrato', 'uf', 'usuario_perfil',
         ]);
         assert.equal(corpo[0].cargo_nome, 'Analista Zeta');
         assert.equal(corpo[0].departamento_nome, departamentos[0].nome);

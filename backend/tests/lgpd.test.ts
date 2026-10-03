@@ -212,7 +212,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
 
         it('apaga também a conta de acesso, a foto, o nome no holerite, o texto da justificativa e o conteúdo pessoal da trilha', async () => {
             const t = await titular();
-            await chamar('PUT', `/api/funcionarios/${t.funcionarioId}`, admin.token, { nome: `${t.nome} Editado`, email: t.email, cpf: CPF, salario_base: 5000 });
+            await chamar('PATCH', `/api/funcionarios/${t.funcionarioId}`, admin.token, { nome: `${t.nome} Editado`, email: t.email, cpf: CPF, salario_base: 5000 });
             assert.equal((await chamar('POST', `/api/funcionarios/${t.funcionarioId}/anonimizar`, admin.token)).status, 200);
 
             const conta = await linha('SELECT nome, email, senha_provisoria FROM usuarios WHERE id = ?', [t.usuarioId]);
@@ -261,7 +261,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
             assert.equal(lista.corpo.find((f: { id: number }) => f.id === t.funcionarioId).anonimizado, true);
 
             assert.equal((await chamar('POST', `/api/funcionarios/${t.funcionarioId}/anonimizar`, admin.token)).status, 409, 'não anonimiza duas vezes');
-            assert.equal((await chamar('PUT', `/api/funcionarios/${t.funcionarioId}`, admin.token, { nome: 'Volta', email: 'volta@exemplo.invalid' })).status, 409);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${t.funcionarioId}`, admin.token, { nome: 'Volta', email: 'volta@exemplo.invalid' })).status, 409);
             assert.equal((await chamar('PATCH', `/api/funcionarios/${t.funcionarioId}/status`, admin.token, { status: 'Ativo' })).status, 409);
             assert.equal((await chamar('POST', `/api/funcionarios/${t.funcionarioId}/redefinir-senha`, admin.token)).status, 409);
         });

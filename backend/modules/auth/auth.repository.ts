@@ -32,6 +32,7 @@ export interface IdentidadeDaSessao extends RowDataPacket {
 
 export interface NovaConta {
     nomeEmpresa: string;
+    cnpj: string;
     nomeAdmin: string;
     email: string;
     senhaCripto: string;
@@ -42,13 +43,13 @@ export const emailJaCadastrado = async (email: string): Promise<boolean> => {
     return usuarios.length > 0;
 };
 
-// A empresa e o administrador entram juntos ou nenhum dos dois entra. A chave única de
-// usuarios.email recusa (ER_DUP_ENTRY) o cadastro que perdeu a corrida.
-export const criarEmpresaComAdministrador = async ({ nomeEmpresa, nomeAdmin, email, senhaCripto }: NovaConta): Promise<void> => {
+// A empresa e o administrador entram juntos ou nenhum dos dois entra. As chaves únicas de
+// usuarios.email e empresas.cnpj recusam (ER_DUP_ENTRY) o cadastro que perdeu a corrida.
+export const criarEmpresaComAdministrador = async ({ nomeEmpresa, cnpj, nomeAdmin, email, senhaCripto }: NovaConta): Promise<void> => {
     const conexao = await db.getConnection();
     try {
         await conexao.beginTransaction();
-        const [empresa] = await conexao.query<ResultSetHeader>('INSERT INTO empresas (nome) VALUES (?)', [nomeEmpresa]);
+        const [empresa] = await conexao.query<ResultSetHeader>('INSERT INTO empresas (nome, cnpj) VALUES (?, ?)', [nomeEmpresa, cnpj]);
         await conexao.query(
             'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
             [nomeAdmin, email, senhaCripto, 'Administrador', empresa.insertId]

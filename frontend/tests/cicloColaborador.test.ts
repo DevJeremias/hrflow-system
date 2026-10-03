@@ -274,7 +274,7 @@ test('Escape fecha o modal e o botão Cancelar também, sem enviar nada', async 
   assert.deepEqual(gravacoes(), []);
 });
 
-test('o modal de edição mostra a situação atual e permite Férias: o PUT segue sem status e o PATCH traz o novo', async () => {
+test('o modal de edição mostra a situação atual e permite Férias: sem dado alterado só o PATCH da situação vai', async () => {
   funcionarios = [colaborador()];
   const host = await montar(Employees);
   await clicar(acao(host, 'Editar Colaborador')!);
@@ -286,10 +286,7 @@ test('o modal de edição mostra a situação atual e permite Férias: o PUT seg
   await escolher(host, 'status', 'Férias');
   await enviar(host, 'form');
 
-  const [put, patch] = gravacoes();
-  assert.equal(put.metodo, 'PUT');
-  assert.equal('status' in (put.corpo ?? {}), false, 'o status não viaja no PUT');
-  assert.deepEqual(patch, { metodo: 'PATCH', caminho: '/funcionarios/7/status', corpo: { status: 'Férias' } });
+  assert.deepEqual(gravacoes(), [{ metodo: 'PATCH', caminho: '/funcionarios/7/status', corpo: { status: 'Férias' } }]);
 });
 
 test('escolher Inativo no modal de edição pede data e motivo do desligamento', async () => {
@@ -304,18 +301,25 @@ test('escolher Inativo no modal de edição pede data e motivo do desligamento',
   assert.equal(campo<HTMLInputElement>(host, 'dataDesligamento').required, true);
   await digitar(host, 'dataDesligamento', '2026-09-30');
   await digitar(host, 'motivoDesligamento', 'Fim do contrato');
+  await digitar(host, 'matricula', 'MAT-0007');
   await enviar(host, 'form');
 
-  const [put, patch] = gravacoes();
-  assert.equal(put.metodo, 'PUT');
-  assert.deepEqual(patch.corpo, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: 'Fim do contrato' });
+  const [dados, situacao] = gravacoes();
+  assert.deepEqual(dados, { metodo: 'PATCH', caminho: '/funcionarios/7', corpo: { matricula: 'MAT-0007' } }, 'só o campo alterado viaja, sem a situação');
+  assert.deepEqual(situacao.corpo, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: 'Fim do contrato' });
 });
 
-test('salvar sem mexer na situação não chama o PATCH', async () => {
+test('salvar sem mexer na situação não chama o PATCH da situação, e sem mexer em nada não chama a API', async () => {
   funcionarios = [colaborador()];
   const host = await montar(Employees);
   await clicar(acao(host, 'Editar Colaborador')!);
   await esperar();
   await enviar(host, 'form');
-  assert.deepEqual(gravacoes().map((g) => g.metodo), ['PUT']);
+  assert.deepEqual(gravacoes(), [], 'nada mudou: nada a gravar');
+
+  await clicar(acao(host, 'Editar Colaborador')!);
+  await esperar();
+  await digitar(host, 'telefone', '(91) 90000-0000');
+  await enviar(host, 'form');
+  assert.deepEqual(gravacoes(), [{ metodo: 'PATCH', caminho: '/funcionarios/7', corpo: { telefone: '(91) 90000-0000' } }]);
 });

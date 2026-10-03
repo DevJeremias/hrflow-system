@@ -74,7 +74,7 @@ describe('trilha de auditoria (B-22)', { skip: banco.skip }, () => {
         it('alterar o salário grava uma linha com o valor anterior e o novo, de quem alterou, quando e de onde', async () => {
             const { id, email } = await cadastrar();
             const antes = Date.now();
-            const edicao = await chamar('PUT', `/api/funcionarios/${id}`, admin, { nome: 'Pessoa Ficticia Editada', email, salario_base: 7250.5 });
+            const edicao = await chamar('PATCH', `/api/funcionarios/${id}`, admin, { nome: 'Pessoa Ficticia Editada', email, salario_base: 7250.5 });
             assert.equal(edicao.status, 200, JSON.stringify(edicao.corpo));
 
             const linhas = await trilha(`?entidade=funcionario&id=${id}&acao=funcionario.salario_alterado`);
@@ -92,7 +92,7 @@ describe('trilha de auditoria (B-22)', { skip: banco.skip }, () => {
 
         it('editar sem mexer no salário não gera linha de salário, e o resto da edição vira "funcionario.editado" com só o que mudou', async () => {
             const { id, email } = await cadastrar();
-            await chamar('PUT', `/api/funcionarios/${id}`, admin, { nome: 'Nome Novo', email, salario_base: 3000, telefone: '(00) 91111-1111' });
+            await chamar('PATCH', `/api/funcionarios/${id}`, admin, { nome: 'Nome Novo', email, salario_base: 3000, telefone: '(00) 91111-1111' });
             const acoes = await acoesDe(`?entidade=funcionario&id=${id}`);
             assert.ok(!acoes.includes('funcionario.salario_alterado'));
             const [editado] = (await trilha(`?entidade=funcionario&id=${id}&acao=funcionario.editado`));
@@ -103,8 +103,8 @@ describe('trilha de auditoria (B-22)', { skip: banco.skip }, () => {
         it('mudar o cargo grava os nomes do cargo de antes e de depois', async () => {
             const { id, email } = await cadastrar();
             const [cargos] = await db.query<RowDataPacket[]>('SELECT id, nome FROM cargos WHERE empresa_id = ? ORDER BY id LIMIT 2', [empresaA]);
-            await chamar('PUT', `/api/funcionarios/${id}`, admin, { nome: 'X', email, cargo_id: cargos[0].id });
-            await chamar('PUT', `/api/funcionarios/${id}`, admin, { nome: 'X', email, cargo_id: cargos[1].id });
+            await chamar('PATCH', `/api/funcionarios/${id}`, admin, { nome: 'X', email, cargo_id: cargos[0].id });
+            await chamar('PATCH', `/api/funcionarios/${id}`, admin, { nome: 'X', email, cargo_id: cargos[1].id });
             const [segunda, primeira] = await trilha(`?entidade=funcionario&id=${id}&acao=funcionario.editado`);
             assert.deepEqual(primeira.depois, { nome: 'X', cargo_id: cargos[0].id, cargo: cargos[0].nome });
             assert.deepEqual(segunda.antes, { cargo_id: cargos[0].id, cargo: cargos[0].nome });
@@ -137,7 +137,7 @@ describe('trilha de auditoria (B-22)', { skip: banco.skip }, () => {
         it('uma edição recusada não deixa linha na trilha (a auditoria confirma ou desfaz junto com a mudança)', async () => {
             const { id, email } = await cadastrar();
             const antes = (await trilha(`?entidade=funcionario&id=${id}`)).length;
-            const recusada = await chamar('PUT', `/api/funcionarios/${id}`, admin, { nome: 'Y', email, cargo_id: 99999999 });
+            const recusada = await chamar('PATCH', `/api/funcionarios/${id}`, admin, { nome: 'Y', email, cargo_id: 99999999 });
             assert.equal(recusada.status, 400);
             assert.equal((await trilha(`?entidade=funcionario&id=${id}`)).length, antes);
         });

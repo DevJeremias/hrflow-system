@@ -14,6 +14,7 @@ export interface ExportacaoDoTitular {
     exportado_em: string;
     titular: Record<string, unknown>;
     contas_de_acesso: unknown[];
+    dependentes: unknown[];
     tem_avatar: boolean;
     historico_contratual: unknown[];
     ponto: { marcacoes: unknown[]; justificativas: unknown[] };
@@ -28,8 +29,9 @@ export const exportarDados = async (empresaId: number, id: number, autoria: Auto
     const titular = await repositorio.cadastroDoTitular(id, empresaId);
     if (!titular) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
 
-    const [contas, temAvatar, historico, marcacoes, justificativas, holerites, solicitacoes, trilha] = await Promise.all([
+    const [contas, dependentes, temAvatar, historico, marcacoes, justificativas, holerites, solicitacoes, trilha] = await Promise.all([
         repositorio.contas(id, empresaId),
+        repositorio.dependentes(id, empresaId),
         repositorio.temAvatar(id, empresaId),
         repositorio.historicoContratual(id, empresaId),
         repositorio.marcacoes(id, empresaId),
@@ -45,6 +47,7 @@ export const exportarDados = async (empresaId: number, id: number, autoria: Auto
         exportado_em: new Date().toISOString(),
         titular,
         contas_de_acesso: contas,
+        dependentes,
         tem_avatar: temAvatar,
         historico_contratual: historico,
         ponto: { marcacoes, justificativas },
@@ -57,7 +60,7 @@ export const exportarDados = async (empresaId: number, id: number, autoria: Auto
 export const nomeAnonimo = (id: number): string => `Colaborador anonimizado ${id}`;
 export const emailAnonimo = (id: number): string => `anonimizado-${id}@anonimizado.invalid`;
 
-// Apaga o que identifica o colaborador (CPF, nome, e-mail, telefone, endereço, dados bancários, foto,
+// Apaga o que identifica o colaborador (CPF, RG, PIS, CTPS, nome, e-mail, telefone, endereço, contato de emergência, dependentes, dados bancários, foto,
 // localização das marcações e o texto livre das justificativas) e mantém o que a lei manda guardar:
 // o cadastro com o id, as marcações, as decisões, os valores da folha e a trilha (sem o conteúdo pessoal).
 // Só vale para quem já foi desligado, nunca para a própria conta de quem pede, e não tem volta.
@@ -77,6 +80,7 @@ export const anonimizar = async (empresaId: number, id: number, funcionarioIdDoO
         const nome = nomeAnonimo(id);
         const email = emailAnonimo(id);
         await repo.anonimizarCadastro(id, empresaId, nome, email);
+        await repo.apagarDependentes(id, empresaId);
         const contas = await repo.anonimizarContas(id, empresaId, nome, email, senhaCriptografada);
         await repo.apagarAvatares(contas);
         await repo.anonimizarHolerites(id, empresaId, nome);

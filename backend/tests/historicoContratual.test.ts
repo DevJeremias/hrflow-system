@@ -46,7 +46,7 @@ describe('histórico contratual (B-22)', { skip: banco.skip }, () => {
         return { id: id as number, email, nome: `Pessoa ${sequencia}` };
     };
     const editar = (id: number, pessoa: { email: string; nome: string }, extra: Record<string, unknown>) =>
-        chamar('PUT', `/api/funcionarios/${id}`, admin, { nome: pessoa.nome, email: pessoa.email, ...extra });
+        chamar('PATCH', `/api/funcionarios/${id}`, admin, { nome: pessoa.nome, email: pessoa.email, ...extra });
 
     before(async () => {
         await banco.preparar();
