@@ -11,7 +11,7 @@ import type { ResultSetHeader } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import configDb, { criarPool } from '../shared/db/pool.ts';
-import { app } from '../app.ts';
+import { criarApp } from '../app.ts';
 import { criarSaudeRouter, PRAZO_PRONTIDAO_MS } from '../modules/saude/index.ts';
 
 // fetch descomprime sozinho e esconde o que trafegou: http.get mostra a resposta como saiu da API.
@@ -43,7 +43,7 @@ describe('produção mínima segura', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        ({ server: servidorApp, baseUrl } = await escutar(app));
+        ({ server: servidorApp, baseUrl } = await escutar(criarApp()));
 
         const [empresa] = await configDb.query<ResultSetHeader>("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
         ({ token } = await criarUsuario(configDb, { empresaId: empresa.insertId, perfil: 'Administrador' }));
@@ -64,10 +64,8 @@ describe('produção mínima segura', { skip: banco.skip }, () => {
 
     describe('GET /api/health', () => {
         it('responde 200 sem sessão e sem consultar o banco', async () => {
-            const expressLocal = express();
             let consultas = 0;
-            expressLocal.use('/api', criarSaudeRouter({ query: async () => { consultas += 1; } }));
-            const { server, baseUrl: urlLocal } = await escutar(expressLocal);
+            const { server, baseUrl: urlLocal } = await escutar(criarApp({ db: { query: async () => { consultas += 1; } } }));
             try {
                 const resposta = await pedir(urlLocal, '/api/health');
                 assert.equal(resposta.status, 200);
@@ -95,9 +93,7 @@ describe('produção mínima segura', { skip: banco.skip }, () => {
         it('com o pool fechado responde 503 na hora', async () => {
             const pool = criarPool();
             await pool.end();
-            const expressLocal = express();
-            expressLocal.use('/api', criarSaudeRouter(pool));
-            const { server, baseUrl: urlLocal } = await escutar(expressLocal);
+            const { server, baseUrl: urlLocal } = await escutar(criarApp({ db: pool }));
             try {
                 const resposta = await pedir(urlLocal, '/api/ready');
                 assert.equal(resposta.status, 503);

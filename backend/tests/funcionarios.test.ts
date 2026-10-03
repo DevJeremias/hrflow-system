@@ -8,12 +8,9 @@ import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
-import express from 'express';
 import bcrypt from 'bcrypt';
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import tratarErros from '../shared/middlewares/tratarErros.ts';
-import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
+import { criarApp } from '../app.ts';
 
 describe('funcionários', { skip: banco.skip }, () => {
     let servidor: http.Server;
@@ -44,10 +41,7 @@ describe('funcionários', { skip: banco.skip }, () => {
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use(express.json({ limit: '4mb' }));
-        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
-        app.use(tratarErros);
+        const app = criarApp();
         servidor = http.createServer(app);
         await new Promise<void>((resolve) => servidor.listen(0, '127.0.0.1', resolve));
         baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;

@@ -5,13 +5,11 @@ import test from 'node:test';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import assert from 'node:assert/strict';
-import express from 'express';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { pontoRoutes } from '../modules/ponto/index.ts';
+import { criarApp } from '../app.ts';
 import { relogio } from '../modules/ponto/ponto.service.ts';
 import * as fuso from '../modules/ponto/ponto.fuso.ts';
 import type { ResultSetHeader } from 'mysql2/promise';
@@ -85,9 +83,7 @@ test.before(async () => {
     ctx.tokenAdmin = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Administrador' })).token;
     ctx.tokenColaborador = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador', funcionarioId: ctx.alvo })).token;
 
-    const app = express();
-    app.use(express.json());
-    app.use('/api/ponto', authMiddleware, pontoRoutes);
+    const app = criarApp();
     await new Promise((resolve) => { servidor = app.listen(0, '127.0.0.1', resolve); });
     baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api/ponto`;
 });
