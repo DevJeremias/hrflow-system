@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { employeeService, type Employee, type EmployeeForm, type EmployeeQuery } from '../services/employeeService';
+import { employeeService, type DependentForm, type Employee, type EmployeeForm, type EmployeeQuery } from '../services/employeeService';
 import { chaves } from './chaves';
 
 // Mantém a página anterior na tela enquanto a nova chega: trocar de página ou digitar na busca
@@ -28,6 +28,38 @@ export const useSalvarColaborador = () => {
   return useMutation({
     mutationFn: ({ dados, original }: { dados: EmployeeForm; original: Employee | null }) =>
       employeeService.saveEditingStatus(dados, original),
+    onSuccess: invalidar,
+  });
+};
+
+export const useDependentes = (funcionarioId: string | undefined) => useQuery({
+  queryKey: chaves.dependentes(funcionarioId ?? ''),
+  queryFn: () => employeeService.getDependents(funcionarioId as string),
+  enabled: Boolean(funcionarioId),
+});
+
+// Dependente não muda a listagem de colaboradores: só a própria lista do colaborador.
+export const useSalvarDependente = (funcionarioId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ dados, dependenteId }: { dados: DependentForm; dependenteId?: string }) =>
+      employeeService.saveDependent(funcionarioId, dados, dependenteId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.dependentes(funcionarioId) }),
+  });
+};
+
+export const useExcluirDependente = (funcionarioId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dependenteId: string) => employeeService.deleteDependent(funcionarioId, dependenteId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.dependentes(funcionarioId) }),
+  });
+};
+
+export const useImportarColaboradores = () => {
+  const invalidar = useInvalidarPorColaboradores();
+  return useMutation({
+    mutationFn: (csv: string) => employeeService.importCsv(csv),
     onSuccess: invalidar,
   });
 };

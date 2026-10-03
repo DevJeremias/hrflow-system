@@ -61,7 +61,7 @@ describe('log por requisição', { skip: banco.skip }, () => {
     it('a rota é o padrão do Express e a query string não vai para o log', async () => {
         const { token } = await criarUsuario(pool, { empresaId, perfil: 'Administrador' });
         const resposta = await fetch(`${baseUrl}/api/funcionarios/9999?busca=segredo-do-usuario`, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
             body: '{}',
         });

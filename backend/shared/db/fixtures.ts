@@ -89,13 +89,13 @@ export const carregarFixtures = async (conexao: Connection | Pool, { senha }: { 
         const [alfa, beta] = empresaIds;
 
         const rhAlfa = await funcionarioDe(db, alfa, 'RH', 'Analista de RH',
-            { nome: 'Rita RH Ficticia', cpf: '000.000.000-01', email: 'rita.rh@alfa.exemplo.invalid', admissao: '2023-02-01', salario: 5200 });
+            { nome: 'Rita RH Ficticia', cpf: '11144477735', email: 'rita.rh@alfa.exemplo.invalid', admissao: '2023-02-01', salario: 5200 });
         const colaboradorAlfa = await funcionarioDe(db, alfa, 'TI', 'Desenvolvedor(a)',
-            { nome: 'Caio Colaborador Ficticio', cpf: '000.000.000-02', email: 'caio@alfa.exemplo.invalid', admissao: '2024-03-04', salario: 6800 });
+            { nome: 'Caio Colaborador Ficticio', cpf: '39053344705', email: 'caio@alfa.exemplo.invalid', admissao: '2024-03-04', salario: 6800 });
         const colaboradoraAlfa = await funcionarioDe(db, alfa, 'FIN', 'Assistente Administrativo',
-            { nome: 'Dora Colaboradora Ficticia', cpf: '000.000.000-03', email: 'dora@alfa.exemplo.invalid', admissao: '2024-08-12', salario: 2900 });
+            { nome: 'Dora Colaboradora Ficticia', cpf: '16899535009', email: 'dora@alfa.exemplo.invalid', admissao: '2024-08-12', salario: 2900 });
         const colaboradoraBeta = await funcionarioDe(db, beta, 'TI', 'Desenvolvedor(a)',
-            { nome: 'Eva Externa Ficticia', cpf: '000.000.000-04', email: 'eva@beta.exemplo.invalid', admissao: '2022-11-07', salario: 7400 });
+            { nome: 'Eva Externa Ficticia', cpf: '52998224725', email: 'eva@beta.exemplo.invalid', admissao: '2022-11-07', salario: 7400 });
 
         // Os administradores entram primeiro e não têm funcionário: é o que desloca os ids de usuarios.
         await usuarioDe(db, alfa, null, 'Administrador', 'Admin Alfa Ficticio', 'admin@alfa.exemplo.invalid', senhaHash);

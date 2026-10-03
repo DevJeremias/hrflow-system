@@ -27,8 +27,8 @@ const edicaoValida = () => ({ nome: 'Pessoa Ficticia', email: 'Pessoa@Exemplo.in
 describe('schema de cadastro de funcionário', () => {
     it('normaliza uma entrada completa', () => {
         const data = aceita(criarFuncionario, {
-            ...funcionarioValido(), nome: '  Pessoa Ficticia  ', cpf: '000.000.000-01', telefone: '(00) 90000-0000',
-            data_nascimento: '1990-05-17', data_admissao: '2024-02-29', endereco: 'Rua Ficticia, 1', banco: 'Banco Ficticio',
+            ...funcionarioValido(), nome: '  Pessoa Ficticia  ', cpf: '529.982.247-25', telefone: '(00) 90000-0000',
+            data_nascimento: '1990-05-17', data_admissao: '2024-02-29', logradouro: ' Rua Ficticia ', cep: '66.000-000', uf: 'pa', pis: '120.12345.67-2', banco: 'Banco Ficticio',
             agencia: '0001', conta: '12345-6', tipo_conta: 'Corrente', cargo_id: '7', departamento_id: 3,
             nivel: ' Pleno ', tipo_contrato: 'CLT', salario_base: '3500.50', status: 'Qualquer',
         });
@@ -38,6 +38,11 @@ describe('schema de cadastro de funcionário', () => {
         assert.equal(data.salario_base, 3500.5);
         assert.equal(data.status, undefined, 'o status do cadastro novo não vem do cliente');
         assert.equal(data.nivel, 'Pleno');
+        assert.equal(data.cpf, '52998224725', 'o CPF segue só com os dígitos');
+        assert.equal(data.cep, '66000000');
+        assert.equal(data.uf, 'PA');
+        assert.equal(data.pis, '12012345672');
+        assert.equal(data.logradouro, 'Rua Ficticia');
     });
 
     it('trata campos em branco como ausentes, como os formulários enviam', () => {
@@ -64,8 +69,15 @@ describe('schema de cadastro de funcionário', () => {
         'senha curta': [{ ...funcionarioValido(), senha: '1234567' }, /mínimo 8/],
         'senha ausente': [{ ...funcionarioValido(), senha: undefined }, /Senha é obrigatória/],
         'senha acima de 72 bytes': [{ ...funcionarioValido(), senha: 'a'.repeat(73) }, /72 bytes/],
-        'cpf curto': [{ ...funcionarioValido(), cpf: '123' }, /CPF deve ter 11 dígitos/],
-        'cpf com letras': [{ ...funcionarioValido(), cpf: 'abc.def.ghi-jk' }, /CPF/],
+        'cpf curto': [{ ...funcionarioValido(), cpf: '123' }, /CPF inválido: confira os 11 dígitos/],
+        'cpf com letras': [{ ...funcionarioValido(), cpf: 'abc.def.ghi-jk' }, /CPF inválido/],
+        'cpf de um dígito só': [{ ...funcionarioValido(), cpf: '111.111.111-11' }, /^CPF inválido/],
+        'cpf com dígito verificador errado': [{ ...funcionarioValido(), cpf: '529.982.247-24' }, /^CPF inválido/],
+        'cpf numérico': [{ ...funcionarioValido(), cpf: 52998224725 }, /CPF deve ser um texto/],
+        'pis com dígito verificador errado': [{ ...funcionarioValido(), pis: '120.12345.67-3' }, /PIS inválido/],
+        'cep com 7 dígitos': [{ ...funcionarioValido(), cep: '6600000' }, /CEP inválido/],
+        'uf inexistente': [{ ...funcionarioValido(), uf: 'XX' }, /UF inválida/],
+        'rg com 21 caracteres': [{ ...funcionarioValido(), rg: '1'.repeat(21) }, /RG deve ter no máximo 20/],
         'telefone com letras': [{ ...funcionarioValido(), telefone: 'ligue-me-ja-por-favor' }, /Telefone/],
         'data de admissão inexistente': [{ ...funcionarioValido(), data_admissao: '2024-02-30' }, /Data de admissão deve ser uma data válida/],
         'data de admissão em outro formato': [{ ...funcionarioValido(), data_admissao: '31/01/2024' }, /AAAA-MM-DD/],
@@ -85,7 +97,8 @@ describe('schema de cadastro de funcionário', () => {
         'tipo de contrato fora da lista': [{ ...funcionarioValido(), tipo_contrato: 'Escravo' }, /Tipo de contrato deve ser um destes valores: CLT, PJ/],
         'tipo de conta fora da lista': [{ ...funcionarioValido(), tipo_conta: 'Cripto' }, /Tipo de conta deve ser um destes valores/],
         'agência com 21 caracteres': [{ ...funcionarioValido(), agencia: '1'.repeat(21) }, /Agência deve ter no máximo 20/],
-        'endereço com 501 caracteres': [{ ...funcionarioValido(), endereco: 'a'.repeat(501) }, /Endereço deve ter no máximo 500/],
+        'endereço em texto livre (substituído pelas colunas)': [{ ...funcionarioValido(), endereco: 'Rua Ficticia, 1' }, /Campo desconhecido: endereco/],
+        'logradouro com 151 caracteres': [{ ...funcionarioValido(), logradouro: 'a'.repeat(151) }, /Logradouro deve ter no máximo 150/],
     };
     for (const [nome, [entrada, mensagem]] of Object.entries(recusas)) {
         it(`recusa ${nome}`, () => recusa(criarFuncionario, entrada, mensagem));
@@ -93,7 +106,20 @@ describe('schema de cadastro de funcionário', () => {
 });
 
 describe('schema de edição de funcionário', () => {
-    it('exige e-mail', () => recusa(atualizarFuncionario, { nome: 'Pessoa Ficticia' }, /E-mail é obrigatório/));
+    it('aceita só os campos enviados e não inventa os que faltaram', () => {
+        assert.deepEqual(aceita(atualizarFuncionario, { telefone: '(00) 90000-0000' }), { telefone: '(00) 90000-0000' });
+        assert.deepEqual(aceita(atualizarFuncionario, { cpf: '529.982.247-25', rg: '' }), { cpf: '52998224725', rg: null });
+        assert.deepEqual(aceita(atualizarFuncionario, { salario_base: null }), { salario_base: null }, 'null limpa o campo');
+    });
+    it('exige ao menos um campo', () => recusa(atualizarFuncionario, {}, /Envie ao menos um campo para alterar/));
+    it('nome e e-mail, quando enviados, não podem ficar em branco', () => {
+        recusa(atualizarFuncionario, { nome: ' ' }, /Nome é obrigatório/);
+        recusa(atualizarFuncionario, { email: '' }, /E-mail é obrigatório/);
+    });
+    it('valida cada campo enviado como o cadastro', () => {
+        recusa(atualizarFuncionario, { cpf: '111.111.111-11' }, /^CPF inválido/);
+        recusa(atualizarFuncionario, { salario_base: '10.123' }, /2 casas decimais/);
+    });
     it('recusa a senha enviada junto, em vez de ignorá-la em silêncio', () => recusa(atualizarFuncionario, { ...edicaoValida(), senha: 'senha-ficticia' }, /Campo desconhecido: senha/));
     it('recusa o status: ele só muda por PATCH /:id/status', () => recusa(atualizarFuncionario, { ...edicaoValida(), status: 'Inativo' }, /Campo desconhecido: status/));
 });
