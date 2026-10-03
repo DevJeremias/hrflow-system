@@ -99,7 +99,7 @@ describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, (
             assert.equal(resposta.status, 200);
 
             const corpo = await resposta.json();
-            assert.deepEqual(Object.keys(corpo).sort(), ['nome', 'perfil']);
+            assert.deepEqual(Object.keys(corpo).sort(), ['nome', 'perfil', 'senhaProvisoria']);
 
             const sessao = cookieDe(resposta, COOKIE_SESSAO);
             assert.ok(sessao, 'cookie de sessão ausente');

@@ -43,6 +43,8 @@ export interface DadosDoFuncionario {
     contrato?: string | null;
     status?: 'Ativo' | 'Inativo' | 'Férias';
     admissao?: string | null;
+    // Só vale com status Inativo (o banco recusa data de desligamento em quem não foi desligado).
+    desligamento?: string | null;
 }
 
 export const criarFuncionario = async (pool: Pool, empresaId: number, dados: DadosDoFuncionario) => {
@@ -51,10 +53,10 @@ export const criarFuncionario = async (pool: Pool, empresaId: number, dados: Dad
     const [[{ cargo }]] = await pool.query<RowDataPacket[]>('SELECT MIN(id) AS cargo FROM cargos WHERE empresa_id = ?', [empresaId]);
     const [[{ departamento }]] = await pool.query<RowDataPacket[]>('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [empresaId]);
     const [r] = await pool.query<ResultSetHeader>(
-        `INSERT INTO funcionarios (nome, email, salario_base, tipo_contrato, status, data_admissao, cargo_id, departamento_id, empresa_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO funcionarios (nome, email, salario_base, tipo_contrato, status, data_admissao, data_desligamento, cargo_id, departamento_id, empresa_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [dados.nome, `pessoa${process.pid}-${contador}@exemplo.invalid`, dados.salario, dados.contrato === undefined ? 'CLT' : dados.contrato,
-            dados.status ?? 'Ativo', dados.admissao ?? null, cargo, departamento, empresaId]
+            dados.status ?? 'Ativo', dados.admissao ?? null, dados.desligamento ?? null, cargo, departamento, empresaId]
     );
     return r.insertId;
 };

@@ -165,7 +165,7 @@ export const processarFolha = async ({ empresaId, competencia }: { empresaId: nu
         if (folha.status === 'fechada') {
             throw new ErroDeFolha('conflito', `A folha de ${rotuloDaCompetencia(competencia)} está fechada e não pode ser processada de novo.`);
         }
-        const { itens, pendencias } = apurar(await repo.colaboradoresDaCompetencia(empresaId, ultimoDia(competencia)), competencia);
+        const { itens, pendencias } = apurar(await repo.colaboradoresDaCompetencia(empresaId, primeiroDia(competencia), ultimoDia(competencia)), competencia);
         await repo.gravarProcessamento(folha.id, empresaId, itens, pendencias, await dadosDaEmpresa(repo, empresaId));
         return { criada, folhaId: folha.id };
     });

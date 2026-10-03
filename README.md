@@ -36,8 +36,8 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 ## ✨ Funcionalidades Principais
 
 *   **Gestão Estrutural:** Criação e controle de Departamentos e Cargos (níveis hierárquicos, salários base e gestores).
-*   **Core RH (Colaboradores):** CRUD completo de funcionários, com gestão segmentada de dados (Informações Pessoais, Contratuais e Financeiras).
-*   **Folha de Pagamento por competência:** o RH escolhe o mês, processa a folha (INSS pela tabela vigente, em centavos, e encargos patronais estimados), confere as pendências e fecha o mês. Folha fechada não muda mais: alterar salário, cargo ou dados da empresa depois não reescreve os holerites já emitidos. PJ e estágio não pagam INSS nem geram encargo CLT; quem está de férias entra na folha; quem está sem salário aparece em "pendências".
+*   **Core RH (Colaboradores):** cadastro de funcionários com gestão segmentada de dados (Informações Pessoais, Contratuais e Financeiras) e ciclo de vida completo: Férias, inativação ou desligamento com data e motivo (sem perder o histórico de ponto), reativação, redefinição de senha pelo RH e exclusão apenas de cadastro sem movimento.
+*   **Folha de Pagamento por competência:** o RH escolhe o mês, processa a folha (INSS pela tabela vigente, em centavos, e encargos patronais estimados), confere as pendências e fecha o mês. Folha fechada não muda mais: alterar salário, cargo ou dados da empresa depois não reescreve os holerites já emitidos. PJ e estágio não pagam INSS nem geram encargo CLT; quem está de férias entra na folha; quem foi desligado continua na folha do mês do desligamento e sai a partir do seguinte; quem está sem salário aparece em "pendências".
 *   **Dados da empresa:** razão social, CNPJ e regime tributário, mantidos pelo Administrador na tela Empresa. Aparecem no cabeçalho do holerite, e a folha só fecha com razão social e CNPJ preenchidos.
 *   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem os seus holerites, um por mês fechado, com a empresa e o CNPJ da época.
 
@@ -120,6 +120,7 @@ A sessão (8 horas, revogada na troca de senha, na inativação e na exclusão) 
 * O cookie é `Secure` quando a requisição chega por HTTPS e, com `NODE_ENV=production`, em qualquer host que não seja loopback. Atrás do Caddy, defina `TRUST_PROXY=1` (veja `backend/.env.example`) para a API enxergar o HTTPS informado em `X-Forwarded-Proto`, e `NODE_ENV=production`.
 * Front-end e API precisam ser servidos pela mesma origem, como já acontece: o Vite encaminha `/api` em desenvolvimento e o Caddy faz o mesmo em produção. A API não habilita CORS, de propósito: nenhuma origem externa consegue ler as respostas.
 * `POST /api/auth/logout` é público para que uma sessão expirada também consiga limpar os cookies.
+* A senha que o RH define no cadastro, ou gera em `POST /api/funcionarios/:id/redefinir-senha`, é provisória (`usuarios.senha_provisoria`). Com ela a sessão só alcança `GET /api/auth/sessao` e `PUT /api/perfil/alterar-senha`; o resto responde 403 até a troca, e o front-end leva a pessoa à tela `/trocar-senha`. A redefinição devolve a senha uma única vez (o banco guarda só o hash) e derruba as sessões abertas. Ainda não há recuperação por e-mail: quem esqueceu a senha procura o RH.
 
 ### Monitoramento
 

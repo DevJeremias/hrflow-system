@@ -22,6 +22,13 @@ const initialState: EmployeeForm = {
   banco: '', agencia: '', conta: '', tipoConta: ''
 };
 
+// O formulário só guarda texto: o que a tela de colaboradores sabe do cadastro e não se edita aqui
+// (perfil do acesso, se há movimento) fica de fora.
+const formFrom = (employee: Employee): EmployeeForm => ({
+  ...initialState,
+  ...Object.fromEntries(Object.entries(employee).filter(([, value]) => typeof value === 'string' || typeof value === 'number')),
+}) as EmployeeForm;
+
 // Campo da API (detalhes[].campo) -> aba e campo do formulário onde o RH corrige o valor.
 const CAMPOS_DA_API: Record<string, { tab: Tab; field: string }> = {
   nome: { tab: 'personal', field: 'nomeCompleto' },
@@ -32,6 +39,8 @@ const CAMPOS_DA_API: Record<string, { tab: Tab; field: string }> = {
   data_nascimento: { tab: 'personal', field: 'dataNascimento' },
   endereco: { tab: 'personal', field: 'enderecoCompleto' },
   data_admissao: { tab: 'work', field: 'dataAdmissao' },
+  data_desligamento: { tab: 'work', field: 'dataDesligamento' },
+  motivo_desligamento: { tab: 'work', field: 'motivoDesligamento' },
   cargo_id: { tab: 'work', field: 'cargoId' },
   nivel: { tab: 'work', field: 'nivel' },
   departamento_id: { tab: 'work', field: 'departamentoId' },
@@ -83,7 +92,7 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
   }, [isOpen]);
 
   useEffect(() => {
-    const initial = employeeToEdit ? { ...initialState, ...employeeToEdit } as EmployeeForm : initialState;
+    const initial = employeeToEdit ? formFrom(employeeToEdit) : initialState;
     setInitialForm(initial);
     filledByRole.current.clear();
     submittingRef.current = false;

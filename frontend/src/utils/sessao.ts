@@ -9,6 +9,12 @@ export const ehGestao = (perfil: Perfil | undefined): boolean =>
 
 export const rotaInicial = (perfil: Perfil): string => (ehGestao(perfil) ? '/admin' : '/meu-painel');
 
+// Quem entrou com a senha que o RH definiu só pode trocá-la: o servidor recusa o resto (403).
+export const ROTA_TROCA_DE_SENHA = '/trocar-senha';
+
+export const rotaDepoisDoLogin = (usuario: Pick<User, 'role' | 'senhaProvisoria'>): string =>
+  (usuario.senhaProvisoria ? ROTA_TROCA_DE_SENHA : rotaInicial(usuario.role));
+
 export interface User {
   id: number;
   nome: string;
@@ -16,6 +22,7 @@ export interface User {
   funcionarioId: number | null;
   empresaNome: string;
   avatar?: string | null;
+  senhaProvisoria: boolean;
 }
 
 const ehPerfil = (valor: unknown): valor is Perfil => PERFIS.includes(valor as Perfil);
@@ -25,12 +32,13 @@ const ehId = (valor: unknown): valor is number => Number.isInteger(valor) && (va
 // Devolve null se algo não bate: quem chama trata como sessão inválida.
 export const lerSessao = (dados: unknown): User | null => {
   if (typeof dados !== 'object' || dados === null) return null;
-  const { id, nome, perfil, funcionario_id: funcionarioId, empresa_nome: empresaNome, avatar } = dados as Record<string, unknown>;
+  const { id, nome, perfil, funcionario_id: funcionarioId, empresa_nome: empresaNome, avatar, senha_provisoria: senhaProvisoria } = dados as Record<string, unknown>;
 
   if (!ehId(id) || typeof nome !== 'string' || !nome.trim() || !ehPerfil(perfil)) return null;
   if (typeof empresaNome !== 'string' || !empresaNome.trim()) return null;
   if (funcionarioId !== null && !ehId(funcionarioId)) return null;
   if (avatar !== null && avatar !== undefined && typeof avatar !== 'string') return null;
 
-  return { id, nome, role: perfil, funcionarioId, empresaNome, avatar: avatar ?? null };
+  // Ausente vale como falso: uma API anterior a este campo nunca marcou senha provisória.
+  return { id, nome, role: perfil, funcionarioId, empresaNome, avatar: avatar ?? null, senhaProvisoria: senhaProvisoria === true };
 };

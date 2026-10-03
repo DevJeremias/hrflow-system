@@ -123,6 +123,20 @@ describe('folha por competência', { skip: banco.skip }, () => {
             assert.deepEqual(folha.pendencias, [], 'quem não é da folha também não é pendência');
         });
 
+        it('o desligado continua na folha do mês do desligamento e sai a partir da seguinte', async () => {
+            const { empresaId, rh } = await cenario();
+            const emAgosto = await criarFuncionario(pool, empresaId, { nome: 'Desligado Em Agosto', salario: 3000, status: 'Inativo', desligamento: '2026-08-20' });
+            const emSetembro = await criarFuncionario(pool, empresaId, { nome: 'Desligado Em Setembro', salario: 3000, status: 'Inativo', desligamento: '2026-09-30' });
+            const semData = await criarFuncionario(pool, empresaId, { nome: 'Inativo Sem Data', salario: 3000, status: 'Inativo' });
+
+            const idsDe = async (competencia: string) => ((await processar(rh, competencia)).corpo as FolhaDaCompetencia).itens.map((i) => i.id).sort();
+            assert.deepEqual(await idsDe('2026-07'), [String(emAgosto), String(emSetembro)].sort(), 'em julho os dois ainda trabalhavam');
+            assert.deepEqual(await idsDe('2026-08'), [String(emAgosto), String(emSetembro)].sort(), 'no mês do desligamento ainda entra');
+            assert.deepEqual(await idsDe('2026-09'), [String(emSetembro)], 'em setembro só quem foi desligado no mês');
+            assert.deepEqual(await idsDe('2026-10'), [], 'em outubro nenhum dos dois');
+            assert.ok(![await idsDe('2026-08')].flat().includes(String(semData)), 'inativo sem data de desligamento nunca entra');
+        });
+
         it('colaborador sem salário aparece em pendências e não na folha', async () => {
             const { empresaId, rh } = await cenario();
             const comSalario = await criarFuncionario(pool, empresaId, { nome: 'Com Salario Ficticio', salario: 3000 });

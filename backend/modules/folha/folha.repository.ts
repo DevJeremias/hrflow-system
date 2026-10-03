@@ -83,18 +83,20 @@ const criarRepositorio = (executor: Connection) => ({
         return empresas[0];
     },
 
-    // Quem entra na folha de uma competência: ativos e de férias que já tinham sido admitidos até o
-    // último dia dela. Inativo fica de fora.
-    async colaboradoresDaCompetencia(empresaId: number, ultimoDia: string): Promise<ColaboradorDaFolha[]> {
+    // Quem entra na folha de uma competência: ativos e de férias, mais quem foi desligado no mês dela
+    // ou depois (o desligado continua na folha do mês do desligamento e sai a partir da seguinte),
+    // desde que já admitido até o último dia dela. Inativo sem data de desligamento fica de fora.
+    async colaboradoresDaCompetencia(empresaId: number, primeiroDia: string, ultimoDia: string): Promise<ColaboradorDaFolha[]> {
         const [colaboradores] = await executor.query<ColaboradorDaFolha[]>(
             `SELECT f.id, f.nome, f.tipo_contrato, f.salario_base, c.nome AS cargo_nome, d.nome AS departamento_nome
              FROM funcionarios f
              LEFT JOIN cargos c ON f.cargo_id = c.id
              LEFT JOIN departamentos d ON f.departamento_id = d.id
-             WHERE f.empresa_id = ? AND f.status IN ('Ativo', 'Férias')
+             WHERE f.empresa_id = ?
+               AND (f.status IN ('Ativo', 'Férias') OR (f.status = 'Inativo' AND f.data_desligamento >= ?))
                AND (f.data_admissao IS NULL OR f.data_admissao <= ?)
              ORDER BY f.nome, f.id`,
-            [empresaId, ultimoDia]
+            [empresaId, primeiroDia, ultimoDia]
         );
         return colaboradores;
     },
