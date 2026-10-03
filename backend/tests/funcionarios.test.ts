@@ -160,28 +160,36 @@ describe('funcionários', { skip: banco.skip }, () => {
             const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
 
             const novoEmail = `editado.${pessoa.id}@exemplo.invalid`;
-            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Editado', email: novoEmail, status: 'Férias' });
+            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Editado', email: novoEmail });
             assert.equal(status, 200);
             assert.deepEqual(corpo, { mensagem: 'Funcionário atualizado com sucesso!' });
 
             const [atualizado] = await consultar('SELECT nome, email, status FROM funcionarios WHERE id = ?', [pessoa.id]);
-            assert.deepEqual({ ...atualizado }, { nome: 'Nome Editado', email: novoEmail, status: 'Férias' });
+            assert.deepEqual({ ...atualizado }, { nome: 'Nome Editado', email: novoEmail, status: 'Ativo' });
             const [acesso] = await consultar('SELECT nome, email, sessao_versao FROM usuarios WHERE funcionario_id = ?', [pessoa.id]);
             assert.equal(acesso.nome, 'Nome Editado');
             assert.equal(acesso.email, novoEmail);
         });
 
-        it('só Inativo derruba as sessões abertas', async () => {
+        it('o status só muda por PATCH /:id/status: no PUT é campo desconhecido e nada muda', async () => {
             const entrada = novoCadastro();
             await chamar('POST', '/api/funcionarios', tokens.admin, entrada);
             const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
-            const versao = async () => (await consultar('SELECT sessao_versao FROM usuarios WHERE funcionario_id = ?', [pessoa.id]))[0].sessao_versao;
-            const inicial = await versao();
 
-            await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: entrada.nome, email: entrada.email, status: 'Férias' });
-            assert.equal(await versao(), inicial);
-            await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: entrada.nome, email: entrada.email, status: 'Inativo' });
-            assert.equal(await versao(), inicial + 1);
+            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: entrada.nome, email: entrada.email, status: 'Inativo' });
+            assert.equal(status, 400);
+            assert.match(corpo.erro, /Campo desconhecido: status/);
+            assert.equal((await consultar('SELECT status FROM funcionarios WHERE id = ?', [pessoa.id]))[0].status, 'Ativo');
+        });
+
+        it('editar quem está inativo não o reativa', async () => {
+            const entrada = novoCadastro();
+            await chamar('POST', '/api/funcionarios', tokens.admin, entrada);
+            const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
+            await chamar('PATCH', `/api/funcionarios/${pessoa.id}/status`, tokens.admin, { status: 'Inativo', data_desligamento: '2026-01-10', motivo_desligamento: 'Fim do contrato' });
+
+            assert.equal((await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Novo', email: entrada.email })).status, 200);
+            assert.equal((await consultar('SELECT status FROM funcionarios WHERE id = ?', [pessoa.id]))[0].status, 'Inativo');
         });
 
         it('funcionário inexistente ou de outra empresa é 404 e nada é alterado', async () => {

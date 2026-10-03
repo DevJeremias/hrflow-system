@@ -36,7 +36,7 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 ## ✨ Funcionalidades Principais
 
 *   **Gestão Estrutural:** Criação e controle de Departamentos e Cargos (níveis hierárquicos, salários base e gestores).
-*   **Core RH (Colaboradores):** CRUD completo de funcionários, com gestão segmentada de dados (Informações Pessoais, Contratuais e Financeiras).
+*   **Core RH (Colaboradores):** cadastro de funcionários com gestão segmentada de dados (Informações Pessoais, Contratuais e Financeiras) e ciclo de vida completo: Férias, inativação ou desligamento com data e motivo (sem perder o histórico de ponto), reativação, redefinição de senha pelo RH e exclusão apenas de cadastro sem movimento.
 *   **Motor de Folha de Pagamento:** Processamento em lote de todos os salários ativos, aplicando automaticamente as tabelas de dedução de impostos (INSS) e calculando o Custo Bruto, Líquido e Encargos Patronais.
 *   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem e fazerem o download dos seus holerites em tempo real.
 
@@ -120,6 +120,7 @@ A sessão (8 horas, revogada na troca de senha, na inativação e na exclusão) 
 * O cookie é `Secure` quando a requisição chega por HTTPS e, com `NODE_ENV=production`, em qualquer host que não seja loopback. Atrás do Caddy, defina `TRUST_PROXY=1` (veja `backend/.env.example`) para a API enxergar o HTTPS informado em `X-Forwarded-Proto`, e `NODE_ENV=production`.
 * Front-end e API precisam ser servidos pela mesma origem, como já acontece: o Vite encaminha `/api` em desenvolvimento e o Caddy faz o mesmo em produção. A API não habilita CORS, de propósito: nenhuma origem externa consegue ler as respostas.
 * `POST /api/auth/logout` é público para que uma sessão expirada também consiga limpar os cookies.
+* A senha que o RH define no cadastro, ou gera em `POST /api/funcionarios/:id/redefinir-senha`, é provisória (`usuarios.senha_provisoria`). Com ela a sessão só alcança `GET /api/auth/sessao` e `PUT /api/perfil/alterar-senha`; o resto responde 403 até a troca, e o front-end leva a pessoa à tela `/trocar-senha`. A redefinição devolve a senha uma única vez (o banco guarda só o hash) e derruba as sessões abertas. Ainda não há recuperação por e-mail: quem esqueceu a senha procura o RH.
 
 ### Monitoramento
 

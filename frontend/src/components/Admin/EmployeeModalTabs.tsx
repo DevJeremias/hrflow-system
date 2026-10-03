@@ -38,10 +38,11 @@ export const PersonalTab: React.FC<TabProps> = ({ formData, handleChange }) => (
         <label className="block text-sm font-bold text-slate-700 mb-2">Data de Nascimento</label>
         <input type="date" name="dataNascimento" value={formData.dataNascimento} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" />
       </div>
-      {/* A API só grava a senha no cadastro; depois dele, quem troca a senha é o próprio usuário no perfil. */}
+      {/* A senha só se define no cadastro, e é provisória: o colaborador a troca no primeiro acesso.
+          Depois dele, quem esqueceu a senha pede ao RH em "Redefinir Senha". */}
       {!formData.id && (
         <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Senha de Acesso *</label>
+          <label className="block text-sm font-bold text-slate-700 mb-2">Senha Provisória *</label>
           <input type="password" name="senhaAcesso" required value={formData.senhaAcesso} onChange={handleChange} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none" placeholder="........" />
         </div>
       )}
@@ -62,9 +63,40 @@ interface WorkTabProps extends TabProps {
   departamentos?: Department[];
 }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos = [], departamentos = [] }) => (
   <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-    
+
+    {/* O cadastro novo nasce Ativo; a situação só se muda numa edição. */}
+    {formData.id && (
+      <div className="space-y-4 bg-slate-50 p-5 rounded-[2rem] border border-slate-100">
+        <div className="space-y-2">
+          <label htmlFor="status" className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Situação</label>
+          <select id="status" name="status" value={formData.status} onChange={handleChange} className="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer font-bold text-slate-800">
+            <option value="Ativo">Ativo</option>
+            <option value="Férias">Férias</option>
+            <option value="Inativo">Inativo (desligado)</option>
+          </select>
+        </div>
+        {formData.status === 'Inativo' && (
+          <>
+            <p className="text-sm font-medium text-slate-500 ml-1">Inativar bloqueia o login e encerra as sessões abertas. O histórico de ponto é mantido.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label htmlFor="dataDesligamento" className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Data do desligamento *</label>
+                <input id="dataDesligamento" name="dataDesligamento" type="date" required max={today()} value={formData.dataDesligamento ?? ''} onChange={handleChange} className="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-primary outline-none font-bold text-slate-700" />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="motivoDesligamento" className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Motivo *</label>
+                <input id="motivoDesligamento" name="motivoDesligamento" type="text" required maxLength={255} value={formData.motivoDesligamento ?? ''} onChange={handleChange} className="w-full p-4 bg-white border border-slate-200 rounded-2xl focus:border-primary outline-none font-bold text-slate-700" placeholder="Ex.: pedido de demissão" />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    )}
+
     <div className="grid grid-cols-1 gap-6">
       <div className="space-y-2">
         <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Data de Admissão</label>

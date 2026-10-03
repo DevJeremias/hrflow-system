@@ -52,10 +52,25 @@ export const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 // O status do cadastro novo é sempre Ativo: o campo, se enviado, é aceito e ignorado.
 export const criarFuncionario = corpoEstrito({ ...dadosDoFuncionario, senha: senhaNova, status: z.unknown().optional().transform(() => undefined) }).check(admissaoDepoisDoNascimento);
 
-export const atualizarFuncionario = corpoEstrito({
-    ...dadosDoFuncionario,
-    status: opcional(enumerado('Status', STATUS)).transform((status: Status | null) => status ?? 'Ativo'),
-}).check(admissaoDepoisDoNascimento);
+// O status não entra aqui: muda só por PATCH /:id/status, que exige data e motivo ao desligar.
+export const atualizarFuncionario = corpoEstrito(dadosDoFuncionario).check(admissaoDepoisDoNascimento);
+
+// Desligar é inativar com data e motivo; qualquer outro status limpa os dois.
+export const alterarStatus = corpoEstrito({
+    status: enumerado('Status', STATUS),
+    data_desligamento: opcional(data('Data do desligamento', hoje, 'a data de hoje')),
+    motivo_desligamento: opcional(texto('Motivo do desligamento', 255)),
+}).check((ctx) => {
+    const { status, data_desligamento: dataDoDesligamento, motivo_desligamento: motivo } = ctx.value as unknown as CorpoDoStatus;
+    if (status === 'Inativo') {
+        if (!dataDoDesligamento) ctx.issues.push({ code: 'custom', message: 'Data do desligamento é obrigatória para inativar.', path: ['data_desligamento'], input: dataDoDesligamento });
+        if (!motivo) ctx.issues.push({ code: 'custom', message: 'Motivo do desligamento é obrigatório para inativar.', path: ['motivo_desligamento'], input: motivo });
+        return;
+    }
+    if (dataDoDesligamento || motivo) {
+        ctx.issues.push({ code: 'custom', message: 'Data e motivo do desligamento só valem para o status Inativo.', path: [dataDoDesligamento ? 'data_desligamento' : 'motivo_desligamento'], input: dataDoDesligamento ?? motivo });
+    }
+});
 
 // O que cada schema entrega em req.dadosValidados. Os tipos são escritos à mão: mude-os junto com
 // o schema.
@@ -86,8 +101,12 @@ export interface CorpoDoCadastro extends DadosDoFuncionario {
     senha: string;
 }
 
-export interface CorpoDaEdicao extends DadosDoFuncionario {
+export type CorpoDaEdicao = DadosDoFuncionario;
+
+export interface CorpoDoStatus {
     status: Status;
+    data_desligamento: string | null;
+    motivo_desligamento: string | null;
 }
 
 export interface Paginacao {

@@ -8,8 +8,13 @@ import { lerTokenDaSessao, csrfValido, encerrarSessao } from '../../modules/auth
 
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+// Com senha provisória a sessão só serve para trocá-la: confirmar quem é (o front-end decide a tela
+// por GET /api/auth/sessao) e alterar a senha. O logout é público e não passa por aqui.
+const ROTAS_COM_SENHA_PROVISORIA = new Set(['GET /api/auth/sessao', 'PUT /api/perfil/alterar-senha']);
+
 interface SessaoNoBanco extends RowDataPacket {
     sessao_versao: number;
+    senha_provisoria: number;
     funcionario_status: string | null;
 }
 
@@ -42,7 +47,7 @@ export default async (req: Request, res: Response, next: NextFunction) => {
         // 4. Assinatura válida não basta: o usuário precisa continuar existindo, o funcionário
         // vinculado não pode estar inativo e a versão da sessão tem que ser a do token.
         const [linhas] = await db.query<SessaoNoBanco[]>(
-            `SELECT u.sessao_versao, f.status AS funcionario_status
+            `SELECT u.sessao_versao, u.senha_provisoria, f.status AS funcionario_status
              FROM usuarios u
              LEFT JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
              WHERE u.id = ?`,
@@ -54,7 +59,12 @@ export default async (req: Request, res: Response, next: NextFunction) => {
             return res.status(401).json({ erro: 'Sessão encerrada. Faça login novamente.' });
         }
 
-        // 5. Se for válido, guarda os dados do utilizador e deixa passar para a rota
+        // 5. A senha provisória vem do banco, não do token: a troca vale na hora, sem esperar novo login.
+        if (atual.senha_provisoria && !ROTAS_COM_SENHA_PROVISORIA.has(`${req.method} ${req.originalUrl.split('?')[0]}`)) {
+            return res.status(403).json({ erro: 'Defina uma nova senha para continuar.', senhaProvisoria: true });
+        }
+
+        // 6. Se for válido, guarda os dados do utilizador e deixa passar para a rota
         req.usuario = verified;
         next();
     } catch (erro) {

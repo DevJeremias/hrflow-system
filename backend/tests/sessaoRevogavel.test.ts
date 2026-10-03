@@ -51,14 +51,15 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         });
         assert.equal(criado.status, 201);
         const [[funcionario]] = await pool.query<RowDataPacket[]>('SELECT id FROM funcionarios WHERE email = ?', [email]);
+        // O cadastro nasce com senha provisória; estes cenários tratam de quem já escolheu a própria.
+        await pool.query('UPDATE usuarios SET senha_provisoria = FALSE WHERE funcionario_id = ?', [funcionario.id]);
         const entrada = await login(email, senha);
         assert.equal(entrada.status, 200);
         return { email, senha, funcionarioId: funcionario.id, token: entrada.token };
     };
 
-    const atualizarStatus = (colaborador: { funcionarioId: number; email: string }, status: string) => chamar('PUT', `/api/funcionarios/${colaborador.funcionarioId}`, tokenAdmin, {
-        nome: `Colaborador Ficticio ${colaborador.funcionarioId}`, email: colaborador.email, status,
-    });
+    const atualizarStatus = (colaborador: { funcionarioId: number }, status: string) => chamar('PATCH', `/api/funcionarios/${colaborador.funcionarioId}/status`, tokenAdmin,
+        status === 'Inativo' ? { status, data_desligamento: '2026-01-10', motivo_desligamento: 'Motivo ficticio' } : { status });
 
     const consultar = (token: string | undefined) => chamar('GET', '/api/perfil/meus-dados', token);
 

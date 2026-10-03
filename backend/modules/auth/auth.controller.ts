@@ -40,9 +40,9 @@ export const registrarConta = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
     try {
-        const { token, perfil, nome } = await service.login(corpoDe<DadosDeLogin>(req));
+        const { token, perfil, nome, senhaProvisoria } = await service.login(corpoDe<DadosDeLogin>(req));
         iniciarSessao(req, res, token);
-        res.json({ perfil, nome });
+        res.json({ perfil, nome, senhaProvisoria });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao processar login.');
     }

@@ -107,12 +107,20 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(colaborador.tipo_contrato, 'Temporário');
 
         estado.colaborador = await entrar('colaborador@limpa.exemplo.invalid', 'outra-senha-ficticia');
+        // A senha definida no cadastro é provisória: até trocá-la a sessão não alcança mais nada.
+        assert.equal((await chamar('GET', '/api/perfil/meus-dados', estado.colaborador)).status, 403);
         const [[usuario]] = await pool.query<RowDataPacket[]>('SELECT id, funcionario_id FROM usuarios WHERE email = ?', ['colaborador@limpa.exemplo.invalid']);
         assert.equal(usuario.funcionario_id, estado.funcionario);
         estado.usuario = usuario.id;
     });
 
-    it('o colaborador vê o perfil, atualiza dados com avatar e troca a senha', async () => {
+    it('o colaborador troca a senha provisória no primeiro acesso, vê o perfil e atualiza dados com avatar', async () => {
+        assert.equal((await chamar('PUT', '/api/perfil/alterar-senha', estado.colaborador, {
+            senhaAtual: 'outra-senha-ficticia', novaSenha: 'terceira-senha-ficticia',
+        })).status, 200);
+        // A troca de senha encerra a sessão: o token novo vem do login com a senha nova.
+        estado.colaborador = await entrar('colaborador@limpa.exemplo.invalid', 'terceira-senha-ficticia');
+
         const perfil = await chamar('GET', '/api/perfil/meus-dados', estado.colaborador);
         assert.equal(perfil.status, 200);
         assert.equal(perfil.corpo.cargo, 'Analista de Operações');
@@ -128,12 +136,6 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(depois.corpo.banco, 'Banco Ficticio');
         assert.equal(depois.corpo.tipo_contrato, 'Temporário');
         assert.equal(depois.corpo.vinculado, true);
-
-        assert.equal((await chamar('PUT', '/api/perfil/alterar-senha', estado.colaborador, {
-            senhaAtual: 'outra-senha-ficticia', novaSenha: 'terceira-senha-ficticia',
-        })).status, 200);
-        // A troca de senha encerra a sessão: o token novo vem do login com a senha nova.
-        estado.colaborador = await entrar('colaborador@limpa.exemplo.invalid', 'terceira-senha-ficticia');
     });
 
     it('o administrador tem perfil próprio sem funcionário', async () => {
@@ -173,18 +175,22 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(holerite.corpo[0].id, String(estado.funcionario));
     });
 
-    it('edita o colaborador (status Férias) e a exclusão leva login e pontos junto', async () => {
+    it('edita o colaborador, põe de férias e recusa excluir quem já tem ponto; sem movimento a exclusão leva o login junto', async () => {
         const edicao = await chamar('PUT', `/api/funcionarios/${estado.funcionario}`, estado.admin, {
             nome: 'Colaborador Ficticio', email: 'colaborador@limpa.exemplo.invalid', cargo_id: estado.cargo,
-            departamento_id: estado.departamento, tipo_contrato: 'CLT', salario_base: 4300, status: 'Férias',
+            departamento_id: estado.departamento, tipo_contrato: 'CLT', salario_base: 4300,
         });
         assert.equal(edicao.status, 200);
+        assert.equal((await chamar('PATCH', `/api/funcionarios/${estado.funcionario}/status`, estado.admin, { status: 'Férias' })).status, 200);
 
+        assert.equal((await chamar('DELETE', `/api/funcionarios/${estado.funcionario}`, estado.admin)).status, 409);
+        const [[{ antes }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS antes FROM registro_pontos');
+        assert.equal(antes, 4, 'o ponto continua guardado');
+
+        await pool.query('DELETE FROM registro_pontos');
         assert.equal((await chamar('DELETE', `/api/funcionarios/${estado.funcionario}`, estado.admin)).status, 200);
         const [[{ usuarios }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS usuarios FROM usuarios WHERE funcionario_id IS NOT NULL');
-        const [[{ pontos }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS pontos FROM registro_pontos');
         assert.equal(usuarios, 0);
-        assert.equal(pontos, 0);
     });
 
     it('o cargo ficou livre e pode ser removido', async () => {

@@ -57,7 +57,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
         assert.equal(status, 200);
         assert.deepEqual(corpo, {
             id: admin.id, perfil: 'Administrador', empresa_id: admin.empresa_id, empresa_nome: 'Empresa Ficticia Alfa Ltda',
-            funcionario_id: null, avatar: null, nome: 'Admin Alfa Ficticio',
+            funcionario_id: null, avatar: null, nome: 'Admin Alfa Ficticio', senha_provisoria: false,
         });
     });
 
@@ -80,7 +80,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
 
     it('não expõe e-mail, senha nem hash', async () => {
         const { corpo } = await get(await entrar('dora@alfa.exemplo.invalid'));
-        assert.deepEqual(Object.keys(corpo).sort(), ['avatar', 'empresa_id', 'empresa_nome', 'funcionario_id', 'id', 'nome', 'perfil']);
+        assert.deepEqual(Object.keys(corpo).sort(), ['avatar', 'empresa_id', 'empresa_nome', 'funcionario_id', 'id', 'nome', 'perfil', 'senha_provisoria']);
     });
 
     describe('toda credencial inválida é 401', () => {

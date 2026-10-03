@@ -3,7 +3,6 @@
 import bcrypt from 'bcrypt';
 import { ErroDeAuth } from './auth.erros.ts';
 import * as repositorio from './auth.repository.ts';
-import type { IdentidadeDaSessao } from './auth.repository.ts';
 import type { DadosDeLogin, DadosDeRegistro } from './auth.schemas.ts';
 import { emitirToken } from './auth.sessao.ts';
 
@@ -16,6 +15,20 @@ export interface LoginFeito {
     token: string;
     perfil: string;
     nome: string;
+    // O colaborador entrou com a senha que o gestor definiu: só pode trocá-la (ver authMiddleware).
+    senhaProvisoria: boolean;
+}
+
+// O formato de GET /api/auth/sessao.
+export interface IdentidadeDoUsuario {
+    id: number;
+    perfil: string;
+    empresa_id: number;
+    empresa_nome: string;
+    funcionario_id: number | null;
+    avatar: string | null;
+    nome: string;
+    senha_provisoria: boolean;
 }
 
 // Cria a empresa e o usuário administrador ao mesmo tempo.
@@ -53,14 +66,15 @@ export const login = async ({ email, senha }: DadosDeLogin): Promise<LoginFeito>
         }
     }
 
-    return { token: emitirToken(usuario, nome), perfil: usuario.perfil, nome };
+    return { token: emitirToken(usuario, nome), perfil: usuario.perfil, nome, senhaProvisoria: Boolean(usuario.senha_provisoria) };
 };
 
 // Quem sou eu: a fonte única da identidade que o front-end exibe e usa para guardar rotas.
 // Lê do banco, não do token: nome e vínculo refletem o estado atual, e um usuário removido
 // deixa de ter sessão (401) em vez de seguir com um token ainda assinado.
-export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDaSessao> => {
+export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDoUsuario> => {
     const identidade = await repositorio.identidadeDaSessao(usuarioId);
     if (!identidade) throw new ErroDeAuth('naoAutenticado', 'Sessão encerrada. Faça login novamente.');
-    return identidade;
+    const { id, perfil, empresa_id, empresa_nome, funcionario_id, avatar, nome, senha_provisoria } = identidade;
+    return { id, perfil, empresa_id, empresa_nome, funcionario_id, avatar, nome, senha_provisoria: Boolean(senha_provisoria) };
 };
