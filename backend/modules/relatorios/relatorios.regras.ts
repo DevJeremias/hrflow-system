@@ -72,7 +72,10 @@ export interface LinhaDeCusto {
 
 type CampoMonetario = 'bruto' | 'descontos' | 'liquido' | 'encargos';
 
-const CAMPOS_DO_HOLERITE: Record<CampoMonetario, keyof HoleriteDoColaborador> = {
+// O que o relatório lê de cada holerite da folha.
+type HoleriteParaCusto = Pick<HoleriteDoColaborador, 'department' | 'totalGross' | 'totalDeductions' | 'netSalary' | 'employerCharges'>;
+
+const CAMPOS_DO_HOLERITE: Record<CampoMonetario, keyof HoleriteParaCusto> = {
     bruto: 'totalGross', descontos: 'totalDeductions', liquido: 'netSalary', encargos: 'employerCharges',
 };
 
@@ -88,7 +91,7 @@ const linhaDeCusto = (departamento: string, centavos: Record<CampoMonetario, num
 
 // Os holerites da folha somados por departamento (o do próprio holerite, já congelado na folha), em ordem
 // alfabética, e o total da empresa, que é a soma exata das linhas e portanto o da folha.
-export const custoPorDepartamento = (holerites: readonly HoleriteDoColaborador[]): { linhas: LinhaDeCusto[]; total: LinhaDeCusto } => {
+export const custoPorDepartamento = (holerites: readonly HoleriteParaCusto[]): { linhas: LinhaDeCusto[]; total: LinhaDeCusto } => {
     const zerado = (): Record<CampoMonetario, number> => ({ bruto: 0, descontos: 0, liquido: 0, encargos: 0 });
     const grupos = new Map<string, { centavos: Record<CampoMonetario, number>; colaboradores: number }>();
     const total = { centavos: zerado(), colaboradores: 0 };

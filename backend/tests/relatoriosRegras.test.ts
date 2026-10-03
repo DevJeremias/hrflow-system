@@ -7,7 +7,6 @@ import { gerarPdf } from '../modules/relatorios/relatorios.pdf.ts';
 import { formatarParaLeitura } from '../modules/relatorios/relatorios.tabela.ts';
 import type { Tabela } from '../modules/relatorios/relatorios.tabela.ts';
 import { textosDoPdf } from './support/pdf.ts';
-import type { HoleriteDoColaborador } from '../modules/folha/index.ts';
 import type { ColaboradorApurado, DiaApurado } from '../modules/ponto/index.ts';
 
 describe('meses de um período', () => {
@@ -50,9 +49,8 @@ describe('headcount e turnover', () => {
     });
 });
 
-const holerite = (department: string, totalGross: number, totalDeductions: number, netSalary: number, employerCharges: number): HoleriteDoColaborador => ({
-    id: '1', name: 'Pessoa', role: 'Cargo', department, contract: 'CLT', baseSalary: totalGross, totalEarnings: 0, totalDeductions,
-    totalGross, netSalary, employerCharges, earningsList: [], deductionsList: [],
+const holerite = (department: string, totalGross: number, totalDeductions: number, netSalary: number, employerCharges: number) => ({
+    department, totalDeductions, totalGross, netSalary, employerCharges,
 });
 
 describe('custo por departamento', () => {

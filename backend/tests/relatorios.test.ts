@@ -248,7 +248,7 @@ describe('relatórios', { skip: banco.skip }, () => {
             // O total é o da folha, centavo a centavo, e a soma das linhas é o total.
             assert.deepEqual(
                 { bruto: corpo.total.bruto, descontos: corpo.total.descontos, liquido: corpo.total.liquido, encargos: corpo.total.encargos },
-                folha.totais,
+                { bruto: folha.totais.bruto, descontos: folha.totais.descontos, liquido: folha.totais.liquido, encargos: folha.totais.encargos },
             );
             for (const campo of ['bruto', 'descontos', 'liquido', 'encargos', 'custoTotal']) {
                 const soma = corpo.departamentos.reduce((total: number, d: Record<string, number>) => total + Math.round(d[campo] * 100), 0);

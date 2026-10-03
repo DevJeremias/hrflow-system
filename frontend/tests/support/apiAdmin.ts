@@ -17,13 +17,16 @@ export const FUNCIONARIOS = [
 ];
 export const HOLERITE = {
   id: '7', name: 'Bia Ficticia', role: 'Desenvolvedor(a)', department: 'Tecnologia', baseSalary: 8000, totalEarnings: 0, totalDeductions: 800,
-  totalGross: 8000, netSalary: 7200, employerCharges: 2000, earningsList: [], deductionsList: [{ description: 'INSS', value: 800, isPercentage: false }],
+  totalGross: 8000, netSalary: 7200, employerCharges: 2000, inss: 800, irrf: 0, fgts: 640, dependents: 0,
+  bases: { inss: 8000, fgts: 8000, irrf: 7200 }, lancamentos: { adiantamento: 0, valeTransporte: 0, valeRefeicao: 0, planoSaude: 0 },
+  earningsList: [], deductionsList: [{ description: 'INSS', value: 800, isPercentage: false, reference: null }], chargesList: [],
 };
 // A folha por competência (B-12): uma folha aberta com o holerite acima.
 export const FOLHA = {
   competencia: '2026-10', status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null,
   empresa: { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181' },
-  totais: { bruto: 8000, descontos: 800, liquido: 7200, encargos: 2000 }, itens: [HOLERITE], pendencias: [],
+  regimeTributario: 'Simples Nacional',
+  totais: { bruto: 8000, descontos: 800, liquido: 7200, encargos: 2000, inss: 800, irrf: 0, fgts: 640 }, itens: [HOLERITE], pendencias: [],
 };
 export const SESSAO = { id: 1, nome: 'Rita RH', perfil: 'RH', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: null, avatar: null };
 

@@ -165,15 +165,19 @@ interface JornadaDoMes extends Jornada {
     saida: string;
 }
 
-// Apura cada dia do mês de um colaborador, inclusive os sem marcação. É a única conta de dia: a tela do
-// colaborador e os relatórios da empresa passam por aqui.
-const apurarDiasDoMes = ({ fuso, mes, registro, pontos, justificativas }: {
-    fuso: Fuso;
-    mes: string;
-    registro: repositorio.JornadaDoColaborador;
-    pontos: readonly Pick<repositorio.RegistroDoColaborador, 'tipo_registro' | 'instante'>[];
-    justificativas: readonly Pick<repositorio.JustificativaDoDia, 'dia' | 'status'>[];
-}) => {
+// O que a apuração precisa do colaborador: a jornada e a admissão, como o repositório as devolve.
+export type JornadaParaApurar = Pick<repositorio.JornadaDoColaborador, 'carga_semanal' | 'entrada' | 'saida' | 'entrada_min' | 'tolerancia_min' | 'admissao'>;
+
+// Apura cada dia do mês 'AAAA-MM' do colaborador a partir das marcações e justificativas já lidas, inclusive os
+// dias sem marcação, no fuso da empresa. É a única apuração do sistema: a tela de ponto, a folha e os
+// relatórios a usam.
+export const apurarDiasDoMes = (
+    fuso: Fuso,
+    mes: string,
+    registro: JornadaParaApurar,
+    pontos: readonly Pick<repositorio.RegistroDoColaborador, 'tipo_registro' | 'instante'>[],
+    justificativas: readonly Pick<repositorio.JustificativaDoDia, 'dia' | 'status'>[],
+) => {
     const cargaSemanalHoras = Number(registro.carga_semanal);
     const jornada: JornadaDoMes = {
         cargaSemanalHoras,
@@ -219,7 +223,7 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
     ]);
     if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
 
-    return { ...apurarDiasDoMes({ fuso, mes, registro, pontos, justificativas }), justificativaDoDia: new Map(justificativas.map((j) => [j.dia, j])) };
+    return { ...apurarDiasDoMes(fuso, mes, registro, pontos, justificativas), justificativaDoDia: new Map(justificativas.map((j) => [j.dia, j])) };
 };
 
 export interface ColaboradorApurado {
@@ -252,11 +256,11 @@ export const apurarMesDaEmpresa = async ({ empresaId, mes }: { empresaId: number
     const justificativasDe = agrupar(justificativas);
 
     return colaboradores.map((colaborador) => {
-        const { dias } = apurarDiasDoMes({
-            fuso, mes, registro: colaborador,
-            pontos: pontosDe.get(colaborador.funcionario_id) ?? [],
-            justificativas: justificativasDe.get(colaborador.funcionario_id) ?? [],
-        });
+        const { dias } = apurarDiasDoMes(
+            fuso, mes, colaborador,
+            pontosDe.get(colaborador.funcionario_id) ?? [],
+            justificativasDe.get(colaborador.funcionario_id) ?? [],
+        );
         return {
             funcionarioId: colaborador.funcionario_id,
             nome: colaborador.nome,

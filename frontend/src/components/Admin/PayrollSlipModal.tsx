@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer, Building } from 'lucide-react';
+import { Printer, Building, Download } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
 import Modal from '../ui/Modal';
 import { IconButton } from '../ui/Button';
@@ -13,6 +13,8 @@ interface Props {
   companyName?: string;
   // Só os dígitos, como a API os guarda; sem CNPJ a linha não aparece.
   cnpj?: string | null;
+  // Sem esta função o botão de PDF não aparece.
+  onDownloadPdf?: () => void;
 }
 
 interface Linha { descricao: string; referencia: string; tipo: 'vencimento' | 'desconto'; valor: number; }
@@ -21,15 +23,26 @@ const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 
 
 const ROTULO = 'text-xs font-semibold uppercase tracking-wider text-ink-muted';
 
-const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName, cnpj }) => {
+const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName, cnpj, onDownloadPdf }) => {
   if (!isOpen || !employee) return null;
 
   // Abaixo de sm as linhas viram uma lista empilhada; a tabela de quatro colunas só cabe a partir daí.
   const linhas: Linha[] = [
     { descricao: 'Salário Base', referencia: '30 dias', tipo: 'vencimento', valor: employee.baseSalary },
-    ...employee.earningsList.map((item): Linha => ({ descricao: item.description, referencia: '---', tipo: 'vencimento', valor: item.value })),
-    ...employee.deductionsList.map((item): Linha => ({ descricao: item.description, referencia: '---', tipo: 'desconto', valor: item.value })),
+    ...employee.earningsList.map((item): Linha => ({ descricao: item.description, referencia: item.reference ?? '---', tipo: 'vencimento', valor: item.value })),
+    ...employee.deductionsList.map((item): Linha => ({ descricao: item.description, referencia: item.reference ?? '---', tipo: 'desconto', valor: item.value })),
   ];
+
+  // Bases de cálculo e FGTS: informativos, não entram nos totais. Os holerites emitidos antes do IRRF não têm bases.
+  const informativos = employee.bases
+    ? [
+      ['Base INSS', formatCurrency(employee.bases.inss)],
+      ['Base FGTS', formatCurrency(employee.bases.fgts)],
+      ['FGTS do mês', formatCurrency(employee.fgts)],
+      ['Base IRRF', formatCurrency(employee.bases.irrf)],
+      ['Dependentes IRRF', String(employee.dependents)],
+    ]
+    : [];
 
   // O contêiner do modal fica no <body>: o @media print esconde o resto da aplicação sem deixar páginas em branco.
   return (
@@ -40,9 +53,16 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
       portalClassName="holerite-impressao"
       bodyClassName="bg-surface-muted p-4 sm:p-8 print:bg-white print:p-0"
       headerActions={(
-        <IconButton label="Imprimir Holerite" variant="secondary" onClick={() => window.print()}>
-          <Printer size={20} aria-hidden="true" />
-        </IconButton>
+        <span className="flex items-center gap-2">
+          {onDownloadPdf && (
+            <IconButton label="Baixar PDF" variant="secondary" onClick={onDownloadPdf}>
+              <Download size={20} aria-hidden="true" />
+            </IconButton>
+          )}
+          <IconButton label="Imprimir Holerite" variant="secondary" onClick={() => window.print()}>
+            <Printer size={20} aria-hidden="true" />
+          </IconButton>
+        </span>
       )}
     >
       <div className="overflow-hidden rounded-card border-2 border-line bg-surface print:rounded-none print:border-2 print:border-ink">
@@ -116,6 +136,17 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
             </tbody>
           </table>
         </div>
+
+        {informativos.length > 0 && (
+          <dl className="grid grid-cols-2 gap-4 border-t-2 border-line bg-surface-muted p-4 sm:grid-cols-5 sm:p-6 print:border-ink print:bg-white">
+            {informativos.map(([rotulo, valor]) => (
+              <div key={rotulo}>
+                <dt className={`${ROTULO} mb-1`}>{rotulo}</dt>
+                <dd className="font-semibold text-ink">{valor}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
         <div className="grid grid-cols-1 border-t-2 border-line sm:grid-cols-2 print:grid-cols-2 print:border-ink">
           <div className="order-2 flex flex-col justify-end border-t-2 border-line p-4 sm:order-1 sm:border-r-2 sm:border-t-0 sm:p-6 print:order-1 print:border-r-2 print:border-t-0 print:border-ink">

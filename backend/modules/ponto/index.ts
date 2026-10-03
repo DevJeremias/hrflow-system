@@ -2,7 +2,9 @@
 export { pontoRoutes } from './ponto.routes.ts';
 // O relógio que os testes fixam para "agora".
 export { relogio } from './ponto.service.ts';
-// O mês de todos os colaboradores da empresa, apurado dia a dia (relatório de absenteísmo).
-export { apurarMesDaEmpresa } from './ponto.service.ts';
-export type { ColaboradorApurado } from './ponto.service.ts';
-export type { DiaApurado } from './ponto.regras.ts';
+// A apuração do mês, para quem precisa do que o ponto diz de cada dia (a folha: faltas e horas extras; os
+// relatórios: absenteísmo).
+export { apurarDiasDoMes, apurarMesDaEmpresa } from './ponto.service.ts';
+export type { ColaboradorApurado, JornadaParaApurar } from './ponto.service.ts';
+export { ehDomingo } from './ponto.regras.ts';
+export type { DecisaoDaJustificativa, DiaApurado, TipoRegistro } from './ponto.regras.ts';
