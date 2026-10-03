@@ -13,6 +13,7 @@ import { dashboardRoutes } from './modules/dashboard/index.ts';
 import { perfilRoutes } from './modules/perfil/index.ts';
 import { estruturaRoutes } from './modules/estrutura/index.ts';
 import { folhaRoutes } from './modules/folha/index.ts';
+import { usuariosRoutes } from './modules/usuarios/index.ts';
 import { empresaRoutes } from './modules/empresa/index.ts';
 
 // Importação do Middleware de Proteção
@@ -56,6 +57,7 @@ export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUS
 
     // Rotas Protegidas (Exigem Token JWT)
     app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
+    app.use('/api/usuarios', authMiddleware, usuariosRoutes);
     app.use('/api/ponto', authMiddleware, pontoRoutes);
     app.use('/api/estrutura', authMiddleware, estruturaRoutes);
     app.use('/api/folha', authMiddleware, folhaRoutes);

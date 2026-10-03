@@ -6,6 +6,7 @@ import StatCard from '../../components/Admin/DashboardStatCard';
 import RecentActivities from '../../components/Admin/DashboardActivities';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { ehAdministrador } from '../../utils/sessao';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -17,11 +18,13 @@ const Dashboard: React.FC = () => {
   const isLoading = isPending;
   const loadError = error ? mensagemDeErro(error, 'Erro ao carregar o resumo do dashboard') : null;
 
+  // Só o Administrador alcança a estrutura; para o RH os números ficam sem link.
+  const structureLink = ehAdministrador(user?.role) ? '/admin/estrutura' : undefined;
   const inactive = data?.inactiveEmployees ?? 0;
   const statConfig = data ? [
     { label: 'Colaboradores', value: data.activeEmployees, to: '/admin/colaboradores', hint: inactive > 0 ? `${inactive} ${inactive === 1 ? 'inativo' : 'inativos'}` : undefined, icon: <Users size={24} className="text-white" />, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    { label: 'Departamentos', value: data.departments, to: '/admin/estrutura', icon: <Building2 size={24} className="text-white" />, color: 'bg-indigo-500', shadow: 'shadow-indigo-500/30' },
-    { label: 'Cargos Cadastrados', value: data.roles, to: '/admin/estrutura', icon: <Briefcase size={24} className="text-white" />, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
+    { label: 'Departamentos', value: data.departments, to: structureLink, icon: <Building2 size={24} className="text-white" />, color: 'bg-indigo-500', shadow: 'shadow-indigo-500/30' },
+    { label: 'Cargos Cadastrados', value: data.roles, to: structureLink, icon: <Briefcase size={24} className="text-white" />, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
     { label: 'Marcações Hoje', value: data.punchesToday, to: '/admin/gestao-ponto', icon: <Clock size={24} className="text-white" />, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
   ] : [];
 

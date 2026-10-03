@@ -12,11 +12,27 @@ import {
   Clock,     
   FileText,  
   User as UserIcon,
+  UserCog,
   Command
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { ehGestao } from '../utils/sessao';
+import { menuDoUsuario } from '../utils/menu';
+import type { IconeDoMenu } from '../utils/menu';
 import { solicitacoesAtivas } from '../utils/recursos';
+
+const ICONES: Record<IconeDoMenu, React.ReactNode> = {
+  dashboard: <LayoutDashboard size={20} />,
+  colaboradores: <Users size={20} />,
+  estrutura: <Building2 size={20} />,
+  folha: <Calculator size={20} />,
+  empresa: <Landmark size={20} />,
+  gestaoPonto: <Clock size={20} />,
+  usuarios: <UserCog size={20} />,
+  ponto: <Clock size={20} />,
+  holerite: <FileText size={20} />,
+  solicitacoes: <Calendar size={20} />,
+  perfil: <UserIcon size={20} />,
+};
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -27,24 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { logout, user } = useAuth();
 
-  const adminMenu = [
-    { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-    { path: '/admin/colaboradores', icon: <Users size={20} />, label: 'Colaboradores' },
-    { path: '/admin/estrutura', icon: <Building2 size={20} />, label: 'Depto & Cargos' },
-    { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
-    { path: '/admin/empresa', icon: <Landmark size={20} />, label: 'Empresa' },
-    { path: '/admin/gestao-ponto', icon: <Clock size={20} />, label: 'Gestão de Ponto' }, // Funcionalidade protegida no merge
-    { path: '/admin/perfil', icon: <UserIcon size={20} />, label: 'Meu Perfil' },
-  ];
-
-  const employeeMenu = [
-    { path: '/meu-painel', icon: <Clock size={20} />, label: 'Bater Ponto' },
-    { path: '/meu-painel/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
-    ...(solicitacoesAtivas() ? [{ path: '/meu-painel/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' }] : []),
-    { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
-  ];
-
-  const menuItems = ehGestao(user?.role) ? adminMenu : employeeMenu;
+  const secoes = user ? menuDoUsuario(user, { solicitacoes: solicitacoesAtivas() }) : [];
   const inicial = user?.nome ? user.nome.charAt(0).toUpperCase() : 'U';
 
   return (
@@ -63,17 +62,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
         </div>
 
-        <nav className="flex-1 px-5 py-8 space-y-2 overflow-y-auto custom-scrollbar">
-          <div className="px-3 mb-4 text-xs font-bold tracking-widest text-slate-500 uppercase">Menu Principal</div>
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link key={item.path} to={item.path} onClick={onClose} 
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold ${isActive ? 'bg-primary text-white shadow-lg shadow-indigo-500/20' : 'hover:bg-white/5 hover:text-white text-slate-400'}`}>
-                {item.icon}<span>{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-5 py-8 space-y-8 overflow-y-auto custom-scrollbar">
+          {secoes.map((secao) => (
+            <div key={secao.titulo} className="space-y-2">
+              <div className="px-3 mb-4 text-xs font-bold tracking-widest text-slate-500 uppercase">{secao.titulo}</div>
+              {secao.itens.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link key={item.path} to={item.path} onClick={onClose} 
+                    className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all font-semibold ${isActive ? 'bg-primary text-white shadow-lg shadow-indigo-500/20' : 'hover:bg-white/5 hover:text-white text-slate-400'}`}>
+                    {ICONES[item.icone]}<span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="p-5 border-t border-slate-800/50">

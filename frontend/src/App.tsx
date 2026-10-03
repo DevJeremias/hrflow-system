@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Perfil, ROTA_TROCA_DE_SENHA, destinoDoLogin, rotaInicial } from './utils/sessao';
+import { Perfil, ROTA_TROCA_DE_SENHA, destinoDoLogin, rotaInicial, temAreaPessoal } from './utils/sessao';
 import { solicitacoesAtivas } from './utils/recursos';
 import ErrorAlert from './components/ErrorAlert';
 import PaginaCarregando from './components/PaginaCarregando';
@@ -20,6 +20,7 @@ const Dashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const Employees = lazy(() => import('./pages/Admin/Employees'));
 const DepartmentsRoles = lazy(() => import('./pages/Admin/OrgStructure'));
 const Payroll = lazy(() => import('./pages/Admin/Payroll'));
+const Users = lazy(() => import('./pages/Admin/Users'));
 const Company = lazy(() => import('./pages/Admin/Company'));
 const TimeTracking = lazy(() => import('./pages/Admin/TimeTracking'));
 const EmployeeHome = lazy(() => import('./pages/Portal/EmployeeDashboard'));
@@ -28,8 +29,10 @@ const Requests = lazy(() => import('./pages/Portal/Requests'));
 const Profile = lazy(() => import('./pages/Portal/Profile'));
 
 // `trocaDeSenha` marca a única rota de quem entrou com senha provisória: ela leva todas as outras
-// para si, e quem não tem senha provisória não tem o que fazer nela.
-export const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], trocaDeSenha?: boolean }) => {
+// para si, e quem não tem senha provisória não tem o que fazer nela. `allowedRoles` restringe por
+// perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e holerite próprios) em
+// qualquer perfil.
+export const ProtectedRoute = ({ children, allowedRoles, personalArea = false, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean, trocaDeSenha?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
   const location = useLocation();
 
@@ -58,6 +61,10 @@ export const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }:
   if (!user.senhaProvisoria && trocaDeSenha) return <Navigate to={rotaInicial(user.role)} replace />;
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to={rotaInicial(user.role)} replace />;
+  }
+
+  if (personalArea && !temAreaPessoal(user)) {
     return <Navigate to={rotaInicial(user.role)} replace />;
   }
 
@@ -95,19 +102,20 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="colaboradores" element={<Employees />} />
-            <Route path="estrutura" element={<DepartmentsRoles />} />
+            <Route path="estrutura" element={<ProtectedRoute allowedRoles={['Administrador']}><DepartmentsRoles /></ProtectedRoute>} />
             <Route path="folha" element={<Payroll />} />
             <Route path="empresa" element={<Company />} />
             <Route path="gestao-ponto" element={<TimeTracking />} />
+            <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
             <Route path="perfil" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Route>
 
-          {/* ÁREA DO COLABORADOR */}
+          {/* ÁREA PESSOAL: ponto e holerite de quem tem cadastro de funcionário, em qualquer perfil */}
           <Route
             path="/meu-painel"
             element={
-              <ProtectedRoute allowedRoles={['Colaborador']}>
+              <ProtectedRoute personalArea>
                 <Layout />
               </ProtectedRoute>
             }

@@ -10,6 +10,7 @@ import { gerarSenhaProvisoria } from './funcionarios.regras.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
+import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
 
 const VOLTAS_DO_HASH = 10;
 
@@ -28,6 +29,17 @@ export interface Ator {
     perfil: string;
     funcionarioId: number | null;
 }
+
+// Editar ou excluir o cadastro segue a matriz de shared/utils/permissoes.ts: o RH não alcança o
+// próprio cadastro nem o de RH ou Administrador; o Administrador alcança todos. Um cadastro que não
+// existe responde 404 antes de qualquer recusa.
+const exigirAlcance = async (repo: RepositorioDeFuncionarios, empresaId: number, id: number, ator: Ator): Promise<void> => {
+    const alvo = await repo.alvoDoCicloDeVida(id, empresaId);
+    if (!alvo) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+
+    const motivo = motivoDeNegacaoDoCadastro({ perfil: ator.perfil, funcionario_id: ator.funcionarioId }, { id, perfilDaConta: alvo.usuario_perfil });
+    if (motivo) throw new ErroDeFuncionario('proibido', motivo);
+};
 
 export type FuncionarioDaPagina = Omit<FuncionarioListado, 'tem_movimento'> & { tem_movimento: boolean };
 
@@ -60,8 +72,9 @@ export const criarFuncionario = async (empresaId: number, { senha, ...dados }: C
     });
 };
 
-export const atualizarFuncionario = async (empresaId: number, id: number, dados: CorpoDaEdicao): Promise<void> => {
+export const atualizarFuncionario = async (empresaId: number, id: number, ator: Ator, dados: CorpoDaEdicao): Promise<void> => {
     await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, id, ator);
         await exigirReferencias(repo, dados.cargo_id, dados.departamento_id, empresaId);
 
         if (!await repo.atualizarFuncionario({ ...dados, id, empresaId })) {
@@ -141,11 +154,12 @@ export const redefinirSenha = async (empresaId: number, id: number, ator: Ator):
 };
 
 // Só o cadastro sem movimento pode ser apagado (o engano de digitação, por exemplo). Quem já
-// marcou ponto ou justificou um dia é inativado: a exclusão levaria o histórico junto.
-export const deletarFuncionario = async (empresaId: number, id: number): Promise<void> => {
+// marcou ponto ou justificou um dia é inativado: a exclusão levaria o histórico junto. Ninguém
+// exclui o próprio cadastro: a conta cairia junto.
+export const deletarFuncionario = async (empresaId: number, id: number, ator: Ator): Promise<void> => {
     await repositorio.emTransacao(async (repo) => {
-        const alvo = await repo.alvoDoCicloDeVida(id, empresaId);
-        if (!alvo) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+        await exigirAlcance(repo, empresaId, id, ator);
+        if (ator.funcionarioId === id) throw new ErroDeFuncionario('proibido', 'Você não pode excluir o seu próprio cadastro.');
 
         if (await repo.temMovimento(id)) {
             throw new ErroDeFuncionario('conflito', 'Este colaborador tem registros de ponto e não pode ser excluído. Inative-o para preservar o histórico.');

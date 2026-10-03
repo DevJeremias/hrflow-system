@@ -25,6 +25,9 @@ export const chaves = {
 
   empresa: ['empresa'] as const,
 
+  usuarios: ['usuarios'] as const,
+  paginaDeUsuarios: (pagina: number, limite: number) => ['usuarios', 'pagina', pagina, limite] as const,
+
   perfil: ['perfil'] as const,
 
   solicitacoes: ['solicitacoes'] as const,

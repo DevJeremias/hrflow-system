@@ -5,8 +5,10 @@ import assert from 'node:assert/strict';
 import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createServer, type ViteDevServer } from 'vite';
-import { comConsulta } from './support/consulta.ts';
+import { novoQueryClient } from './support/consulta.ts';
 
 const CARGOS = [{ id: 1, nome: 'Desenvolvedor(a)', departamento_id: 1, departamento_nome: 'TI', nivel: 'Pleno', salario_base: '8000.00' }];
 const DEPARTAMENTOS = [{ id: 1, nome: 'TI', sigla: 'TI' }];
@@ -15,6 +17,7 @@ type Chamada = { metodo: string; caminho: string; corpo?: Record<string, unknown
 type Resposta = { status: number; corpo?: unknown };
 
 let server: ViteDevServer;
+let AuthProvider: ComponentType<{ children: unknown }>;
 let Employees: ComponentType;
 const originalFetch = globalThis.fetch;
 
@@ -27,6 +30,11 @@ let montados: { host: HTMLElement; root: Root }[] = [];
 const json = (status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) =>
   new Response(corpo === undefined ? null : JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json', ...cabecalhos } });
 
+// Quem está logado: a tela decide as ações pelo perfil (docs/permissoes.md). O padrão é o Administrador.
+const SESSAO_DO_ADMIN = { id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: null, avatar: null };
+const SESSAO_DO_RH = { id: 3, nome: 'Rita RH Ficticia', perfil: 'RH', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: 1, avatar: null };
+let sessao: Record<string, unknown> = SESSAO_DO_ADMIN;
+
 const colaborador = (extra: Record<string, unknown> = {}) => ({
   id: 7, nome: 'Bia Ficticia', email: 'bia@exemplo.invalid', cargo_id: 1, cargo_nome: 'Desenvolvedor(a)', departamento_id: 1,
   departamento_nome: 'TI', nivel: 'Pleno', salario_base: '5000.00', status: 'Ativo', tipo_contrato: 'CLT', data_admissao: '2024-01-02',
@@ -35,12 +43,15 @@ const colaborador = (extra: Record<string, unknown> = {}) => ({
 
 before(async () => {
   server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
+  ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
   ({ default: Employees } = await server.ssrLoadModule('/src/pages/Admin/Employees.tsx'));
   dom.window.confirm = (mensagem?: string) => { confirmacoes.push(String(mensagem)); return true; };
   globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const caminho = String(entrada).replace(/^\/api/, '');
     const metodo = (init?.method ?? 'GET').toUpperCase();
     chamadas.push({ metodo, caminho, corpo: init?.body ? JSON.parse(String(init.body)) : undefined });
+    if (caminho === '/auth/sessao') return json(200, sessao);
     if (metodo !== 'GET') {
       const { status, corpo } = await respostaDaGravacao();
       return json(status, corpo);
@@ -53,6 +64,8 @@ before(async () => {
 });
 
 after(async () => {
+  // O AuthProvider mantém um canal entre abas aberto: desmontar libera o processo para terminar.
+  for (const { root, host } of montados) { await act(async () => root.unmount()); host.remove(); }
   globalThis.fetch = originalFetch;
   await server.close();
   dom.window.close();
@@ -62,6 +75,7 @@ beforeEach(async () => {
   for (const { root, host } of montados) { await act(async () => root.unmount()); host.remove(); }
   montados = [];
   chamadas = [];
+  sessao = SESSAO_DO_ADMIN;
   funcionarios = [];
   confirmacoes = [];
   respostaDaGravacao = () => ({ status: 200, corpo: { mensagem: 'ok' } });
@@ -75,7 +89,10 @@ const montar = async (Tela: ComponentType) => {
   document.body.append(host);
   const root = createRoot(host);
   montados.push({ host, root });
-  await act(async () => { root.render(comConsulta(createElement(Tela))); });
+  await act(async () => {
+    root.render(createElement(QueryClientProvider, { client: novoQueryClient() },
+      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));
+  });
   await esperar();
   return host;
 };
@@ -131,12 +148,22 @@ test('cada linha oferece as ações do ciclo de vida e a lixeira só existe sem 
   assert.ok(segunda.querySelector('button[title="Inativar ou Desligar"]'));
 });
 
-test('a linha de RH ou Administrador só oferece editar', async () => {
+test('para o RH, a linha de outro RH ou Administrador e a dele mesmo não oferecem ação nenhuma', async () => {
+  sessao = SESSAO_DO_RH;
+  funcionarios = [colaborador({ id: 8, usuario_perfil: 'RH' }), colaborador({ id: 9, usuario_perfil: 'Administrador' }), colaborador({ id: 1, usuario_perfil: 'RH' })];
+  const host = await montar(Employees);
+  for (const titulo of ['Editar Colaborador', 'Redefinir Senha', 'Inativar ou Desligar', 'Excluir Cadastro', 'Reativar Colaborador']) {
+    assert.equal(acao(host, titulo), null, titulo);
+  }
+  assert.equal(host.querySelectorAll('tbody tr').length, 3);
+  assert.match(host.textContent ?? '', /Só o Administrador/);
+});
+
+test('o Administrador age sobre o cadastro de um RH, menos sobre o próprio', async () => {
   funcionarios = [colaborador({ usuario_perfil: 'RH' })];
   const host = await montar(Employees);
-  assert.ok(acao(host, 'Editar Colaborador'));
-  for (const titulo of ['Redefinir Senha', 'Inativar ou Desligar', 'Excluir Cadastro', 'Reativar Colaborador']) {
-    assert.equal(acao(host, titulo), null, titulo);
+  for (const titulo of ['Editar Colaborador', 'Redefinir Senha', 'Inativar ou Desligar']) {
+    assert.ok(acao(host, titulo), titulo);
   }
 });
 
