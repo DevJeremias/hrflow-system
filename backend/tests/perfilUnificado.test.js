@@ -14,7 +14,7 @@ const db = require('../config/db');
 const authMiddleware = require('../middlewares/authMiddleware');
 const tratarErros = require('../middlewares/tratarErros');
 const perfilRoutes = require('../routes/perfilRoutes');
-const authRoutes = require('../routes/authRoutes');
+const authRoutes = require('../modules/auth/index.ts').authRoutes;
 
 const semBanco = banco.skip;
 

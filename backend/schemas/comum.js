@@ -1,9 +1,9 @@
 // Blocos compartilhados pelos schemas das rotas. Cada rota declara um único schema zod por
 // parte da requisição (params, body, query) e o middleware validarEntrada o executa.
-// As regras de texto, e-mail e senha são as de utils/validacaoAuth.js, para que cadastro,
+// As regras de texto, e-mail e senha são as de modules/auth/auth.schemas.ts, para que cadastro,
 // login e as demais rotas recusem a mesma entrada com a mesma mensagem.
 const { z } = require('zod');
-const { validarTexto, validarEmail, validarSenhaDeRegistro } = require('../utils/validacaoAuth');
+const { validarTexto, validarEmail, validarSenhaDeRegistro } = require('../modules/auth/auth.schemas.ts');
 
 const ID_MAXIMO = 2147483647; // INT do MySQL
 const VALOR_MAXIMO = '99999999.99'; // DECIMAL(10, 2)

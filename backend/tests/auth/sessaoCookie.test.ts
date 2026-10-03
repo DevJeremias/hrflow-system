@@ -1,88 +1,95 @@
 // A sessão vive em cookie HttpOnly e o token CSRF protege quem muda estado. O JavaScript da página
 // nunca recebe o token: nem no corpo do login, nem em cookie legível. Banco e variáveis em
 // tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST os testes de integração são pulados.
-const { before, after, describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const http = require('node:http');
-const banco = require('./support/bancoDeTeste');
-const { criarUsuario, cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
-const { cookieSeguro, tokenCsrf, COOKIE_SESSAO, COOKIE_CSRF } = require('../utils/sessao');
+import { before, after, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import type http from 'node:http';
+import bcrypt from 'bcrypt';
+import express from 'express';
+import type { Request } from 'express';
+import type { ResultSetHeader } from 'mysql2/promise';
+import banco from '../support/bancoDeTeste.js';
+import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from '../support/sessao.js';
+import pool from '../../config/db.js';
+import authMiddleware from '../../middlewares/authMiddleware.js';
+import { criarAuthRouter } from '../../modules/auth/index.ts';
+import { cookieSeguro, tokenCsrf, COOKIE_SESSAO, COOKIE_CSRF } from '../../modules/auth/auth.sessao.ts';
+import { pararServidor, subirServidor } from './servidor.ts';
 
 const SENHA = 'senha-ficticia-1';
 
-const cookieDe = (resposta, nome) => resposta.headers.getSetCookie().find((linha) => linha.startsWith(`${nome}=`));
+const cookieDe = (resposta: Response, nome: string) => resposta.headers.getSetCookie().find((linha) => linha.startsWith(`${nome}=`));
 // Sem o Expires que o Express acrescenta ao Max-Age, só para os navegadores antigos.
-const atributos = (linha) => linha.split(';').slice(1).map((parte) => parte.trim().toLowerCase())
+const atributos = (linha: string) => linha.split(';').slice(1).map((parte) => parte.trim().toLowerCase())
     .filter((atributo) => !atributo.startsWith('expires='));
 
 describe('cookieSeguro', () => {
     const original = process.env.NODE_ENV;
     after(() => { process.env.NODE_ENV = original; });
 
+    // cookieSeguro só lê estes dois campos da requisição.
+    const requisicao = (secure: boolean, hostname: string) => ({ secure, hostname }) as Request;
+
     it('em HTTPS (inclusive atrás do proxy, onde req.secure vem de X-Forwarded-Proto) o cookie é Secure', () => {
-        assert.equal(cookieSeguro({ secure: true, hostname: 'localhost' }), true);
+        assert.equal(cookieSeguro(requisicao(true, 'localhost')), true);
     });
 
     it('em desenvolvimento, HTTP simples em localhost não é Secure', () => {
         process.env.NODE_ENV = 'development';
-        assert.equal(cookieSeguro({ secure: false, hostname: 'localhost' }), false);
+        assert.equal(cookieSeguro(requisicao(false, 'localhost')), false);
     });
 
     it('em produção só o loopback escapa do Secure, mesmo que o proxy não informe HTTPS', () => {
         process.env.NODE_ENV = 'production';
-        assert.equal(cookieSeguro({ secure: false, hostname: 'hrflow.exemplo.invalid' }), true);
-        assert.equal(cookieSeguro({ secure: false, hostname: '127.0.0.1' }), false);
+        assert.equal(cookieSeguro(requisicao(false, 'hrflow.exemplo.invalid')), true);
+        assert.equal(cookieSeguro(requisicao(false, '127.0.0.1')), false);
     });
 });
 
 describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, () => {
-    let server, baseUrl, pool, empresaId;
-    let email;
+    let server: http.Server;
+    let baseUrl: string;
+    let empresaId: number;
+    let email: string;
     let chamadasProtegidas = 0;
 
-    const entrar = (cabecalhos = {}) => fetch(`${baseUrl}/api/auth/login`, {
+    const entrar = (cabecalhos: Record<string, string> = {}) => fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...cabecalhos },
         body: JSON.stringify({ email, senha: SENHA }),
     });
 
-    const protegida = (metodo, cabecalhos) => fetch(`${baseUrl}/api/protegida`, { method: metodo, headers: cabecalhos });
+    const protegida = (metodo: string, cabecalhos: Record<string, string>) => fetch(`${baseUrl}/api/protegida`, { method: metodo, headers: cabecalhos });
 
     before(async () => {
         await banco.preparar();
-        pool = require('../config/db');
-        const bcrypt = require('bcrypt');
-        const [empresa] = await pool.query("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
+        const [empresa] = await pool.query<ResultSetHeader>("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
         empresaId = empresa.insertId;
         const { usuario } = await criarUsuario(pool, {
             empresaId, perfil: 'Administrador', senhaHash: await bcrypt.hash(SENHA, 4),
         });
         email = usuario.email;
 
-        const express = require('express');
-        const authMiddleware = require('../middlewares/authMiddleware');
         const app = express();
         app.set('trust proxy', 1);
-        app.use('/api/auth', require('../routes/authRoutes').criarRouter({
+        app.use('/api/auth', criarAuthRouter({
             loginPorIp: { windowMs: 60_000, limit: 1000 },
             loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
             registroPorIp: { windowMs: 60_000, limit: 1000 },
             registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
         }));
-        for (const metodo of ['get', 'post', 'put', 'patch', 'delete']) {
+        for (const metodo of ['get', 'post', 'put', 'patch', 'delete'] as const) {
             app[metodo]('/api/protegida', authMiddleware, (req, res) => {
                 chamadasProtegidas += 1;
-                res.json({ id: req.usuario.id });
+                res.json({ id: req.usuario?.id });
             });
         }
-        server = http.createServer(app);
-        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-        baseUrl = `http://127.0.0.1:${server.address().port}`;
+        ({ server, baseUrl } = await subirServidor(app));
     });
 
     after(async () => {
-        if (server) await new Promise((resolve) => server.close(resolve));
-        if (pool) await pool.end();
+        if (server) await pararServidor(server);
+        await pool.end();
         await banco.encerrar();
     });
 
@@ -218,7 +225,7 @@ describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, (
                 assert.ok(atributos(linha).includes('samesite=lax'));
                 assert.match(linha, /Expires=Thu, 01 Jan 1970/);
             }
-            assert.ok(atributos(sessao).includes('httponly'));
+            assert.ok(sessao && atributos(sessao).includes('httponly'));
         });
 
         it('funciona sem sessão: quem já expirou também consegue limpar os cookies', async () => {
