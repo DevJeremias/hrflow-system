@@ -21,10 +21,18 @@ import Payslips from './pages/Portal/Payslips';
 import Requests from './pages/Portal/Requests';
 import Profile from './pages/Portal/Profile';
 
+// A sessão é confirmada no servidor antes de decidir entre a tela e o login: sem isto a tela ficaria em branco.
+const SessionLoading = () => (
+  <div role="status" className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+    <p className="text-sm font-bold text-slate-500">Verificando sua sessão...</p>
+  </div>
+);
+
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: readonly Perfil[] }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <SessionLoading />;
 
   // O servidor não recusou a sessão, só não foi possível confirmá-la: não é motivo para deslogar.
   if (sessionError) {

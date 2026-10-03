@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header'; 
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans">
@@ -20,7 +22,10 @@ const Layout: React.FC = () => {
         
         <main className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12">
           <div className="max-w-7xl mx-auto">
-            <Outlet /> 
+            {/* Falha numa tela não leva o menu junto: o limite fica só em volta do conteúdo. */}
+            <ErrorBoundary resetKey={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
         
