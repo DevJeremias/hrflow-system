@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AlertTriangle, CheckCircle2, Lock, RefreshCw } from 'lucide-react';
-import { getPayroll, processPayroll, closePayroll, MonthlyPayroll } from '../../services/payrollService';
+import { useAcaoDaFolha, useFolhaDaCompetencia } from '../../queries/folha';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -15,58 +15,39 @@ import { mensagemDeErro } from '../../utils/erros';
 import { mesAtualEmBelem, rotuloDaCompetencia, formatarMomento } from '../../utils/competencia';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
-type Acao = 'processar' | 'fechar';
-
 const Payroll: React.FC = () => {
   usePageTitle('Folha de pagamento');
   const confirmar = useConfirm();
   const [competencia, setCompetencia] = useState(mesAtualEmBelem);
-  const [folha, setFolha] = useState<MonthlyPayroll | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [acao, setAcao] = useState<Acao | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [deptFilter, setDeptFilter] = useState('Todos');
-  const [reloadKey, setReloadKey] = useState(0);
-  // Uma resposta que chega depois de o RH trocar o mês não pode sobrescrever a folha do mês novo.
-  const competenciaDaTela = useRef(competencia);
+
+  // A folha de cada competência fica em cache: trocar de mês e voltar não refaz a chamada.
+  const { data, error, isPending, refetch } = useFolhaDaCompetencia(competencia);
+  const processar = useAcaoDaFolha(competencia, 'processar');
+  const fechar = useAcaoDaFolha(competencia, 'fechar');
+  const folha = data ?? null;
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar a folha de pagamento') : null;
+  const acao = processar.isPending ? 'processar' : fechar.isPending ? 'fechar' : null;
+  const falhaDaAcao = processar.error ?? fechar.error;
+  const actionError = falhaDaAcao ? mensagemDeErro(falhaDaAcao, 'Não foi possível concluir a operação.') : null;
 
   const trocarCompetencia = (nova: string) => {
-    competenciaDaTela.current = nova;
     setCompetencia(nova);
-    setFolha(null);
-    setLoading(true);
-    setLoadError(null);
-    setActionError(null);
+    processar.reset();
+    fechar.reset();
     setDeptFilter('Todos');
   };
 
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((k) => k + 1);
-  };
+  const retry = () => { refetch(); };
 
-  useEffect(() => {
-    let ativo = true;
-    getPayroll(competencia)
-      .then((dados) => { if (ativo) setFolha(dados); })
-      .catch((error) => { if (ativo) { setFolha(null); setLoadError(mensagemDeErro(error, 'Erro ao buscar a folha de pagamento')); } })
-      .finally(() => { if (ativo) setLoading(false); });
-    return () => { ativo = false; };
-  }, [competencia, reloadKey]);
-
-  const executar = async (qual: Acao, operacao: (mes: string) => Promise<MonthlyPayroll>) => {
-    const mes = competencia;
-    setAcao(qual);
-    setActionError(null);
+  const executar = async (qual: 'processar' | 'fechar') => {
+    processar.reset();
+    fechar.reset();
     try {
-      const resultado = await operacao(mes);
-      if (competenciaDaTela.current === mes) setFolha(resultado);
-    } catch (error) {
-      if (competenciaDaTela.current === mes) setActionError(mensagemDeErro(error, 'Não foi possível concluir a operação.'));
-    } finally {
-      setAcao(null);
+      await (qual === 'processar' ? processar : fechar).mutateAsync();
+    } catch {
+      // O erro aparece na tela por actionError.
     }
   };
 
@@ -85,7 +66,7 @@ const Payroll: React.FC = () => {
     }), { gross: 0, deductions: 0, net: 0, charges: 0 });
   }, [displayedPayrolls]);
 
-  const departmentsList = Array.from(new Set((itens ?? []).map(p => p.department)));
+  const departmentsList = useMemo(() => Array.from(new Set((itens ?? []).map(p => p.department))), [itens]);
   const rotulo = rotuloDaCompetencia(competencia);
   const fechada = folha?.status === 'fechada';
 
@@ -97,7 +78,7 @@ const Payroll: React.FC = () => {
       description: `Depois de fechada, a folha não pode ser processada de novo: salários e dados da empresa passam a valer como estão.${semSalario}`,
       confirmLabel: 'Confirmar fechamento',
     });
-    if (confirmado) await executar('fechar', closePayroll);
+    if (confirmado) await executar('fechar');
   };
 
   return (
@@ -136,7 +117,7 @@ const Payroll: React.FC = () => {
             description="Ao processar, o sistema calcula o holerite de cada colaborador com o cadastro de agora. Você confere antes de fechar o mês."
             action={(
               <>
-                <Button icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar', processPayroll)} loading={acao === 'processar'} disabled={acao !== null}>
+                <Button icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar')} loading={acao === 'processar'} disabled={acao !== null}>
                   {acao === 'processar' ? 'Processando...' : 'Processar folha'}
                 </Button>
                 {actionError && <div className="w-full max-w-xl"><ErrorAlert message={actionError} /></div>}
@@ -162,7 +143,7 @@ const Payroll: React.FC = () => {
             </div>
             {!fechada && (
               <div className="flex flex-wrap gap-3">
-                <Button variant="secondary" icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar', processPayroll)} loading={acao === 'processar'} disabled={acao !== null}>
+                <Button variant="secondary" icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar')} loading={acao === 'processar'} disabled={acao !== null}>
                   {acao === 'processar' ? 'Processando...' : 'Processar novamente'}
                 </Button>
                 <Button icon={<Lock size={16} aria-hidden="true" />} onClick={fecharMes} loading={acao === 'fechar'} disabled={acao !== null}>

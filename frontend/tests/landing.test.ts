@@ -8,7 +8,9 @@ import { JSDOM } from 'jsdom';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
+import { precarregarTelas } from './support/rotas.ts';
 import { createServer, type ViteDevServer } from 'vite';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' });
@@ -39,7 +41,8 @@ let App: ComponentType;
 let AuthProvider: ComponentType<{ children: unknown }>;
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
+  await precarregarTelas(server);
   ({ default: App } = await server.ssrLoadModule('/src/App.tsx'));
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
 });
@@ -55,7 +58,7 @@ const renderizar = async (rota: string) => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  const cliente = new QueryClient();
+  const cliente = novoQueryClient();
   await act(async () => {
     root.render(
       createElement(QueryClientProvider, { client: cliente },

@@ -24,7 +24,7 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
       'react-hooks/exhaustive-deps': 'error',
     },
   },
@@ -34,7 +34,7 @@ export default defineConfig([
     rules: {
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['error', {
-        varsIgnorePattern: '^[A-Z_]',
+        varsIgnorePattern: '^_',
         argsIgnorePattern: '^_',
         ignoreRestSiblings: true,
       }],

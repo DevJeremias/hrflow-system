@@ -2,12 +2,14 @@
 // negócio. As consultas rodam no pool ou, dentro de emTransacao, numa conexão reservada.
 import type { Connection, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { urlDoAvatarSql } from '../../shared/utils/avatar.ts';
 
 // Tudo o que depende do vínculo com o funcionário vem null quando ele não existe.
 export interface PerfilDoUsuario extends RowDataPacket {
     perfil: string;
     nome: string;
     email: string;
+    // Endereço da miniatura (GET /api/perfil/avatar), nunca a imagem.
     avatar: string | null;
     funcionario_id: number | null;
     telefone: string | null;
@@ -25,12 +27,16 @@ export interface PerfilDoUsuario extends RowDataPacket {
     departamento: string | null;
 }
 
+// O que fazer com o avatar gravado: undefined mantém, null remove, e uma imagem nova substitui o
+// original e a miniatura juntos.
+export type MudancaDeAvatar = undefined | null | { original: string; miniatura: Buffer };
+
 export interface DadosDoUsuario {
     usuarioId: number;
     empresaId: number;
     nome: string;
     email: string;
-    avatar: string | null;
+    avatar: MudancaDeAvatar;
 }
 
 export interface DadosDoFuncionario {
@@ -39,14 +45,19 @@ export interface DadosDoFuncionario {
     nome: string;
     email: string;
     telefone: string | null;
-    avatar: string | null;
+    avatar: MudancaDeAvatar;
+}
+
+export interface AvatarDoUsuario extends RowDataPacket {
+    avatar_miniatura: Buffer | null;
+    tem_original: number;
 }
 
 const criarRepositorio = (executor: Connection) => ({
     // O vínculo com o funcionário só vale dentro da mesma empresa do usuário.
     async perfilDoUsuario(usuarioId: number, empresaId: number): Promise<PerfilDoUsuario | undefined> {
         const [linhas] = await executor.query<PerfilDoUsuario[]>(
-            `SELECT u.perfil, COALESCE(f.nome, u.nome) AS nome, u.email, u.avatar, f.id AS funcionario_id,
+            `SELECT u.perfil, COALESCE(f.nome, u.nome) AS nome, u.email, ${urlDoAvatarSql('u')} AS avatar, f.id AS funcionario_id,
                     f.telefone, f.cpf,
                     DATE_FORMAT(f.data_nascimento, '%Y-%m-%d') AS data_nascimento,
                     DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS data_admissao,
@@ -69,16 +80,49 @@ const criarRepositorio = (executor: Connection) => ({
     },
 
     async atualizarUsuario({ usuarioId, empresaId, nome, email, avatar }: DadosDoUsuario): Promise<void> {
-        await executor.query(
-            'UPDATE usuarios SET email = ?, nome = ?, avatar = ? WHERE id = ? AND empresa_id = ?',
-            [email, nome, avatar, usuarioId, empresaId]
-        );
+        const campos = ['email = ?', 'nome = ?'];
+        const valores: (string | number | Buffer | null)[] = [email, nome];
+        if (avatar === null) {
+            campos.push('avatar = NULL', 'avatar_miniatura = NULL', 'avatar_atualizado_em = NULL');
+        } else if (avatar) {
+            campos.push('avatar = ?', 'avatar_miniatura = ?', 'avatar_atualizado_em = CURRENT_TIMESTAMP(3)');
+            valores.push(avatar.original, avatar.miniatura);
+        }
+        await executor.query(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ? AND empresa_id = ?`, [...valores, usuarioId, empresaId]);
     },
 
+    // O cadastro do funcionário guarda só o original; a miniatura vive na conta de acesso.
     async atualizarFuncionario({ funcionarioId, empresaId, nome, email, telefone, avatar }: DadosDoFuncionario): Promise<void> {
+        const campos = ['email = ?', 'nome = ?', 'telefone = ?'];
+        const valores: (string | number | null)[] = [email, nome, telefone];
+        if (avatar !== undefined) {
+            campos.push('avatar = ?');
+            valores.push(avatar?.original ?? null);
+        }
+        await executor.query(`UPDATE funcionarios SET ${campos.join(', ')} WHERE id = ? AND empresa_id = ?`, [...valores, funcionarioId, empresaId]);
+    },
+
+    // Sem ler o original: ele só é buscado quando falta a miniatura (avatar anterior a ela).
+    async avatarDoUsuario(usuarioId: number, empresaId: number): Promise<AvatarDoUsuario | undefined> {
+        const [linhas] = await executor.query<AvatarDoUsuario[]>(
+            'SELECT avatar_miniatura, avatar IS NOT NULL AS tem_original FROM usuarios WHERE id = ? AND empresa_id = ?',
+            [usuarioId, empresaId]
+        );
+        return linhas[0];
+    },
+
+    async avatarOriginal(usuarioId: number, empresaId: number): Promise<string | null> {
+        const [linhas] = await executor.query<(RowDataPacket & { avatar: string | null })[]>(
+            'SELECT avatar FROM usuarios WHERE id = ? AND empresa_id = ?', [usuarioId, empresaId]
+        );
+        return linhas[0]?.avatar ?? null;
+    },
+
+    // Só preenche quem ainda não tem miniatura: um upload concorrente não é sobrescrito.
+    async gravarMiniatura(usuarioId: number, empresaId: number, miniatura: Buffer): Promise<void> {
         await executor.query(
-            'UPDATE funcionarios SET email = ?, nome = ?, telefone = ?, avatar = ? WHERE id = ? AND empresa_id = ?',
-            [email, nome, telefone, avatar, funcionarioId, empresaId]
+            'UPDATE usuarios SET avatar_miniatura = ? WHERE id = ? AND empresa_id = ? AND avatar_miniatura IS NULL AND avatar IS NOT NULL',
+            [miniatura, usuarioId, empresaId]
         );
     },
 
@@ -113,4 +157,4 @@ export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDoPerfil
     }
 };
 
-export const { perfilDoUsuario, hashDaSenha, trocarSenha } = criarRepositorio(db);
+export const { perfilDoUsuario, hashDaSenha, trocarSenha, avatarDoUsuario, avatarOriginal, gravarMiniatura } = criarRepositorio(db);

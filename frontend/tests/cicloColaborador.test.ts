@@ -6,8 +6,9 @@ import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createServer, type ViteDevServer } from 'vite';
+import { novoQueryClient } from './support/consulta.ts';
 
 const CARGOS = [{ id: 1, nome: 'Desenvolvedor(a)', departamento_id: 1, departamento_nome: 'TI', nivel: 'Pleno', salario_base: '8000.00' }];
 const DEPARTAMENTOS = [{ id: 1, nome: 'TI', sigla: 'TI' }];
@@ -82,7 +83,8 @@ beforeEach(async () => {
   respostaDaGravacao = () => ({ status: 200, corpo: { mensagem: 'ok' } });
 });
 
-const esperar = (ms = 0) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
+// O TanStack Query avisa os componentes em um timer: sem um instante, a tela não reflete a resposta.
+const esperar = (ms = 20) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
 
 const montar = async (Tela: ComponentType) => {
   const host = document.createElement('div');
@@ -90,7 +92,7 @@ const montar = async (Tela: ComponentType) => {
   const root = createRoot(host);
   montados.push({ host, root });
   await act(async () => {
-    root.render(createElement(QueryClientProvider, { client: new QueryClient() },
+    root.render(createElement(QueryClientProvider, { client: novoQueryClient() },
       createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
   });
   await esperar();

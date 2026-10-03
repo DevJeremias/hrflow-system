@@ -3,9 +3,10 @@ import { after, afterEach, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { act, botaoPorTexto, createElement, desmontarTudo, dom, esperar, iniciarVite, montar } from './support/ui.ts';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
+import { novoQueryClient } from './support/consulta.ts';
 
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: dom.window.localStorage });
 
@@ -50,7 +51,7 @@ afterEach(async () => {
 });
 
 const abrir = async () => {
-  const host = await montar(createElement(QueryClientProvider, { client: new QueryClient() },
+  const host = await montar(createElement(QueryClientProvider, { client: novoQueryClient() },
     createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Company))))));
   for (let i = 0; i < 3; i += 1) await esperar(20);
   return host;

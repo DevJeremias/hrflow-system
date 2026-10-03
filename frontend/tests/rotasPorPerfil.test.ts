@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
+import { precarregarTelas } from './support/rotas.ts';
 import { createServer, type ViteDevServer } from 'vite';
 
 let server: ViteDevServer;
@@ -29,13 +31,14 @@ const json = (corpo: unknown, status = 200, cabecalhos: Record<string, string> =
 
 before(async () => {
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
+  await precarregarTelas(server);
   const [{ default: App }, { AuthProvider }, { default: UiProviders }] = await Promise.all([
     server.ssrLoadModule('/src/App.tsx'),
     server.ssrLoadModule('/src/contexts/AuthContext.tsx'),
     server.ssrLoadModule('/src/components/ui/UiProviders.tsx'),
   ]);
-  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: new QueryClient() },
+  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: novoQueryClient() },
     createElement(MemoryRouter, { initialEntries: [initialPath] },
       createElement(AuthProvider, null, createElement(UiProviders, null, createElement(App)))));
 });
@@ -79,8 +82,8 @@ const abrir = async (caminho: string) => {
   document.body.append(host);
   const root = createRoot(host);
   await act(async () => { root.render(createElement(Harness, { initialPath: caminho })); });
-  // Deixa as requisições da tela terminarem.
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  // Deixa as telas (carregadas sob demanda) e as requisições terminarem.
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
   return { host, fechar: async () => { await act(async () => root.unmount()); host.remove(); } };
 };
 
@@ -164,7 +167,7 @@ test('o Administrador cria um RH e recebe a senha provisória uma única vez', a
   await preencher('nome', 'Maria Souza');
   await preencher('email', 'maria@exemplo.invalid');
   await act(async () => { document.querySelector('[role="dialog"] form')?.requestSubmit(); });
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
 
   const criacao = chamadas.find((chamada) => chamada.metodo === 'POST');
   assert.deepEqual(criacao?.corpo, { nome: 'Maria Souza', email: 'maria@exemplo.invalid', perfil: 'RH' });
@@ -189,7 +192,7 @@ test('o erro da API ao criar o usuário aparece no modal e o que foi digitado fi
     await act(async () => { definir?.call(campo, valor); campo?.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
   }
   await act(async () => { document.querySelector('[role="dialog"] form')?.requestSubmit(); });
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
   assert.match(document.querySelector('[role="dialog"] [role="alert"]')?.textContent ?? '', /já está registado/);
   assert.equal(document.querySelector<HTMLInputElement>('[name="email"]')?.value, 'maria@exemplo.invalid');
   await fechar();

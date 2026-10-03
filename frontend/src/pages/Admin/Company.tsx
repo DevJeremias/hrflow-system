@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Landmark } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Company as CompanyData, REGIMES_TRIBUTARIOS, getCompany, saveCompany } from '../../services/empresaService';
+import { Company as CompanyData, REGIMES_TRIBUTARIOS } from '../../services/empresaService';
+import { useEmpresa, useSalvarEmpresa } from '../../queries/empresa';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
@@ -29,36 +30,22 @@ const Company: React.FC = () => {
   usePageTitle('Dados da empresa');
   const { user } = useAuth();
   const podeEditar = user?.role === 'Administrador';
-  const [empresa, setEmpresa] = useState<CompanyData | null>(null);
-  const [form, setForm] = useState<Formulario>({ razaoSocial: '', cnpj: '', regime: '' });
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { data: empresa, error, isPending, refetch } = useEmpresa();
+  const salvarEmpresa = useSalvarEmpresa();
+  // O formulário nasce da empresa carregada; `editado` guarda o que o RH digitou (nulo até ele digitar
+  // ou a empresa ser gravada).
+  const [editado, setEditado] = useState<Formulario | null>(null);
+  const form = editado ?? (empresa ? formularioDe(empresa) : { razaoSocial: '', cnpj: '', regime: '' });
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar os dados da empresa') : null;
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((k) => k + 1);
-  };
-
-  useEffect(() => {
-    let ativo = true;
-    getCompany()
-      .then((dados) => {
-        if (!ativo) return;
-        setEmpresa(dados);
-        setForm(formularioDe(dados));
-      })
-      .catch((error) => { if (ativo) setLoadError(mensagemDeErro(error, 'Erro ao buscar os dados da empresa')); })
-      .finally(() => { if (ativo) setLoading(false); });
-    return () => { ativo = false; };
-  }, [reloadKey]);
+  const retry = () => { refetch(); };
 
   const alterar = (parcial: Partial<Formulario>) => {
-    setForm((atual) => ({ ...atual, ...parcial }));
+    setEditado({ ...form, ...parcial });
     setSaved(false);
   };
 
@@ -69,13 +56,12 @@ const Company: React.FC = () => {
     setSaveError(null);
     setSaved(false);
     try {
-      const gravada = await saveCompany({
+      const gravada = await salvarEmpresa.mutateAsync({
         razao_social: form.razaoSocial,
         cnpj: form.cnpj,
         regime_tributario: (form.regime || null) as CompanyData['regime_tributario']
       });
-      setEmpresa(gravada);
-      setForm(formularioDe(gravada));
+      setEditado(formularioDe(gravada));
       setSaved(true);
     } catch (error) {
       setSaveError(mensagemDeErro(error, 'Erro ao salvar os dados da empresa'));

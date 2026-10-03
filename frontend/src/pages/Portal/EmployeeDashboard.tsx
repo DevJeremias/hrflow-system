@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { pontoService, PointRecord, HistoryDay, MonthTotals } from '../../services/pontoService';
+import {
+  useHistoricoDoMes, usePontoDeHoje, useRegistrarPonto, useSalvarJustificativa, useTotaisDoMes,
+} from '../../queries/ponto';
 import DashboardPunchCard from '../../components/Portal/DashboardPunchCard';
 import DashboardTimeline from '../../components/Portal/DashboardTimeline';
 import DashboardTimeMirror from '../../components/Portal/DashboardTimeMirror';
@@ -9,7 +11,10 @@ import PageHeader from '../../components/ui/PageHeader';
 import { useToast } from '../../components/ui/toastContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { mensagemDeErro } from '../../utils/erros';
+import { obterLocalizacao } from '../../utils/localizacao';
 import { formatarDataDeBelem, proximosTiposDePonto, type TipoPonto } from '../../utils/ponto';
+
+const SEM_REGISTROS: never[] = [];
 
 const primeiraMaiuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
 
@@ -19,80 +24,44 @@ const EmployeeDashboard: React.FC = () => {
   const toast = useToast();
 
   const funcionarioId = user?.funcionarioId ?? null;
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [dailyRecords, setDailyRecords] = useState<PointRecord[]>([]);
-  const [isRegistering, setIsRegistering] = useState(false);
-  
   const [historyMonth, setHistoryMonth] = useState(() => {
     const hoje = new Date();
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   });
-  
-  const [historyData, setHistoryData] = useState<HistoryDay[]>([]);
-  const [monthTotals, setMonthTotals] = useState<MonthTotals | null>(null);
+  // Cobre a captura do GPS, que acontece antes de a mutação começar.
+  const [locating, setLocating] = useState(false);
 
-  useEffect(() => {
-    if (funcionarioId === null) return;
-    let ativo = true;
-    Promise.all([
-      pontoService.getRegistrosHoje(funcionarioId),
-      pontoService.getHistoricoMes(funcionarioId, historyMonth),
-      pontoService.getTotaisDoMes(funcionarioId, historyMonth),
-    ]).then(([hoje, historico, totais]) => {
-      if (!ativo) return;
-      setLoadError(null);
-      setDailyRecords(hoje);
-      setHistoryData(historico);
-      setMonthTotals(totais);
-    }).catch((error) => {
-      if (ativo) setLoadError(mensagemDeErro(error, 'Erro ao carregar o ponto'));
-    });
-    return () => { ativo = false; };
-  }, [funcionarioId, historyMonth, reloadKey]);
+  const hoje = usePontoDeHoje(funcionarioId);
+  const historico = useHistoricoDoMes(funcionarioId, historyMonth);
+  const totais = useTotaisDoMes(funcionarioId, historyMonth);
+  const registrar = useRegistrarPonto();
+  const salvarJustificativa = useSalvarJustificativa(funcionarioId, historyMonth);
+
+  const dailyRecords = hoje.data ?? SEM_REGISTROS;
+  const falha = hoje.error ?? historico.error ?? totais.error;
+  const loadError = falha ? mensagemDeErro(falha, 'Erro ao carregar o ponto') : null;
+  const retry = () => { hoje.refetch(); historico.refetch(); totais.refetch(); };
+
+  // Sem o ponto de hoje carregado não se sabe qual é a próxima marcação: o botão espera.
+  const punchBlocked = funcionarioId === null || hoje.isPending || locating || registrar.isPending;
 
   const handlePunchClock = async (tipo: TipoPonto) => {
-    setIsRegistering(true);
-
-    if (!navigator.geolocation) {
-      toast.error("Seu navegador não suporta geolocalização.");
-      setIsRegistering(false);
-      return;
+    setLocating(true);
+    try {
+      const localizacao = await obterLocalizacao();
+      await registrar.mutateAsync({ tipo, localizacao });
+      toast.success(`Ponto registrado: ${tipo}.`);
+    } catch (error) {
+      toast.error(mensagemDeErro(error, 'Erro ao comunicar com o servidor.'));
+    } finally {
+      setLocating(false);
     }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const localizacao = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-
-          const newRecord = await pontoService.registrar(tipo, localizacao);
-          
-          setDailyRecords((registros) => [...registros, newRecord]);
-          // A marcação muda a linha de hoje e os totais do espelho: recarrega o mês, sem esvaziar a tela.
-          setReloadKey((k) => k + 1);
-          toast.success(`Ponto registrado: ${tipo}.`);
-        } catch (error) {
-          toast.error(mensagemDeErro(error, "Erro ao comunicar com o servidor."));
-        } finally {
-          setIsRegistering(false);
-        }
-      },
-      () => {
-        toast.error("Por favor, permita o acesso à sua localização para registrar o ponto.");
-        setIsRegistering(false);
-      },
-      { enableHighAccuracy: true } 
-    );
   };
 
   // O erro sobe para o modal, que o mostra e mantém o texto digitado; a lista só muda após o servidor confirmar.
   // Enviada ou reenviada, a justificativa volta a ficar pendente para o RH.
   const handleSaveNote = async (id: string, note: string) => {
-    await pontoService.salvarJustificativa(id, note);
-    setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note: note.trim(), noteStatus: 'pendente', noteReply: null } : day));
+    await salvarJustificativa.mutateAsync({ data: id, texto: note });
   };
 
   const firstName = user?.nome?.split(' ')[0] || 'Usuário';
@@ -106,11 +75,12 @@ const EmployeeDashboard: React.FC = () => {
       {funcionarioId === null && (
         <ErrorAlert message="Seu usuário ainda não está vinculado a um colaborador. Procure o RH para registrar e consultar o ponto." />
       )}
-      {loadError && <ErrorAlert message={loadError} onRetry={() => { setLoadError(null); setReloadKey((k) => k + 1); }} />}
+      {loadError && <ErrorAlert message={loadError} onRetry={retry} />}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <DashboardPunchCard 
-          isRegistering={isRegistering} 
+          isRegistering={locating || registrar.isPending}
+          disabled={punchBlocked}
           proximosTipos={proximosTipos}
           onPunchClock={handlePunchClock} 
         />
@@ -120,8 +90,8 @@ const EmployeeDashboard: React.FC = () => {
       <DashboardTimeMirror
         month={historyMonth}
         setMonth={setHistoryMonth}
-        historyData={historyData}
-        monthTotals={monthTotals}
+        historyData={historico.data ?? SEM_REGISTROS}
+        monthTotals={totais.data ?? null}
         onSaveNote={handleSaveNote}
       />
     </div>

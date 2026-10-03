@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Calendar, Plus } from 'lucide-react';
 import RequestsModal from '../../components/Portal/RequestsModal';
 import RequestsTable from '../../components/Portal/RequestsTable';
-import { requestService, EmployeeRequest, RequestType } from '../../services/requestService';
+import { requestService, RequestType } from '../../services/requestService';
+import { useMinhasSolicitacoes } from '../../queries/solicitacoes';
+import { chaves } from '../../queries/chaves';
 import ErrorAlert from '../../components/ErrorAlert';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
@@ -16,32 +19,17 @@ const Requests: React.FC = () => {
   usePageTitle('Minhas solicitações');
   const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [requests, setRequests] = useState<EmployeeRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((k) => k + 1);
-  };
-
-  // Busca o histórico de solicitações do colaborador
-  useEffect(() => {
-    requestService.getMyRequests()
-      .then(setRequests)
-      .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar minhas solicitações')))
-      .finally(() => setLoading(false));
-  }, [reloadKey]);
+  const queryClient = useQueryClient();
+  const { data, error, isPending, refetch } = useMinhasSolicitacoes();
+  const requests = data ?? [];
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar minhas solicitações') : null;
 
   const handleSubmitRequest = async (data: { type: RequestType; startDate: string; endDate: string; observation: string; hasAttachment: boolean }) => {
     try {
       await requestService.createRequest(data);
-      // Em vez de injetar o objeto, recarregamos a lista atualizada do servidor
-      const updatedRequests = await requestService.getMyRequests();
-      setRequests(updatedRequests);
+      // Em vez de injetar o objeto, o cache é invalidado e a lista volta do servidor
+      await queryClient.invalidateQueries({ queryKey: chaves.solicitacoes });
       setIsModalOpen(false);
       toast.success('Solicitação enviada ao RH.');
     } catch (error) {
@@ -60,7 +48,7 @@ const Requests: React.FC = () => {
       {loading ? (
         <div className="flex justify-center py-24 text-ink-muted"><Spinner size="lg" rotulo="Carregando solicitações..." /></div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={retry} />
+        <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />
       ) : requests.length > 0 ? (
         <RequestsTable requests={requests} />
       ) : (

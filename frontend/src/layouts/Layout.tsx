@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { CONSULTA_DESKTOP, ID_DO_MENU } from './menu';
 import Header from './Header';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import ErrorBoundary from '../components/ErrorBoundary';
+import PaginaCarregando from '../components/PaginaCarregando';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -30,9 +31,12 @@ const Layout: React.FC = () => {
 
         <main id="conteudo" tabIndex={-1} className="flex-1 overflow-y-auto p-4 focus:outline-none sm:p-6 lg:p-10">
           <div className="mx-auto max-w-7xl">
-            {/* Falha numa tela não leva o menu junto: o limite fica só em volta do conteúdo. */}
+            {/* Falha numa tela não leva o menu junto: o limite fica só em volta do conteúdo. O menu e o
+                cabeçalho também ficam de pé enquanto o código da tela escolhida chega. */}
             <ErrorBoundary resetKey={location.pathname}>
-              <Outlet />
+              <Suspense fallback={<PaginaCarregando />}>
+                <Outlet />
+              </Suspense>
             </ErrorBoundary>
           </div>
         </main>

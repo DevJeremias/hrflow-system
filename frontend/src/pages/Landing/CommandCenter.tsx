@@ -1,4 +1,3 @@
-import React from 'react';
 import { Layers, MousePointer2, ShieldCheck } from 'lucide-react';
 
 export default function CommandCenter() {

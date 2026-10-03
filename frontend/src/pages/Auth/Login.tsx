@@ -9,7 +9,7 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 import Button from '../../components/ui/Button';
 import Field, { Input } from '../../components/ui/Field';
 import logo from '../../assets/logo.png';
-import loginImagem from '../../assets/login_imagem2.png';
+import loginImagem from '../../assets/login_imagem2.webp';
 
 const Login: React.FC = () => {
   usePageTitle('Entrar');

@@ -3,7 +3,8 @@ import { after, afterEach, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { act, clicar, createElement, desmontarTudo, dom, esperar, iniciarVite, montar, teclar } from './support/ui.ts';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
 import { elementosFocaveis } from '../src/hooks/useFocusTrap.ts';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
@@ -44,7 +45,7 @@ const definirTela = (desktop: boolean) => {
 };
 
 const abrirCasca = async () => {
-  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const cliente = novoQueryClient();
   const host = await montar(createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, { initialEntries: ['/admin'] },
       createElement(AuthProvider, null,

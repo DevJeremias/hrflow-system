@@ -7,6 +7,7 @@ import { createElement, type ComponentType } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ViteDevServer } from 'vite';
+import { comConsulta } from './support/consulta.ts';
 
 const CARGOS = [
   { id: 1, nome: 'Desenvolvedor(a)', departamento_id: 1, departamento_nome: 'TI', nivel: 'Pleno', salario_base: '8000.00', ocupantes: 0 },
@@ -49,7 +50,7 @@ afterEach(() => {
 
 const abrir = async (props: Partial<Props> = {}) => {
   const onSave = props.onSave ?? (async () => {});
-  render(createElement(UiProviders, null, createElement(EmployeeModal, { isOpen: true, onClose: () => { fechamentos += 1; }, onSave, ...props })));
+  render(comConsulta(createElement(UiProviders, null, createElement(EmployeeModal, { isOpen: true, onClose: () => { fechamentos += 1; }, onSave, ...props }))));
   // Os cargos e departamentos chegam de forma assíncrona: a aba Contrato os usa.
   await waitFor(() => assert.ok(globalThis.fetch));
 };

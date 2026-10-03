@@ -3,12 +3,13 @@
 import { after, afterEach, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { act, botaoPorTexto, clicar, dom, createElement, desmontarTudo, esperar, iniciarVite, montar, porRole } from './support/ui.ts';
 import { instalarApi, json, type Chamada } from './support/apiAdmin.ts';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
+import { novoQueryClient } from './support/consulta.ts';
 
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: dom.window.localStorage });
 
@@ -35,7 +36,7 @@ afterEach(desmontarTudo);
 
 const abrirTela = async (Tela: ComponentType) => {
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
-  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const cliente = novoQueryClient();
   const host = await montar(createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
   await esperar(20);

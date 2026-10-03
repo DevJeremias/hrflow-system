@@ -29,11 +29,25 @@ test('a tabela de colaboradores solicita a página pedida e usa X-Total-Count', 
     });
   }) as typeof fetch;
 
-  const result = await employeeService.getPage(2, 50);
+  const result = await employeeService.getPage({ pagina: 2, limite: 50 });
 
   assert.match(requestedUrl, /\/api\/funcionarios\?pagina=2&limite=50$/);
   assert.equal(result.total, 501);
   assert.equal(result.employees[0].id, '51');
+});
+
+test('a busca de colaboradores vai ao servidor com o texto e os filtros, sem parâmetros vazios', async () => {
+  let requestedUrl = '';
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    requestedUrl = String(url);
+    return new Response('[]', { status: 200, headers: { 'X-Total-Count': '0' } });
+  }) as typeof fetch;
+
+  await employeeService.getPage({ pagina: 1, limite: 50, busca: 'Gamma Pessoa 52', status: 'Ativo', departamentoId: '7' });
+  assert.equal(requestedUrl, '/api/funcionarios?pagina=1&limite=50&busca=Gamma+Pessoa+52&status=Ativo&departamento_id=7');
+
+  await employeeService.getPage({ pagina: 1, limite: 50, busca: '', status: '', departamentoId: '' });
+  assert.equal(requestedUrl, '/api/funcionarios?pagina=1&limite=50');
 });
 
 test('a folha pede a competência na URL e entende "ainda não processada" como ausência', async () => {

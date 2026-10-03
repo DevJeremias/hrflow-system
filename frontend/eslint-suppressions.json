@@ -6,25 +6,5 @@
     "react-refresh/only-export-components": {
       "count": 1
     }
-  },
-  "src/pages/Portal/Profile.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/services/departmentsRolesService.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 8
-    }
-  },
-  "src/services/employeeService.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/services/httpClient.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
   }
 }

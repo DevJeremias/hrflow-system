@@ -3,7 +3,8 @@ import { after, afterEach, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { act, botaoPorTexto, clicar, createElement, desmontarTudo, dom, esperar, iniciarVite, montar, porRole, teclar } from './support/ui.ts';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
 
@@ -77,7 +78,7 @@ beforeEach(() => {
 afterEach(desmontarTudo);
 
 const abrirPagina = async (Pagina: ComponentType) => {
-  const host = await montar(createElement(QueryClientProvider, { client: new QueryClient() },
+  const host = await montar(createElement(QueryClientProvider, { client: novoQueryClient() },
     createElement(MemoryRouter, null,
       createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Pagina))))));
   for (let i = 0; i < 4; i += 1) await esperar(20);
@@ -240,12 +241,12 @@ test('justificativa: Esc fecha o modal sem enviar nada', async () => {
 test('bater ponto: permissão de localização negada vira toast de erro, sem alert nativo', async () => {
   Object.defineProperty(dom.window.navigator, 'geolocation', {
     configurable: true,
-    value: { getCurrentPosition: (_ok: unknown, erro: () => void) => erro() },
+    value: { getCurrentPosition: (_ok: unknown, erro: (e: { code: number }) => void) => erro({ code: 1 }) },
   });
   const host = await abrirPagina(EmployeeDashboard);
   await clicar(botaoPorTexto(host, /Registrar Entrada/));
   await esperar();
-  assert.match(document.querySelector('[role="alert"]')!.textContent ?? '', /permita o acesso à sua localização/);
+  assert.match(document.querySelector('[role="alert"]')!.textContent ?? '', /permita o acesso à sua localização/i);
   assert.deepEqual(alertasNativos, []);
   assert.equal(chamadas.filter((c) => c.caminho === '/ponto/registrar').length, 0);
 });

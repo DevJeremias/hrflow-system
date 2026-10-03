@@ -2,9 +2,13 @@ import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } fr
 import { LIMITES } from '../../shared/schemas/validadores.ts';
 import { validarAvatar } from '../funcionarios/index.ts';
 
+// Chave ausente mantém o avatar gravado (undefined); '' ou null o removem (null); o resto precisa ser
+// uma imagem válida em data URL.
 const avatar = campo((valor: unknown) => {
+    if (valor === undefined) return { valor: undefined };
+    if (ausente(valor)) return { valor: null };
     const erro = validarAvatar(valor);
-    return erro ? { erro } : { valor };
+    return erro ? { erro } : { valor: valor as string };
 });
 
 // A senha atual só é conferida contra o hash, então aceita qualquer texto até o limite do login.
@@ -20,7 +24,7 @@ export const atualizarMeusDados = corpo({
     nome: texto('Nome', LIMITES.nome),
     email,
     telefone: opcional(telefone),
-    avatar: opcional(avatar),
+    avatar,
 });
 
 export const alterarSenha = corpo({ senhaAtual, novaSenha: senhaNova });
@@ -31,7 +35,8 @@ export interface CorpoDeAtualizarMeusDados {
     nome: string;
     email: string;
     telefone: string | null;
-    avatar: string | null;
+    // undefined: manter; null: remover; texto: data URL da nova imagem.
+    avatar?: string | null;
 }
 
 export interface CorpoDeAlterarSenha {

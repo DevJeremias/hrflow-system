@@ -4,7 +4,8 @@ import { JSDOM } from 'jsdom';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
 import { createServer, type ViteDevServer } from 'vite';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' });
@@ -18,6 +19,7 @@ Object.defineProperties(globalThis, {
 
 let server: ViteDevServer;
 let Harness: ComponentType<{ initialPath: string }>;
+let cliente = novoQueryClient();
 const originalFetch = globalThis.fetch;
 
 // Fixtures da Alfa: 3 colaboradores ativos, 4 departamentos e 4 cargos.
@@ -35,7 +37,7 @@ before(async () => {
     server.ssrLoadModule('/src/contexts/AuthContext.tsx'),
   ]);
   const page = (path: string, element: unknown) => createElement(Route, { path, element: element as never });
-  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: new QueryClient() },
+  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, { initialEntries: [initialPath] },
       createElement(AuthProvider, null,
         createElement(Routes, null,
@@ -51,7 +53,7 @@ after(async () => {
   dom.window.close();
 });
 
-beforeEach(() => { globalThis.fetch = originalFetch; });
+beforeEach(() => { globalThis.fetch = originalFetch; cliente = novoQueryClient(); });
 
 const renderDashboard = async () => {
   const host = document.createElement('div');

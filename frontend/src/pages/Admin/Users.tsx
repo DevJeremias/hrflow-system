@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Plus, KeyRound, Users as UsersIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { AccessUser, NewUser, usersService } from '../../services/usersService';
+import type { AccessUser, NewUser } from '../../services/usersService';
+import { useAlterarUsuario, useCriarUsuario, useUsuarios } from '../../queries/usuarios';
 import UserModal from '../../components/Admin/UserModal';
 import ProvisionalPasswordPanel from '../../components/Admin/ProvisionalPasswordPanel';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -41,40 +42,23 @@ const Users: React.FC = () => {
   const { user: me } = useAuth();
   const confirmar = useConfirm();
   const toast = useToast();
-  const [users, setUsers] = useState<AccessUser[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [delivery, setDelivery] = useState<Delivery | null>(null);
 
-  const load = useCallback(async (requestedPage: number) => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const result = await usersService.getPage(requestedPage, PAGE_SIZE);
-      setUsers(result.users);
-      setTotal(result.total);
-      setPage(requestedPage);
-    } catch (error) {
-      setLoadError(mensagemDeErro(error, 'Erro ao buscar usuários'));
-      setUsers([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    Promise.resolve().then(() => load(1));
-  }, [load]);
+  // A página anterior fica na tela enquanto a nova chega: só o primeiro carregamento mostra o esqueleto.
+  const { data, error, isPending, refetch } = useUsuarios(page, PAGE_SIZE);
+  const criar = useCriarUsuario();
+  const alterar = useAlterarUsuario();
+  const users = data?.users ?? [];
+  const total = data?.total ?? 0;
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar usuários') : null;
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
   const handleCreate = async (novo: NewUser) => {
-    const { user, senhaProvisoria } = await usersService.create(novo);
+    const { user, senhaProvisoria } = await criar.mutateAsync(novo);
     if (senhaProvisoria) setDelivery({ nome: user.nome, email: user.email, senha: senhaProvisoria });
-    await load(page);
   };
 
   const handleProfile = async (target: AccessUser, perfil: Perfil) => {
@@ -86,8 +70,7 @@ const Users: React.FC = () => {
     });
     if (!confirmado) return;
     try {
-      await usersService.update(target.id, { perfil });
-      await load(page);
+      await alterar.mutateAsync({ id: target.id, mudanca: { perfil } });
       toast.success(`Perfil de ${target.nome} alterado para ${perfil}.`);
     } catch (error) {
       toast.error(mensagemDeErro(error, 'Erro ao alterar o perfil.'));
@@ -103,9 +86,8 @@ const Users: React.FC = () => {
     });
     if (!confirmado) return;
     try {
-      const { senhaProvisoria } = await usersService.update(target.id, { redefinirSenha: true });
+      const { senhaProvisoria } = await alterar.mutateAsync({ id: target.id, mudanca: { redefinirSenha: true } });
       if (senhaProvisoria) setDelivery({ nome: target.nome, email: target.email, senha: senhaProvisoria });
-      await load(page);
     } catch (error) {
       toast.error(mensagemDeErro(error, 'Erro ao redefinir a senha.'));
     }
@@ -174,7 +156,7 @@ const Users: React.FC = () => {
       />
 
       {delivery && <ProvisionalPasswordPanel {...delivery} onClose={() => setDelivery(null)} />}
-      {loadError && <ErrorAlert message={loadError} onRetry={() => load(page)} />}
+      {loadError && <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />}
 
       {!loadError && (
         <DataTable
@@ -193,8 +175,8 @@ const Users: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-ink-muted">
           <span>{total === 0 ? 'Nenhum usuário' : `Página ${page} de ${pages} · ${total} usuários`}</span>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => load(page - 1)} disabled={page <= 1}>Anterior</Button>
-            <Button variant="secondary" size="sm" onClick={() => load(page + 1)} disabled={page >= pages}>Próxima</Button>
+            <Button variant="secondary" size="sm" onClick={() => setPage(page - 1)} disabled={page <= 1}>Anterior</Button>
+            <Button variant="secondary" size="sm" onClick={() => setPage(page + 1)} disabled={page >= pages}>Próxima</Button>
           </div>
         </div>
       )}

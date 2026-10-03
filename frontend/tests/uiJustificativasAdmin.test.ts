@@ -6,6 +6,7 @@ import { act, botaoPorTexto, clicar, createElement, desmontarTudo, dom, esperar,
 import { createServer } from 'vite';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
+import { comConsulta } from './support/consulta.ts';
 
 let server: ViteDevServer;
 let JustificativasPonto: ComponentType<{ mes: string }>;
@@ -57,7 +58,7 @@ const preparar = () => {
 
 const abrir = async (Tela: ComponentType<{ mes: string }> | ComponentType, props: Record<string, unknown> = {}) => {
   preparar();
-  const host = await montar(createElement(UiProviders, null, createElement(Tela as ComponentType<Record<string, unknown>>, props)));
+  const host = await montar(comConsulta(createElement(UiProviders, null, createElement(Tela as ComponentType<Record<string, unknown>>, props))));
   await esperar(20);
   return host;
 };

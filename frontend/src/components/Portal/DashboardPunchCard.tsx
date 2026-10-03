@@ -6,11 +6,13 @@ import Card from '../ui/Card';
 
 interface Props {
   isRegistering: boolean;
+  // Sem vínculo, ou enquanto o ponto de hoje carrega, nenhuma marcação pode ser feita.
+  disabled: boolean;
   proximosTipos: readonly TipoPonto[];
   onPunchClock: (tipo: TipoPonto) => void;
 }
 
-const DashboardPunchCard: React.FC<Props> = ({ isRegistering, proximosTipos, onPunchClock }) => {
+const DashboardPunchCard: React.FC<Props> = ({ isRegistering, disabled, proximosTipos, onPunchClock }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -41,7 +43,7 @@ const DashboardPunchCard: React.FC<Props> = ({ isRegistering, proximosTipos, onP
         ) : (
           <div className="space-y-3">
             {proximosTipos.map((tipo) => (
-              <Button key={tipo} size="lg" fullWidth loading={isRegistering} onClick={() => onPunchClock(tipo)} icon={<Clock size={22} aria-hidden="true" />}>
+              <Button key={tipo} size="lg" fullWidth loading={isRegistering} disabled={disabled} onClick={() => onPunchClock(tipo)} icon={<Clock size={22} aria-hidden="true" />}>
                 {tipo === 'Saída' && proximosTipos.length > 1 ? 'Encerrar jornada (Saída)' : `Registrar ${tipo}`}
               </Button>
             ))}

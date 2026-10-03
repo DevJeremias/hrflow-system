@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FileText } from 'lucide-react';
-import { Payslip, getMyPayslips } from '../../services/payrollService';
+import type { Payslip } from '../../services/payrollService';
+import { useMeusHolerites } from '../../queries/folha';
 import PayslipsSummaryCards from '../../components/Portal/PayslipsMetrics';
 import PayslipsHistoryTable from '../../components/Portal/PayslipsTable';
 import HoleriteModal from '../../components/Admin/PayrollSlipModal';
@@ -15,27 +16,14 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 
 const MyPayslips: React.FC = () => {
   usePageTitle('Meus holerites');
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
 
   const { user } = useAuth();
 
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((k) => k + 1);
-  };
-
-  useEffect(() => {
-    getMyPayslips()
-      .then(setPayslips)
-      .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar meu holerite')))
-      .finally(() => setLoading(false));
-  }, [reloadKey]);
+  const { data, error, isPending, refetch } = useMeusHolerites();
+  const payslips = data ?? [];
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar meu holerite') : null;
 
   // A API entrega do mês mais recente ao mais antigo.
   const latestPayslip = payslips[0];
@@ -50,7 +38,7 @@ const MyPayslips: React.FC = () => {
           <p className="font-semibold" aria-hidden="true">Carregando demonstrativos...</p>
         </div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={retry} />
+        <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />
       ) : payslips.length > 0 ? (
         <>
           {latestPayslip && (

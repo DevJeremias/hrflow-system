@@ -1,4 +1,3 @@
-import React from 'react';
 import { Calculator, Users, ShieldCheck, Printer } from 'lucide-react';
 
 export default function Features() {

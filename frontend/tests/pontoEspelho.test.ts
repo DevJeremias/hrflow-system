@@ -5,6 +5,7 @@ import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createServer, type ViteDevServer } from 'vite';
 import type { HistoryDay, MonthTotals } from '../src/services/pontoService.ts';
+import { assentar, comConsulta } from './support/consulta.ts';
 
 let server: ViteDevServer;
 interface PropsDoEspelho {
@@ -22,7 +23,7 @@ let UiProviders: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
   ({ default: Espelho } = await server.ssrLoadModule('/src/components/Portal/DashboardTimeMirror.tsx'));
   ({ default: JustificativasPonto } = await server.ssrLoadModule('/src/components/Admin/JustificativasPonto.tsx'));
   ({ default: TimeTracking } = await server.ssrLoadModule('/src/pages/Admin/TimeTracking.tsx'));
@@ -241,7 +242,8 @@ test('a gestão de ponto tem a aba Justificativas, que abre a fila do mês escol
     urls.push(String(url));
     return String(url).includes('/justificativas') ? respostaJson([justificativa(14)]) : new Response('[]', { status: 200, headers: { 'X-Total-Count': '0' } });
   }) as typeof fetch;
-  const { host, desmontar } = await renderizar(createElement(TimeTracking));
+  const { host, desmontar } = await renderizar(comConsulta(createElement(TimeTracking)));
+  await assentar();
   const abas = [...host.querySelectorAll('[role="tab"]')].map((aba) => aba.textContent);
   assert.deepEqual(abas, ['Marcações', 'Justificativas']);
   await act(async () => { (host.querySelectorAll('[role="tab"]')[1] as HTMLElement).click(); });

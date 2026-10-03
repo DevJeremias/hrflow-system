@@ -1,5 +1,6 @@
-import { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../shared/schemas/comum.ts';
+import { z, campo, ausente, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../shared/schemas/comum.ts';
 import { LIMITES } from '../../shared/schemas/validadores.ts';
+import { paginacao } from '../../shared/schemas/paginacao.ts';
 
 const STATUS = ['Ativo', 'Inativo', 'Férias'] as const;
 const TIPOS_CONTRATO = ['CLT', 'PJ', 'Estágio', 'Temporário'] as const;
@@ -46,6 +47,24 @@ const admissaoDepoisDoNascimento = (ctx: z.core.ParsePayload<Record<string, unkn
         });
     }
 };
+
+const TAMANHO_MAXIMO_DA_BUSCA = 100;
+
+const busca = campo((valor: unknown) => {
+    if (ausente(valor)) return { valor: null };
+    if (typeof valor !== 'string') return { erro: 'Busca deve ser um texto.' };
+    const limpo = valor.trim();
+    return limpo.length > TAMANHO_MAXIMO_DA_BUSCA
+        ? { erro: `Busca deve ter no máximo ${TAMANHO_MAXIMO_DA_BUSCA} caracteres.` }
+        : { valor: limpo };
+});
+
+// Página, busca livre (nome, e-mail, CPF, cargo e departamento) e filtros da listagem.
+export const consultaDeFuncionarios = paginacao.extend({
+    busca,
+    status: opcional(enumerado('Status', STATUS)),
+    departamento_id: opcional(inteiroPositivo('Departamento')),
+});
 
 export const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 
@@ -113,3 +132,11 @@ export interface Paginacao {
     pagina: number;
     limite: number;
 }
+
+export interface FiltrosDeFuncionarios {
+    busca: string | null;
+    status: Status | null;
+    departamento_id: number | null;
+}
+
+export interface ConsultaDeFuncionarios extends Paginacao, FiltrosDeFuncionarios {}

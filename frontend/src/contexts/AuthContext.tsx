@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import httpClient, {
   HttpError,
@@ -9,7 +9,7 @@ import httpClient, {
   startSessionEpoch,
 } from '../services/httpClient';
 import { avisarAbas, observarSessao } from '../services/sessaoEntreAbas';
-import { User, lerSessao, rotaDepoisDoLogin } from '../utils/sessao';
+import { User, destinoDoLogin, lerSessao, rotaDepoisDoLogin } from '../utils/sessao';
 
 export type { User };
 
@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   // As abas se comparam pelo id: o observador precisa do usuário de agora, não o da renderização que o criou.
   const userIdRef = useRef<number | null>(null);
@@ -126,7 +127,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSessionNotice(null);
       setUser(logged);
       avisarAbas('login');
-      navigate(rotaDepoisDoLogin(logged));
+      // Quem foi mandado ao login por uma tela protegida volta a ela; com senha provisória, só a troca vale.
+      navigate(destinoDoLogin(location.state, logged), { replace: true });
     } catch (error) {
       clearSession();
       throw error;

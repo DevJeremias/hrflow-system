@@ -1,6 +1,9 @@
 import React, { useId, useState } from 'react';
 import { Camera, X, Save } from 'lucide-react';
-import { userService, PerfilUsuario, DadosEditaveis } from '../../services/userService';
+import type { PerfilUsuario, DadosEditaveis } from '../../services/userService';
+import { useAtualizarMeuPerfil } from '../../queries/perfil';
+import type { CorpoDeMeusDadosApi } from '../../types/api';
+import { enderecoDoAvatar } from '../../utils/sessao';
 import { mensagemDeErro } from '../../utils/erros';
 import ErrorAlert from '../ErrorAlert';
 import Avatar from '../ui/Avatar';
@@ -32,6 +35,7 @@ const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<DadosEditaveis>(() => dadosEditaveis(perfil));
   const [status, setStatus] = useState({ loading: false, erro: '' });
+  const atualizar = useAtualizarMeuPerfil();
   const idFoto = useId().replace(/:/g, '');
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,11 +55,22 @@ const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus({ loading: true, erro: '' });
+    // A foto só viaja quando mudou: sem a chave, o servidor mantém a atual; '' a remove.
+    const avatarAtual = perfil.avatar ?? '';
+    const trocouAvatar = editForm.avatar !== avatarAtual;
+    const corpo: CorpoDeMeusDadosApi = {
+      nome: editForm.nome, email: editForm.email, telefone: editForm.telefone,
+      ...(trocouAvatar ? { avatar: editForm.avatar } : {}),
+    };
     try {
-      await userService.updateMyProfile(editForm);
+      await atualizar.mutateAsync(corpo);
+      // O data URL digitado vira o endereço da miniatura que o servidor passou a servir.
+      const avatar = !trocouAvatar || !editForm.avatar ? editForm.avatar : enderecoDoAvatar();
+      const atualizados = { ...editForm, avatar };
+      setEditForm(atualizados);
       setStatus({ loading: false, erro: '' });
       setIsEditing(false);
-      onUpdate(editForm);
+      onUpdate(atualizados);
       toast.success('Dados atualizados!');
     } catch (error) {
       setStatus({ loading: false, erro: mensagemDeErro(error, 'Erro ao atualizar dados') });

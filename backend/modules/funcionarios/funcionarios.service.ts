@@ -7,7 +7,7 @@ import * as repositorio from './funcionarios.repository.ts';
 import type { AlvoDoCicloDeVida, FuncionarioListado, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import { gerarSenhaProvisoria } from './funcionarios.regras.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, Paginacao } from './funcionarios.schemas.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
@@ -48,11 +48,12 @@ export interface PaginaDeFuncionarios {
     total: number;
 }
 
-export const listarFuncionarios = async (empresaId: number, paginacao: Paginacao): Promise<PaginaDeFuncionarios> => {
+export const listarFuncionarios = async (empresaId: number, { busca, status, departamento_id, ...paginacao }: ConsultaDeFuncionarios): Promise<PaginaDeFuncionarios> => {
     const [limite, deslocamento] = limiteEDeslocamento(paginacao);
-    const linhas = await repositorio.listarDaEmpresa(empresaId, limite, deslocamento);
+    const filtros = { busca, status, departamento_id };
+    const linhas = await repositorio.listarDaEmpresa(empresaId, filtros, limite, deslocamento);
     const funcionarios = linhas.map((linha) => ({ ...linha, tem_movimento: Boolean(linha.tem_movimento) }));
-    const total = await repositorio.contarDaEmpresa(empresaId);
+    const total = await repositorio.contarDaEmpresa(empresaId, filtros);
     return { funcionarios, total };
 };
 

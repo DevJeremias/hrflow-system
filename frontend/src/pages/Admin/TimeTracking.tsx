@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Clock, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
-import { pontoService, type CompanyPointRecord } from '../../services/pontoService';
+import type { CompanyPointRecord } from '../../services/pontoService';
+import { usePontoDaEmpresa } from '../../queries/ponto';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageHeader from '../../components/ui/PageHeader';
 import StatCard from '../../components/ui/StatCard';
@@ -29,22 +30,13 @@ const ID_DAS_ABAS = 'gestao-ponto';
 const TAMANHO_DA_PAGINA = 50;
 const ATRASO_DA_BUSCA_MS = 300;
 
-interface Resultado {
-  chave: string;
-  registros: CompanyPointRecord[];
-  total: number;
-  erro: string | null;
-}
-
 export default function TimeTracking() {
   usePageTitle('Gestão de ponto');
   const [aba, setAba] = useState<Aba>('marcacoes');
-  const [resultado, setResultado] = useState<Resultado | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [busca, setBusca] = useState('');
   const [monthFilter, setMonthFilter] = useState(mesAtualEmBelem);
   const [pagina, setPagina] = useState(1);
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const termo = searchTerm.trim();
@@ -56,26 +48,20 @@ export default function TimeTracking() {
     return () => clearTimeout(timer);
   }, [searchTerm, busca]);
 
-  const chave = `${monthFilter}|${busca}|${pagina}|${reloadKey}`;
+  // A página anterior fica na tela (esmaecida) enquanto a nova chega: só o primeiro carregamento mostra o indicador.
+  const { data, error, isPending, isPlaceholderData, refetch } = usePontoDaEmpresa({
+    mes: monthFilter, pagina, limite: TAMANHO_DA_PAGINA, busca,
+  });
 
-  useEffect(() => {
-    let ativo = true;
-    const pronto = (parcial: Omit<Resultado, 'chave'>) => { if (ativo) setResultado({ chave, ...parcial }); };
-    pontoService.getRegistrosDaEmpresa({ mes: monthFilter, pagina, limite: TAMANHO_DA_PAGINA, busca })
-      .then((dados) => pronto({ ...dados, erro: null }))
-      .catch((error) => pronto({ registros: [], total: 0, erro: mensagemDeErro(error, 'Erro ao buscar os registros de ponto') }));
-    return () => { ativo = false; };
-  }, [chave, monthFilter, pagina, busca]);
-
-  const loading = resultado?.chave !== chave;
-  const loadError = loading ? null : resultado.erro;
-  const registros = loading ? [] : resultado.registros;
-  const total = loading ? 0 : resultado.total;
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar os registros de ponto') : null;
+  const registros = data?.registros ?? [];
+  const total = data?.total ?? 0;
   const totalDePaginas = Math.max(1, Math.ceil(total / TAMANHO_DA_PAGINA));
 
   const colaboradores = new Set(registros.map((registro) => registro.funcionario_id)).size;
   const diasMonitorados = new Set(registros.map((registro) => registro.date)).size;
-  const retry = () => setReloadKey((key) => key + 1);
+  const retry = () => { refetch(); };
   const trocarMes = (mes: string) => {
     setMonthFilter(mes);
     setPagina(1);
@@ -114,7 +100,7 @@ export default function TimeTracking() {
           <StatCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={24} />} tone="warning" />
         </div>
 
-        <Card as="section" padding="none">
+        <Card as="section" padding="none" aria-busy={isPlaceholderData || undefined} className={`transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}>
           <div className="flex flex-col items-stretch justify-between gap-4 border-b border-line bg-surface-muted p-5 md:flex-row md:items-center">
             <div className="w-full md:w-96">
               <Field label="Buscar colaborador" name="busca" hideLabel>

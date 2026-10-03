@@ -1,4 +1,5 @@
 import httpClient from './httpClient.ts';
+import type { ResumoDoDashboardApi } from '../types/api.ts';
 
 export interface DashboardSummary {
   activeEmployees: number;
@@ -8,19 +9,11 @@ export interface DashboardSummary {
   punchesToday: number;
 }
 
-interface DashboardSummaryResponse {
-  colaboradoresAtivos: number;
-  colaboradoresInativos: number;
-  departamentos: number;
-  cargos: number;
-  marcacoesHoje: number;
-}
-
 const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
 
 export const dashboardService = {
   getSummary: async (): Promise<DashboardSummary> => {
-    const data = await httpClient<DashboardSummaryResponse>('/dashboard/resumo', {
+    const data = await httpClient<ResumoDoDashboardApi>('/dashboard/resumo', {
       auth: true,
       errorMessage: 'Erro ao carregar o resumo do dashboard',
     });

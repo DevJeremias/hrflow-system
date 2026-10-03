@@ -3,7 +3,9 @@ import { after, afterEach, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { act, botaoPorTexto, clicar, createElement, desmontarTudo, dom, esperar, iniciarVite, montar } from './support/ui.ts';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
+import { precarregarTelas } from './support/rotas.ts';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
 
@@ -20,6 +22,7 @@ const json = (status: number, corpo: unknown) => new Response(JSON.stringify(cor
 
 before(async () => {
   server = await iniciarVite();
+  await precarregarTelas(server);
   ({ default: App } = await server.ssrLoadModule('/src/App.tsx'));
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
   ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
@@ -42,11 +45,12 @@ afterEach(async () => {
 });
 
 const abrirRota = async (rota: string) => {
-  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const cliente = novoQueryClient();
   const host = await montar(createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, { initialEntries: [rota] },
       createElement(AuthProvider, null, createElement(UiProviders, null, createElement(App))))));
-  await esperar(20);
+  // As telas do App carregam sob demanda.
+  await esperar(300);
   return host;
 };
 

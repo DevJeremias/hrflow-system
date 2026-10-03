@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createServer, type ViteDevServer } from 'vite';
+import { assentar, comConsulta } from './support/consulta.ts';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' });
 Object.defineProperties(globalThis, {
@@ -57,7 +58,8 @@ const renderScreen = async (handler: (url: string, method: string) => Response =
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => { root.render(createElement(UiProviders, null, createElement(OrgStructure))); });
+  await act(async () => { root.render(comConsulta(createElement(UiProviders, null, createElement(OrgStructure)))); });
+  await assentar();
   return { host, root };
 };
 
@@ -69,6 +71,7 @@ const cleanup = async ({ host, root }: Awaited<ReturnType<typeof renderScreen>>)
 const clicar = async (elemento: Element | null | undefined) => {
   assert.ok(elemento, 'elemento a clicar não encontrado');
   await act(async () => { (elemento as HTMLElement).click(); });
+  await assentar();
 };
 
 const botaoComTexto = (host: HTMLElement, texto: string | RegExp) =>

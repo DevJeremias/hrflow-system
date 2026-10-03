@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ErrorAlert from '../ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
-import type { Department, Role } from '../../services/departmentsRolesService';
+import type { Department, DepartmentForm as DepartmentFormData, Role, RoleForm as RoleFormData } from '../../services/departmentsRolesService';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Field, { Input, Select, Textarea } from '../ui/Field';
@@ -58,7 +58,7 @@ interface Props {
   item?: Department | Role | null;
   departments: Department[];
   onClose: () => void;
-  onSave: (data: Record<string, FormDataEntryValue | undefined>) => Promise<void>;
+  onSave: (data: DepartmentFormData | RoleFormData) => Promise<void>;
 }
 
 const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSave }) => {
@@ -72,13 +72,16 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (submittingRef.current) return;
-    const data = Object.fromEntries(new FormData(e.currentTarget).entries());
+    // Os campos do formulário são `name` dos inputs: o que chega aqui é só texto.
+    const data = Object.fromEntries(new FormData(e.currentTarget).entries()) as Record<string, string>;
 
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await onSave({ ...data, id: item?.id });
+      await onSave(isDept
+        ? { id: item?.id, name: data.name, sigla: data.sigla, description: data.description, manager: data.manager }
+        : { id: item?.id, title: data.title, department: data.department, level: data.level, salary: data.salary });
     } catch (error) {
       setSubmitError(mensagemDeErro(error, 'Não foi possível salvar. Tente novamente.'));
     } finally {

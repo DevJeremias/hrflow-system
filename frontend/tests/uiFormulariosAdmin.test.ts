@@ -6,8 +6,9 @@ import { act, botaoPorTexto, clicar, dom, createElement, desmontarTudo, esperar,
 import { instalarApi, type Chamada } from './support/apiAdmin.ts';
 import type { ComponentType } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import type { ViteDevServer } from 'vite';
+import { novoQueryClient } from './support/consulta.ts';
 
 let server: ViteDevServer;
 let Employees: ComponentType;
@@ -31,7 +32,7 @@ afterEach(desmontarTudo);
 const abrirTela = async (Tela: ComponentType) => {
   // A tela de colaboradores decide os botões pelo perfil da sessão (cookie de CSRF = há sessão a confirmar).
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
-  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const cliente = novoQueryClient();
   await montar(createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
   await esperar(20);

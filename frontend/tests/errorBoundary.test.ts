@@ -5,7 +5,8 @@ import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
 import { createServer, type ViteDevServer } from 'vite';
 
 // O AuthProvider limpa chaves legadas do localStorage ao montar.
@@ -32,7 +33,7 @@ before(async () => {
   ]);
   const page = (path: string | undefined, element: unknown, index = false) =>
     createElement(Route, { path, index, element: element as never });
-  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: novoQueryClient() },
     createElement(MemoryRouter, { initialEntries: [initialPath] },
       createElement(AuthProvider, null,
         createElement(UiProviders, null,
