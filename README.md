@@ -44,18 +44,15 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 
 ```text
 hrflow-system/
-├── scripts/               # dev.mjs, run-workspace.mjs e db.mjs (comandos db:*)
-├── backend/
-│   ├── config/            # Conexões de banco de dados (db.js)
-│   ├── db/                # Aplicador de migrations
-│   ├── middlewares/       # Proteções JWT e validação de perfis (Admin/Colaborador)
+├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*) e guardar-estrutura.mts (guarda de .js/.jsx)
+├── backend/               # API em TypeScript; estrutura e regras em backend/README.md
+│   ├── modules/           # Um módulo por área (auth, ponto, dashboard, folha, perfil, estrutura, funcionarios, saude)
+│   ├── shared/            # O que mais de uma área usa: config, db (pool, migrations, fixtures), middlewares, schemas, utils
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
-│   ├── modules/           # Módulos em TypeScript, um por área (auth, ponto, dashboard, folha, perfil, estrutura, funcionarios); padrão em backend/README.md
-│   ├── routes/            # Endpoints da API REST
-│   ├── seeds/             # Fixtures sintéticas de desenvolvimento
 │   ├── tests/             # Testes de integração (MySQL descartável)
 │   ├── types/             # Declarações de tipos que só o tsc usa (express.d.ts)
-│   └── server.js          # Ponto de entrada do Node.js
+│   ├── app.ts             # Monta o app Express
+│   └── server.ts          # Ponto de entrada do Node.js
 └── frontend/
     ├── src/
     │   ├── components/    # Componentes React (Admin, Portal, UI)
@@ -208,6 +205,8 @@ HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflo
 ```
 
 O mesmo comando roda no GitHub Actions (`.github/workflows/ci.yml`) em todo pull request e em todo push na `main`, com um MySQL de serviço, depois de `db:setup` aplicar as migrations e as fixtures.
+
+O `npm run lint` roda três coisas: a guarda `scripts/guardar-estrutura.mts` (falha se entrar `.js` ou `.jsx` em `backend/` ou `frontend/`, fora das configurações de ferramenta listadas nela), o lint do front-end e o do back-end (fronteiras entre módulos, veja `backend/README.md`). O CI roda a guarda antes de instalar dependências.
 
 Sobre o lint do front-end (`frontend/eslint.config.js`):
 
