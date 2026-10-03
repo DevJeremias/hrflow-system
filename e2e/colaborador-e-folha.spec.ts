@@ -1,6 +1,7 @@
 // Fluxo 2: o RH cadastra um colaborador pela tela, processa a folha do mês e o encontra nela, com o holerite aberto.
 // Os valores da folha não são fixados aqui (a regra de cálculo tem testes próprios): o que importa é o
 // colaborador novo entrar no cálculo e o demonstrativo fechar a conta que ele mesmo mostra.
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 import { RH, SENHA, emailUnico, entrar } from './support/sessao';
 
@@ -20,7 +21,7 @@ test('o RH cadastra um colaborador e ele aparece na folha com o líquido calcula
   await page.locator('[name="emailPessoal"]').fill(email);
   await page.locator('[name="senhaAcesso"]').fill(SENHA);
 
-  await page.getByRole('button', { name: /Contrato/i }).click();
+  await page.getByRole('tab', { name: /Contrato/i }).click();
   await page.locator('[name="dataAdmissao"]').fill('2025-03-03');
   await page.locator('[name="cargoId"]').selectOption({ index: 1 });
   await page.locator('[name="departamentoId"]').selectOption({ index: 1 });
@@ -44,8 +45,14 @@ test('o RH cadastra um colaborador e ele aparece na folha com o líquido calcula
   expect(reais(descontos)).toBeGreaterThan(0);
   expect(reais(liquido)).toBeCloseTo(reais(salario) + reais(proventos) - reais(descontos), 2);
 
-  await linha.click();
+  // O PDF da folha vem do servidor, uma página por colaborador, e chega ao navegador como arquivo.
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Baixar PDF dos holerites' }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^holerites-\d{4}-\d{2}\.pdf$/);
+  expect((await readFile(await download.path())).subarray(0, 5).toString()).toBe('%PDF-');
+
+  await linha.getByRole('button', { name: /Ver holerite/ }).click();
   const holerite = page.getByRole('dialog', { name: 'Detalhes do Holerite' });
   await expect(holerite).toContainText(nome);
   await expect(holerite).toContainText('Salário Base');
+  await expect(holerite).toContainText('Base INSS');
 });

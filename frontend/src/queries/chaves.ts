@@ -13,6 +13,7 @@ export const chaves = {
   folha: ['folha'] as const,
   folhaDaCompetencia: (competencia: string) => ['folha', 'competencia', competencia] as const,
   meusHolerites: ['folha', 'meus-holerites'] as const,
+  dependentes: (funcionarioId: string) => ['dependentes', funcionarioId] as const,
 
   dashboard: ['dashboard'] as const,
   resumoDoDashboard: ['dashboard', 'resumo'] as const,

@@ -1,16 +1,20 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
-import { Search, FileText } from 'lucide-react';
-import { EmployeePayroll, PayrollCompany } from '../../services/payrollService';
+import { Search, FileText, Download, SlidersHorizontal } from 'lucide-react';
+import { EmployeePayroll, PayrollCompany, downloadPayslipPdf } from '../../services/payrollService';
 import PayrollSlipModal from './PayrollSlipModal';
+import PayrollEntriesModal from './PayrollEntriesModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { rotuloDaCompetencia } from '../../utils/competencia';
 import Card, { CardHeader } from '../ui/Card';
-import Button from '../ui/Button';
+import Button, { IconButton } from '../ui/Button';
 import Badge from '../ui/Badge';
 import DataTable, { type Column } from '../ui/DataTable';
 import Field, { Input } from '../ui/Field';
+import { useToast } from '../ui/toastContext';
+import { mensagemDeErro } from '../../utils/erros';
 
-interface Props { payrolls: EmployeePayroll[]; competencia: string; empresa: PayrollCompany; }
+// `locked` é a folha fechada: os lançamentos só se leem.
+interface Props { payrolls: EmployeePayroll[]; competencia: string; empresa: PayrollCompany; locked: boolean; }
 
 // Só uma página de linhas vai ao DOM: com milhares de colaboradores, desenhar todos trava a tela.
 const PAGE_SIZE = 50;
@@ -21,11 +25,25 @@ const formatCurrency = (val: number) => currency.format(val);
 // Sem acento nem caixa, para a busca achar "Jose" em "José".
 const normalizar = (texto: string) => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
-const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa }) => {
+const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa, locked }) => {
   const { user } = useAuth();
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePayroll | null>(null);
+  const [entriesOf, setEntriesOf] = useState<EmployeePayroll | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const downloadPdf = async (emp: EmployeePayroll) => {
+    setDownloading(emp.id);
+    try {
+      await downloadPayslipPdf(competencia, emp.id);
+    } catch (error) {
+      toast.error(mensagemDeErro(error, 'Não foi possível gerar o PDF do holerite.'));
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   // O campo responde na hora; o filtro sobre a lista inteira roda com prioridade menor e não
   // segura a digitação.
@@ -57,13 +75,21 @@ const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa }) => {
     { key: 'liquido', header: 'Líquido Final', align: 'right', cell: (emp) => <span className="text-lg font-bold text-ink">{formatCurrency(emp.netSalary)}</span> },
     {
       key: 'acoes',
-      header: 'Holerite',
+      header: 'Ações',
       align: 'right',
       semRotuloNoCartao: true,
       cell: (emp) => (
-        <Button variant="secondary" size="sm" icon={<FileText size={16} aria-hidden="true" />} aria-label={`Ver holerite de ${emp.name}`} onClick={() => setSelectedEmployee(emp)}>
-          Ver holerite
-        </Button>
+        <span className="flex flex-wrap items-center gap-2 md:justify-end">
+          <Button variant="secondary" size="sm" icon={<FileText size={16} aria-hidden="true" />} aria-label={`Ver holerite de ${emp.name}`} onClick={() => setSelectedEmployee(emp)}>
+            Ver holerite
+          </Button>
+          <IconButton label={`Baixar PDF do holerite de ${emp.name}`} variant="secondary" size="sm" onClick={() => downloadPdf(emp)} disabled={downloading !== null}>
+            <Download size={16} aria-hidden="true" />
+          </IconButton>
+          <IconButton label={`Lançamentos de ${emp.name}`} variant="secondary" size="sm" onClick={() => setEntriesOf(emp)}>
+            <SlidersHorizontal size={16} aria-hidden="true" />
+          </IconButton>
+        </span>
       ),
     },
   ];
@@ -112,6 +138,17 @@ const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa }) => {
           month={rotuloDaCompetencia(competencia)}
           companyName={empresa.razaoSocial ?? user?.empresaNome}
           cnpj={empresa.cnpj}
+          onDownloadPdf={() => downloadPdf(selectedEmployee)}
+        />
+      )}
+
+      {entriesOf && (
+        <PayrollEntriesModal
+          competencia={competencia}
+          mes={rotuloDaCompetencia(competencia)}
+          employee={payrolls.find((emp) => emp.id === entriesOf.id) ?? entriesOf}
+          locked={locked}
+          onClose={() => setEntriesOf(null)}
         />
       )}
     </>

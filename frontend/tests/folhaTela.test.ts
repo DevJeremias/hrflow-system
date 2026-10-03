@@ -21,7 +21,8 @@ const EMPRESA = { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '112223330001
 const colaborador = (id: number, nome: string, salario: number, inss: number, contrato = 'CLT') => ({
   id: String(id), name: nome, role: 'Analista', department: 'Tecnologia', contract: contrato, baseSalary: salario, totalEarnings: 0,
   totalDeductions: inss, totalGross: salario, netSalary: salario - inss, employerCharges: contrato === 'CLT' ? salario * 0.278 : 0,
-  earningsList: [], deductionsList: inss ? [{ description: 'Desconto INSS', value: inss, isPercentage: false }] : [],
+  inss, irrf: 0, fgts: 0, dependents: 0, bases: null, lancamentos: { adiantamento: 0, valeTransporte: 0, valeRefeicao: 0, planoSaude: 0 },
+  earningsList: [], deductionsList: inss ? [{ description: 'Desconto INSS', value: inss, isPercentage: false, reference: null }] : [], chargesList: [],
 });
 
 const ANA = colaborador(7, 'Ana Souza Ficticia', 2900, 236.69);
@@ -33,7 +34,8 @@ interface FolhaDoServidor {
   processadaEm: string;
   fechadaEm: string | null;
   empresa: typeof EMPRESA;
-  totais: { bruto: number; descontos: number; liquido: number; encargos: number };
+  regimeTributario: string | null;
+  totais: { bruto: number; descontos: number; liquido: number; encargos: number; inss: number; irrf: number; fgts: number };
   itens: ReturnType<typeof colaborador>[];
   pendencias: { funcionarioId: number; nome: string; motivo: string }[];
 }
@@ -65,6 +67,9 @@ const totaisDe = (itens: FolhaDoServidor['itens']) => ({
   descontos: itens.reduce((t, i) => t + i.totalDeductions, 0),
   liquido: itens.reduce((t, i) => t + i.netSalary, 0),
   encargos: itens.reduce((t, i) => t + i.employerCharges, 0),
+  inss: itens.reduce((t, i) => t + i.inss, 0),
+  irrf: itens.reduce((t, i) => t + i.irrf, 0),
+  fgts: itens.reduce((t, i) => t + i.fgts, 0),
 });
 
 before(async () => {
@@ -94,7 +99,7 @@ before(async () => {
     if (acao === 'processar') {
       if (folha?.status === 'fechada') return json(409, { erro: 'A folha está fechada e não pode ser processada de novo.' });
       const itens = [ANA, PAULO];
-      folhas[competencia] = { competencia, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, totais: totaisDe(itens), itens, pendencias: pendenciasDoProcessamento };
+      folhas[competencia] = { competencia, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe(itens), itens, pendencias: pendenciasDoProcessamento };
       return json(folha ? 200 : 201, folhas[competencia]);
     }
     if (acao === 'fechar' && folha) {
@@ -188,7 +193,7 @@ test('competência sem folha: avisa, oferece processar e, ao processar, mostra a
 });
 
 test('o contrato aparece na linha do colaborador e o PJ não tem desconto', async () => {
-  folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, totais: totaisDe([ANA, PAULO]), itens: [ANA, PAULO], pendencias: [] };
+  folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe([ANA, PAULO]), itens: [ANA, PAULO], pendencias: [] };
   const host = await montar(Payroll);
   const linhas = [...host.querySelectorAll('tbody tr')].map((linha) => texto(linha as HTMLElement));
   assert.match(linhas[0], /Ana Souza Ficticia.*Analista · CLT.*R\$ 236,69/);
@@ -196,7 +201,7 @@ test('o contrato aparece na linha do colaborador e o PJ não tem desconto', asyn
 });
 
 test('fechar o mês pede confirmação e só então chama a API; depois a folha fica travada', async () => {
-  folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
+  folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
   const host = await montar(Payroll);
 
   // A confirmação é um diálogo (portal no <body>), não parte da página.
@@ -219,7 +224,7 @@ test('fechar o mês pede confirmação e só então chama a API; depois a folha 
 });
 
 test('folha fechada não oferece processar nem fechar', async () => {
-  folhas[MES] = { competencia: MES, status: 'fechada', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: '2026-10-05T18:30:00.000Z', empresa: EMPRESA, totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
+  folhas[MES] = { competencia: MES, status: 'fechada', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: '2026-10-05T18:30:00.000Z', empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
   const host = await montar(Payroll);
   assert.match(texto(host), /Folha fechada/);
   semBotao(host, /Fechar mês/);
@@ -227,7 +232,7 @@ test('folha fechada não oferece processar nem fechar', async () => {
 });
 
 test('uma recusa da API (empresa sem CNPJ) aparece na tela e a folha continua aberta', async () => {
-  folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: { razaoSocial: null, cnpj: null }, totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
+  folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: { razaoSocial: null, cnpj: null }, regimeTributario: 'Simples Nacional', totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
   const original = globalThis.fetch;
   globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
     if (String(entrada).endsWith('/fechar')) return json(422, { erro: 'Preencha a razão social e o CNPJ da empresa antes de fechar a folha: eles aparecem no holerite.' });
@@ -246,7 +251,7 @@ test('uma recusa da API (empresa sem CNPJ) aparece na tela e a folha continua ab
 
 test('colaboradores sem salário aparecem em pendências, e o aviso de fechamento as cita', async () => {
   folhas[MES] = {
-    competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, totais: totaisDe([ANA]), itens: [ANA],
+    competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe([ANA]), itens: [ANA],
     pendencias: [{ funcionarioId: 9, nome: 'Sem Salario Ficticio', motivo: 'Salário base não informado' }],
   };
   const host = await montar(Payroll);
@@ -260,7 +265,7 @@ test('colaboradores sem salário aparecem em pendências, e o aviso de fechament
 });
 
 test('escolher outra competência busca a folha daquele mês', async () => {
-  folhas['2026-08'] = { competencia: '2026-08', status: 'fechada', processadaEm: '2026-08-02T15:00:00.000Z', fechadaEm: '2026-08-05T18:30:00.000Z', empresa: EMPRESA, totais: totaisDe([PAULO]), itens: [PAULO], pendencias: [] };
+  folhas['2026-08'] = { competencia: '2026-08', status: 'fechada', processadaEm: '2026-08-02T15:00:00.000Z', fechadaEm: '2026-08-05T18:30:00.000Z', empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe([PAULO]), itens: [PAULO], pendencias: [] };
   const host = await montar(Payroll);
   assert.match(texto(host), /ainda não foi processada/);
 
@@ -278,7 +283,7 @@ test('o seletor de competência não deixa escolher um mês que ainda não come�
 });
 
 test('o holerite aberto pelo RH mostra razão social, CNPJ e a competência da folha', async () => {
-  folhas['2026-08'] = { competencia: '2026-08', status: 'fechada', processadaEm: '2026-08-02T15:00:00.000Z', fechadaEm: '2026-08-05T18:30:00.000Z', empresa: EMPRESA, totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
+  folhas['2026-08'] = { competencia: '2026-08', status: 'fechada', processadaEm: '2026-08-02T15:00:00.000Z', fechadaEm: '2026-08-05T18:30:00.000Z', empresa: EMPRESA, regimeTributario: 'Simples Nacional', totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
   const host = await montar(Payroll);
   await digitar(host.querySelector<HTMLInputElement>('input[type="month"]')!, '2026-08');
   await clicar(botao(host.querySelector('tbody tr')!, /Ver holerite/));
