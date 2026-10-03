@@ -1,6 +1,6 @@
 const { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } = require('./comum');
 const { LIMITES } = require('../utils/validacaoAuth');
-const { validarAvatar } = require('../utils/validacaoAvatar');
+const { validarAvatar } = require('../modules/funcionarios/index.ts');
 
 const avatar = campo((valor) => {
     const erro = validarAvatar(valor);

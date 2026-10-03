@@ -48,7 +48,7 @@ describe('referências de cargo e departamento entre empresas', { skip: banco.sk
         const app = express();
         app.use(express.json());
         app.use('/api/estrutura', authMiddleware, require('../routes/estruturaRoutes'));
-        app.use('/api/funcionarios', authMiddleware, require('../routes/funcionarioRoutes'));
+        app.use('/api/funcionarios', authMiddleware, require('../modules/funcionarios/index.ts').funcionariosRoutes);
         server = http.createServer(app);
         await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
         baseUrl = `http://127.0.0.1:${server.address().port}`;

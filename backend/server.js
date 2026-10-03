@@ -8,7 +8,7 @@ const tratarErros = require('./middlewares/tratarErros');
 // Importação das Rotas
 const saudeRoutes = require('./routes/saudeRoutes');
 const authRoutes = require('./routes/authRoutes');
-const funcionarioRoutes = require('./routes/funcionarioRoutes');
+const { funcionariosRoutes } = require('./modules/funcionarios/index.ts');
 const { pontoRoutes } = require('./modules/ponto/index.ts'); 
 const { dashboardRoutes } = require('./modules/dashboard/index.ts');
 const estruturaRoutes = require('./routes/estruturaRoutes');
@@ -37,14 +37,14 @@ app.use('/api', saudeRoutes.criarRouter(db));
 // Autenticação vem antes do parser global: tem corpo pequeno e limite próprio (middlewares/limitesAuth.js)
 app.use('/api/auth', authRoutes);
 
-// O maior corpo legítimo é o avatar em base64: 2 MB de imagem viram cerca de 2,7 MB de texto (utils/validacaoAvatar.js)
+// O maior corpo legítimo é o avatar em base64: 2 MB de imagem viram cerca de 2,7 MB de texto (modules/funcionarios/funcionarios.avatar.ts)
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ limit: '4mb', extended: true }));
 
 // --- DEFINIÇÃO DAS ROTAS ---
 
 // Rotas Protegidas (Exigem Token JWT)
-app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
+app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
 app.use('/api/ponto', authMiddleware, pontoRoutes); 
 app.use('/api/estrutura', authMiddleware, estruturaRoutes); 
 app.use('/api/folha', authMiddleware, folhaRoutes); 

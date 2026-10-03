@@ -59,7 +59,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
             registroPorIp: { windowMs: 60_000, limit: 1000 },
             registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
         }));
-        app.use('/api/funcionarios', authMiddleware, require('../routes/funcionarioRoutes'));
+        app.use('/api/funcionarios', authMiddleware, require('../modules/funcionarios/index.ts').funcionariosRoutes);
         app.use('/api/perfil', authMiddleware, require('../routes/perfilRoutes'));
         server = http.createServer(app);
         await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
