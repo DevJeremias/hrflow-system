@@ -9,6 +9,7 @@ import type { AddressInfo } from 'node:net';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
+import { novoCnpj } from './support/cnpj.ts';
 import { imagemReal } from './support/imagens.ts';
 import pool from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
@@ -48,9 +49,12 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         await banco.encerrar();
     });
 
+    const cnpjDoRegistro = novoCnpj();
+
     it('registra a conta e o administrador consegue entrar', async () => {
         const registro = await chamar('POST', '/api/auth/registrar', null, {
-            nomeEmpresa: 'Empresa Ficticia Limpa', nomeAdmin: 'Admin Ficticio', email: 'admin@limpa.exemplo.invalid', senha: 'senha-ficticia',
+            nomeEmpresa: 'Empresa Ficticia Limpa', cnpj: cnpjDoRegistro, nomeAdmin: 'Admin Ficticio', email: 'admin@limpa.exemplo.invalid',
+            senha: 'senha-ficticia', confirmacaoSenha: 'senha-ficticia',
         });
         assert.equal(registro.status, 201);
         estado.admin = await entrar('admin@limpa.exemplo.invalid', 'senha-ficticia');
@@ -92,8 +96,8 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
     it('cria o colaborador com todos os dados e ele entra com as próprias credenciais', async () => {
         const criado = await chamar('POST', '/api/funcionarios', estado.admin, {
-            nome: 'Colaborador Ficticio', cpf: '000.000.000-99', email: 'colaborador@limpa.exemplo.invalid', telefone: '(00) 00000-0000',
-            data_admissao: '2025-01-06', data_nascimento: '1990-05-17', endereco: 'Rua Inventada, 0',
+            nome: 'Colaborador Ficticio', cpf: '529.982.247-25', email: 'colaborador@limpa.exemplo.invalid', telefone: '(00) 00000-0000',
+            data_admissao: '2025-01-06', data_nascimento: '1990-05-17', logradouro: 'Rua Inventada', numero: '0', cidade: 'Belém', uf: 'PA',
             banco: 'Banco Ficticio', agencia: '0000', conta: '00000-0', tipo_conta: 'Corrente',
             cargo_id: estado.cargo, departamento_id: estado.departamento, tipo_contrato: 'Temporário', salario_base: 4300, senha: 'outra-senha-ficticia',
         });
@@ -170,7 +174,8 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
     it('o administrador completa os dados legais da empresa', async () => {
         const antes = await chamar('GET', '/api/empresa', estado.admin);
         assert.equal(antes.corpo.nome, 'Empresa Ficticia Limpa');
-        assert.equal(antes.corpo.cnpj, null);
+        assert.equal(antes.corpo.cnpj, cnpjDoRegistro, 'o CNPJ do cadastro da conta já está na empresa');
+        assert.equal(antes.corpo.razao_social, null);
 
         const salvo = await chamar('PUT', '/api/empresa', estado.admin, { razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' });
         assert.equal(salvo.status, 200);
@@ -195,7 +200,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
     });
 
     it('edita o colaborador, põe de férias e recusa excluir quem já tem ponto ou holerite; sem movimento a exclusão leva o login junto', async () => {
-        const edicao = await chamar('PUT', `/api/funcionarios/${estado.funcionario}`, estado.admin, {
+        const edicao = await chamar('PATCH', `/api/funcionarios/${estado.funcionario}`, estado.admin, {
             nome: 'Colaborador Ficticio', email: 'colaborador@limpa.exemplo.invalid', cargo_id: estado.cargo,
             departamento_id: estado.departamento, tipo_contrato: 'CLT', salario_base: 4300,
         });
