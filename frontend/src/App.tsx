@@ -28,6 +28,14 @@ const Payslips = lazy(() => import('./pages/Portal/Payslips'));
 const Requests = lazy(() => import('./pages/Portal/Requests'));
 const Profile = lazy(() => import('./pages/Portal/Profile'));
 
+// A sessão é confirmada no servidor antes de decidir entre a tela e o login: sem isto a tela ficaria em branco.
+const SessionLoading = () => (
+  <div role="status" className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" />
+    <p className="text-sm font-bold text-slate-500">Verificando sua sessão...</p>
+  </div>
+);
+
 // `trocaDeSenha` marca a única rota de quem entrou com senha provisória: ela leva todas as outras
 // para si, e quem não tem senha provisória não tem o que fazer nela. `allowedRoles` restringe por
 // perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e holerite próprios) em
@@ -36,7 +44,7 @@ export const ProtectedRoute = ({ children, allowedRoles, personalArea = false, t
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
   const location = useLocation();
 
-  if (loading) return null;
+  if (loading) return <SessionLoading />;
 
   // O servidor não recusou a sessão, só não foi possível confirmá-la: não é motivo para deslogar.
   if (sessionError) {

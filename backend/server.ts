@@ -4,21 +4,52 @@
 import 'dotenv/config';
 import type { AddressInfo } from 'node:net';
 import db from './shared/db/pool.ts';
-import { criarApp } from './app.ts';
+import { lerAmbiente } from './shared/config/ambiente.ts';
+import logger from './shared/observabilidade/logger.ts';
+import { criarEncerramento } from './shared/observabilidade/encerramento.ts';
+import { descarregarSentry, iniciarSentry, registrarNoSentry } from './shared/observabilidade/sentry.ts';
 
-db.query('SELECT 1 + 1 AS result')
-    .then(() => console.log('✅ Banco de Dados: Conexão testada e funcionando!'))
-    .catch((err: Error) => console.error('❌ Erro real na conexão:', err.message));
-
-const servidor = criarApp().listen(process.env.PORT || 3000, () => {
-    console.log(`🚀 Servidor rodando na porta ${(servidor.address() as AddressInfo).port}`);
-});
-
-// O orquestrador (Docker, Portainer) pede o fim com SIGTERM: para de aceitar conexões, solta as
-// ociosas e fecha o pool, em vez de cortar requisições em andamento.
-const encerrar = () => {
-    servidor.close(() => db.end().finally(() => process.exit(0)));
-    servidor.closeIdleConnections();
+// Falha antes de a porta abrir: não há o que encerrar com calma, o processo só sai com o motivo no log.
+const abortar = async (erro: unknown, mensagem: string): Promise<never> => {
+    logger.fatal({ err: erro }, mensagem);
+    registrarNoSentry(erro);
+    await descarregarSentry().catch(() => {});
+    process.exit(1);
 };
-process.once('SIGTERM', encerrar);
-process.once('SIGINT', encerrar);
+
+let encerrar: ReturnType<typeof criarEncerramento> | null = null;
+
+// Depois da partida, uma falha que ninguém tratou deixa o processo em estado desconhecido: o encerramento
+// ordenado deixa as requisições em andamento terminarem e o orquestrador sobe outra instância.
+const falhaInesperada = (mensagem: string) => (erro: unknown) => {
+    logger.fatal({ err: erro }, mensagem);
+    registrarNoSentry(erro);
+    return encerrar ? encerrar('falha inesperada', 1) : abortar(erro, mensagem);
+};
+process.on('unhandledRejection', falhaInesperada('Promise rejeitada sem tratamento'));
+process.on('uncaughtException', falhaInesperada('Exceção sem tratamento'));
+
+try {
+    const { porta, sentryDsn } = lerAmbiente();
+    await iniciarSentry(sentryDsn);
+
+    // O app (e com ele o segredo JWT) só é carregado depois de o ambiente ser conferido.
+    const { criarApp } = await import('./app.ts');
+
+    db.query('SELECT 1 + 1 AS result')
+        .then(() => logger.info('Banco de Dados: Conexão testada e funcionando!'))
+        .catch((err: Error) => logger.error({ err }, 'Banco de dados: a conexão de teste falhou'));
+
+    const server = criarApp().listen(porta, (erro?: Error) => {
+        // Express 5 entrega ao callback o erro de abrir a porta (EADDRINUSE, EACCES).
+        if (erro) return void abortar(erro, `Não foi possível abrir a porta ${porta}`);
+        // PORT=0 deixa o sistema escolher a porta: o log diz qual foi.
+        const { port } = server.address() as AddressInfo;
+        logger.info({ porta: port }, `Servidor rodando na porta ${port}`);
+    });
+
+    encerrar = criarEncerramento({ server, pool: db, logger, aoFinal: descarregarSentry });
+    for (const sinal of ['SIGTERM', 'SIGINT'] as const) process.on(sinal, () => void encerrar?.(sinal));
+} catch (erro) {
+    await abortar(erro, 'A API não pôde subir');
+}

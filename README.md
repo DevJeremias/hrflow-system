@@ -134,6 +134,15 @@ Dois endpoints públicos, sem sessão, para monitor e health check de contêiner
 
 Rota de API inexistente responde `404 {"erro":"Rota não encontrada."}`. As respostas da API são comprimidas (gzip) e não trazem `X-Powered-By`.
 
+### Logs, falhas e encerramento
+
+* **Uma linha JSON por requisição** em stdout, escrita quando a resposta termina: `reqId`, `metodo`, `rota` (o padrão do Express, como `/api/funcionarios/:id`), `status`, `duracaoMs` e, com a sessão aceita, `usuarioId` e `empresaId`. Nunca o corpo, os cabeçalhos, o cookie nem a query string. `LOG_LEVEL` muda o nível (padrão `info`).
+* **`X-Request-Id`**: toda resposta o traz, e é o `reqId` do log. Atrás do Caddy ele é o id que o Caddy gerou (`deploy/Caddyfile`, que também grava `request_id` no log de acesso em JSON), então o mesmo id acompanha a requisição do proxy até o erro.
+* **Falha inesperada** (500, ou 503 por infraestrutura) é registrada com o `reqId` e, se `SENTRY_DSN` estiver definida, enviada ao Sentry sem cookie, cabeçalho, corpo nem usuário. Sem `SENTRY_DSN` o SDK nem é carregado.
+* **Banco fora do ar** (conexão recusada, `connectTimeout` de 5 s, conexão perdida, limite de conexões do servidor) ou **pool cheio** (`DB_CONNECTION_LIMIT` e `DB_QUEUE_LIMIT`, padrão 10 e 50) respondem `503` com `Retry-After`, em vez de `500`.
+* **Encerramento**: `SIGTERM` e `SIGINT` param de aceitar conexões, deixam as requisições em andamento terminarem, fecham o pool e saem; o que passar de 8 s é cortado e o código de saída é 1. Porta ocupada, configuração inválida (`DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PORT`, `PORT`) e promessa rejeitada sem tratamento também terminam o processo com código 1 e a causa no log.
+* **Front-end**: toda chamada tem prazo de 30 s e vira o erro de conexão com "Tentar novamente"; uma tela que falha ao desenhar mostra "Algo deu errado" com botão de recarregar e o menu continua visível.
+
 ### Passo 3: Variáveis de ambiente
 
 ```bash

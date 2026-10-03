@@ -14,6 +14,10 @@ const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 const UNAVAILABLE_STATUSES = [502, 503, 504];
 
 export const NETWORK_ERROR_MESSAGE = 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
+export const TIMEOUT_ERROR_MESSAGE = 'O servidor demorou demais para responder. Tente novamente.';
+
+// Sem resposta nesse prazo a chamada falha, em vez de deixar a tela esperando para sempre.
+export const REQUEST_TIMEOUT_MS = 30000;
 
 const readCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
@@ -61,6 +65,7 @@ export interface HttpRequestOptions extends RequestInit {
   auth?: boolean;
   errorMessage?: ErrorMessage;
   onResponse?: (response: Response) => void;
+  timeoutMs?: number;
 }
 
 export class HttpError extends Error {
@@ -92,7 +97,9 @@ const parseResponse = async (response: Response): Promise<unknown> => {
 };
 
 export const httpClient = async <T = unknown>(path: string, options: HttpRequestOptions = {}): Promise<T> => {
-  const { auth = false, errorMessage, onResponse, headers: optionHeaders, ...requestOptions } = options;
+  const {
+    auth = false, errorMessage, onResponse, timeoutMs = REQUEST_TIMEOUT_MS, headers: optionHeaders, signal: callerSignal, ...requestOptions
+  } = options;
   const headers = new Headers(optionHeaders);
 
   if ((auth || requestOptions.body !== undefined) && !headers.has('Content-Type')) {
@@ -106,19 +113,26 @@ export const httpClient = async <T = unknown>(path: string, options: HttpRequest
 
   const epoch = sessionEpoch;
 
+  const timeout = AbortSignal.timeout(timeoutMs);
+  const signal = callerSignal ? AbortSignal.any([callerSignal, timeout]) : timeout;
+
   let response: Response;
+  let data: Awaited<ReturnType<typeof parseResponse>>;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       credentials: 'same-origin',
       ...requestOptions,
       headers,
+      signal,
     });
+    // O prazo vale também para o corpo: uma resposta que para no meio não pode pendurar a tela.
+    data = await parseResponse(response);
   } catch (error) {
+    if (timeout.aborted && !callerSignal?.aborted) throw new HttpError(TIMEOUT_ERROR_MESSAGE, 0, undefined);
     // fetch só rejeita com TypeError quando não há resposta; um abort do chamador segue como está.
     if (error instanceof TypeError) throw new HttpError(NETWORK_ERROR_MESSAGE, 0, undefined);
     throw error;
   }
-  const data = await parseResponse(response);
 
   if (!response.ok) {
     // Erro sem JSON (página HTML de um proxy, por exemplo) não carrega campos a ler.

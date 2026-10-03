@@ -3,6 +3,9 @@ import compression from 'compression';
 import pool from './shared/db/pool.ts';
 import { interpretarTrustProxy } from './shared/config/trustProxy.ts';
 import tratarErros from './shared/middlewares/tratarErros.ts';
+import appLogger from './shared/observabilidade/logger.ts';
+import type { Logger } from './shared/observabilidade/logger.ts';
+import { criarRegistroDeRequisicoes } from './shared/observabilidade/registroDeRequisicoes.ts';
 
 // Importação das Rotas
 import { criarSaudeRouter } from './modules/saude/index.ts';
@@ -26,11 +29,16 @@ export interface OpcoesDoApp {
     limitesAuth?: Parameters<typeof criarAuthRouter>[0];
     // Mesmo formato de TRUST_PROXY (número de proxies ou sub-redes); sem ele, vale a variável de ambiente.
     trustProxy?: string;
+    // Onde o log por requisição é escrito; os testes passam um logger que guarda as linhas.
+    logger?: Logger;
 }
 
 // Monta o app Express inteiro, sem abrir porta: server.ts o escuta e os testes sobem o mesmo app.
-export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUST_PROXY }: OpcoesDoApp = {}) => {
+export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUST_PROXY, logger = appLogger }: OpcoesDoApp = {}) => {
     const app = express();
+
+    // O primeiro middleware: dá o id à requisição (X-Request-Id) e escreve a linha de log quando a resposta termina.
+    app.use(criarRegistroDeRequisicoes(logger));
 
     // O limitador de tentativas da autenticação usa req.ip. Por padrão nenhum proxy é confiável
     // e X-Forwarded-For é ignorado; atrás de um proxy reverso, defina TRUST_PROXY (ex.: 1).

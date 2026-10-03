@@ -1,11 +1,13 @@
 import React, { Suspense, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import ErrorBoundary from '../components/ErrorBoundary';
 import PaginaCarregando from '../components/PaginaCarregando';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans">
@@ -21,10 +23,13 @@ const Layout: React.FC = () => {
         
         <main className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12">
           <div className="max-w-7xl mx-auto">
-            {/* O menu e o cabeçalho ficam de pé enquanto o código da tela escolhida chega. */}
-            <Suspense fallback={<PaginaCarregando />}>
-              <Outlet />
-            </Suspense>
+            {/* Falha numa tela não leva o menu junto: o limite fica só em volta do conteúdo. O menu e o
+                cabeçalho também ficam de pé enquanto o código da tela escolhida chega. */}
+            <ErrorBoundary resetKey={location.pathname}>
+              <Suspense fallback={<PaginaCarregando />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </main>
         
