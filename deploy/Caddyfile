@@ -1,13 +1,38 @@
-# Proxy reverso de produção: serve o front-end compilado (frontend/dist) e encaminha /api para a API.
-# Front-end e API respondem na mesma origem, por isso a API não habilita CORS (README, "Autenticação").
+# Proxy reverso de produção, dentro da imagem hrflow-web (web.Dockerfile): serve o front-end compilado (/srv)
+# e encaminha /api para a API. Front-end e API respondem na mesma origem, por isso a API não habilita CORS.
 #
-# HRFLOW_SITE         endereço público (ex.: hrflow.exemplo.com.br); sem ele o Caddy atende em localhost
-# HRFLOW_API_UPSTREAM host:porta da API (padrão localhost:3000)
-# HRFLOW_FRONTEND_DIR pasta do build do front-end (padrão /srv/hrflow)
+# SITE_ADDRESS     alias <ip>.sslip.io: só redireciona para PUBLIC_HOSTNAME (mantém o certificado, links antigos seguem)
+# PUBLIC_HOSTNAME  nome definitivo: emite o certificado e serve tudo
+# API_UPSTREAM     host:porta da API (padrão api:3000, o do compose)
 #
-# Na API, defina TRUST_PROXY=1 e NODE_ENV=production (backend/.env.example).
+# Rota nova de primeiro nível no React (frontend/src/App.tsx) não exige mexer aqui: o que não é arquivo e não tem
+# extensão volta o index.html (o roteador do React decide); arquivo inexistente e /api desconhecido dão 404.
+{
+	servers {
+		protocols h1 h2
+	}
+}
 
-{$HRFLOW_SITE:localhost} {
+(cabecalhos_de_seguranca) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "geolocation=(self)"
+		# O front-end é um bundle próprio: nada de script, fonte ou conexão externa. 'unsafe-inline' só em estilo, por causa dos style="" do React; data: e blob: em imagem, por causa do avatar.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+}
+
+{$SITE_ADDRESS} {
+	redir https://{$PUBLIC_HOSTNAME}{uri} 308
+}
+
+{$PUBLIC_HOSTNAME} {
+	encode zstd gzip
+
 	# Uma linha JSON por requisição em stdout, para o Docker recolher junto com o log da API.
 	log {
 		output stdout
@@ -15,20 +40,43 @@
 	}
 
 	# O mesmo id aparece no log do Caddy (request_id), no da API (reqId) e no cabeçalho X-Request-Id da
-	# resposta: com o id que o usuário informa, uma requisição se acompanha de ponta a ponta. Nas rotas da API
-	# o cabeçalho da resposta é o que a própria API devolve, igual ao que recebeu do Caddy.
+	# resposta: com o id que o usuário informa, uma requisição se acompanha de ponta a ponta.
 	log_append request_id {http.request.uuid}
 
-	handle /api/* {
-		reverse_proxy {$HRFLOW_API_UPSTREAM:localhost:3000} {
+	import cabecalhos_de_seguranca
+
+	@api path /api /api/*
+	handle @api {
+		header Cache-Control "no-store"
+		reverse_proxy {$API_UPSTREAM:api:3000} {
 			header_up X-Request-Id {http.request.uuid}
 		}
 	}
 
+	# Nome com hash de conteúdo: nunca muda, o navegador guarda por um ano.
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		root * /srv
+		file_server
+	}
+
 	handle {
 		header X-Request-Id {http.request.uuid}
-		root * {$HRFLOW_FRONTEND_DIR:/srv/hrflow}
-		try_files {path} /index.html
+		root * /srv
+		# index.html e sw.js trocam a cada publicação: o navegador revalida sempre, para não prender versão velha.
+		header Cache-Control "no-cache"
+		@rotaDoReact {
+			not file
+			not path_regexp \.[A-Za-z0-9]+$
+		}
+		rewrite @rotaDoReact /index.html
 		file_server
+	}
+
+	# As respostas de erro seguem uma rota à parte: sem isto saem sem os cabeçalhos de segurança, e um 404 de /assets/ herdaria o "immutable".
+	handle_errors {
+		import cabecalhos_de_seguranca
+		header Cache-Control "no-store"
+		respond "{http.error.status_code} {http.error.status_text}"
 	}
 }

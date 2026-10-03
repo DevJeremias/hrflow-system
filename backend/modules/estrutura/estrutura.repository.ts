@@ -156,3 +156,15 @@ export const cargoDaEmpresa = (executor: Executor, id: number, empresaId: number
 export const departamentoExiste = (id: number, empresaId: number) => departamentoDaEmpresa(db, id, empresaId);
 
 export const cargoExiste = (id: number, empresaId: number) => cargoDaEmpresa(db, id, empresaId);
+
+export interface ReferenciasDaEmpresa {
+    departamentos: { id: number; nome: string; sigla: string }[];
+    cargos: { id: number; nome: string; departamento_id: number | null }[];
+}
+
+// Todos os departamentos e cargos da empresa, para quem precisa resolver nomes em ids (a importação de colaboradores).
+export const referenciasDaEmpresa = async (executor: Executor, empresaId: number): Promise<ReferenciasDaEmpresa> => {
+    const [departamentos] = await executor.query<(RowDataPacket & ReferenciasDaEmpresa['departamentos'][number])[]>('SELECT id, nome, sigla FROM departamentos WHERE empresa_id = ?', [empresaId]);
+    const [cargos] = await executor.query<(RowDataPacket & ReferenciasDaEmpresa['cargos'][number])[]>('SELECT id, nome, departamento_id FROM cargos WHERE empresa_id = ?', [empresaId]);
+    return { departamentos, cargos };
+};

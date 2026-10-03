@@ -5,7 +5,7 @@ import * as service from './funcionarios.service.ts';
 import type { Ator } from './funcionarios.service.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { TipoDeErro } from './funcionarios.erros.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, IdDaRota, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, IdDaRota, IdDoDependente, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -64,6 +64,16 @@ export const atualizarFuncionario = async (req: Request, res: Response) => {
     }
 };
 
+export const importarFuncionarios = async (req: Request, res: Response) => {
+    try {
+        const relatorio = await service.importarFuncionarios(empresaDe(req), entradaDe<string>(req, 'body'));
+        // O relatório leva as senhas provisórias: o navegador não deve guardá-lo.
+        res.set('Cache-Control', 'no-store').json(relatorio);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao importar os colaboradores.');
+    }
+};
+
 export const deletarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
@@ -95,5 +105,44 @@ export const redefinirSenha = async (req: Request, res: Response) => {
         });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao redefinir a senha do colaborador.');
+    }
+};
+
+export const listarDependentes = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        res.json(await service.listarDependentes(empresaDe(req), id));
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao buscar os dependentes.');
+    }
+};
+
+export const criarDependente = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        const dependenteId = await service.criarDependente(empresaDe(req), id, atorDe(req), entradaDe<CorpoDoDependente>(req, 'body'));
+        res.status(201).json({ mensagem: 'Dependente cadastrado com sucesso!', id: dependenteId });
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao cadastrar o dependente.');
+    }
+};
+
+export const atualizarDependente = async (req: Request, res: Response) => {
+    try {
+        const { id, dependenteId } = entradaDe<IdDoDependente>(req, 'params');
+        await service.atualizarDependente(empresaDe(req), id, dependenteId, atorDe(req), entradaDe<CorpoDoDependente>(req, 'body'));
+        res.json({ mensagem: 'Dependente atualizado com sucesso!' });
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao atualizar o dependente.');
+    }
+};
+
+export const excluirDependente = async (req: Request, res: Response) => {
+    try {
+        const { id, dependenteId } = entradaDe<IdDoDependente>(req, 'params');
+        await service.excluirDependente(empresaDe(req), id, dependenteId, atorDe(req));
+        res.json({ mensagem: 'Dependente removido com sucesso!' });
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao remover o dependente.');
     }
 };

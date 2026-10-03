@@ -32,6 +32,16 @@ export const resposta = ({ status = 200, corpo, cabecalhos = {} }: Resposta = {}
 // Troca o fetch global por `rotear`, que recebe cada chamada (caminho sem o prefixo /api) e devolve a
 // resposta; `rotear` pode lançar TypeError para simular rede fora. Devolve as chamadas feitas e a
 // função que restaura o fetch original.
+// O corpo enviado: JSON vira objeto; texto puro (o CSV da importação) chega como está.
+const corpoDe = (corpo: BodyInit | null | undefined): unknown => {
+  if (!corpo) return undefined;
+  try {
+    return JSON.parse(String(corpo));
+  } catch {
+    return String(corpo);
+  }
+};
+
 export const simularApi = (rotear: (chamada: Chamada) => Resposta | Promise<Resposta> | Response | Promise<Response>) => {
   const original = globalThis.fetch;
   const chamadas: Chamada[] = [];
@@ -39,7 +49,7 @@ export const simularApi = (rotear: (chamada: Chamada) => Resposta | Promise<Resp
     const chamada: Chamada = {
       metodo: (init?.method ?? 'GET').toUpperCase(),
       caminho: String(entrada).replace(/^\/api/, ''),
-      corpo: init?.body ? JSON.parse(String(init.body)) : undefined,
+      corpo: corpoDe(init?.body),
     };
     chamadas.push(chamada);
     const saida = await rotear(chamada);

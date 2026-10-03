@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Briefcase, CreditCard } from 'lucide-react';
-import { Employee, EmployeeForm } from '../../services/employeeService';
+import { User, FileText, Briefcase, CreditCard, Users } from 'lucide-react';
+import { Employee, EmployeeForm, formularioDe } from '../../services/employeeService';
 import { useCargos, useDepartamentos } from '../../queries/estrutura';
 import { HttpError } from '../../services/httpClient';
-import { PersonalTab, WorkTab, FinancialTab } from './EmployeeModalTabs';
+import { PersonalTab, DocumentsTab, WorkTab, FinancialTab } from './EmployeeModalTabs';
+import DependentsTab from './DependentsTab';
 import ErrorAlert from '../ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { MASCARAS_DO_COLABORADOR } from '../../utils/mascaras';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Tabs, { TabPanel, type TabItem } from '../ui/Tabs';
@@ -18,20 +20,18 @@ interface Props {
   employeeToEdit?: Employee | null;
 }
 
-type Tab = 'personal' | 'work' | 'financial';
+type Tab = 'personal' | 'documents' | 'work' | 'financial' | 'dependents';
 
 const initialState: EmployeeForm = {
-  nomeCompleto: '', emailPessoal: '', telefone: '', cpf: '', dataNascimento: '', enderecoCompleto: '', senhaAcesso: '',
+  nomeCompleto: '', emailPessoal: '', telefone: '', dataNascimento: '', senhaAcesso: '',
+  cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '',
+  contatoEmergenciaNome: '', contatoEmergenciaTelefone: '', contatoEmergenciaParentesco: '',
+  cpf: '', rg: '', pis: '', ctps: '',
   matricula: '', cargo: '', cargoId: '', nivel: '', departamento: '', departamentoId: '', dataAdmissao: '', tipoContrato: 'CLT', salarioBase: '', status: 'Ativo',
   banco: '', agencia: '', conta: '', tipoConta: ''
 };
 
-// O formulário só guarda texto: o que a tela de colaboradores sabe do cadastro e não se edita aqui
-// (perfil do acesso, se há movimento) fica de fora.
-const formFrom = (employee: Employee): EmployeeForm => ({
-  ...initialState,
-  ...Object.fromEntries(Object.entries(employee).filter(([, value]) => typeof value === 'string' || typeof value === 'number')),
-}) as EmployeeForm;
+const formFrom = (employee: Employee): EmployeeForm => ({ ...initialState, ...formularioDe(employee) });
 
 // Campo da API (detalhes[].campo) -> aba e campo do formulário onde o RH corrige o valor.
 const CAMPOS_DA_API: Record<string, { tab: Tab; field: string }> = {
@@ -39,9 +39,22 @@ const CAMPOS_DA_API: Record<string, { tab: Tab; field: string }> = {
   email: { tab: 'personal', field: 'emailPessoal' },
   senha: { tab: 'personal', field: 'senhaAcesso' },
   telefone: { tab: 'personal', field: 'telefone' },
-  cpf: { tab: 'personal', field: 'cpf' },
   data_nascimento: { tab: 'personal', field: 'dataNascimento' },
-  endereco: { tab: 'personal', field: 'enderecoCompleto' },
+  cep: { tab: 'personal', field: 'cep' },
+  logradouro: { tab: 'personal', field: 'logradouro' },
+  numero: { tab: 'personal', field: 'numero' },
+  complemento: { tab: 'personal', field: 'complemento' },
+  bairro: { tab: 'personal', field: 'bairro' },
+  cidade: { tab: 'personal', field: 'cidade' },
+  uf: { tab: 'personal', field: 'uf' },
+  contato_emergencia_nome: { tab: 'personal', field: 'contatoEmergenciaNome' },
+  contato_emergencia_telefone: { tab: 'personal', field: 'contatoEmergenciaTelefone' },
+  contato_emergencia_parentesco: { tab: 'personal', field: 'contatoEmergenciaParentesco' },
+  cpf: { tab: 'documents', field: 'cpf' },
+  rg: { tab: 'documents', field: 'rg' },
+  pis: { tab: 'documents', field: 'pis' },
+  ctps: { tab: 'documents', field: 'ctps' },
+  matricula: { tab: 'work', field: 'matricula' },
   data_admissao: { tab: 'work', field: 'dataAdmissao' },
   data_desligamento: { tab: 'work', field: 'dataDesligamento' },
   motivo_desligamento: { tab: 'work', field: 'motivoDesligamento' },
@@ -68,8 +81,10 @@ const CONFIRMACAO_DESCARTE = 'Há dados digitados que ainda não foram salvos. D
 
 const ABAS: readonly TabItem<Tab>[] = [
   { id: 'personal', label: 'Pessoal', icon: <User size={18} /> },
+  { id: 'documents', label: 'Documentos', icon: <FileText size={18} /> },
   { id: 'work', label: 'Contrato', icon: <Briefcase size={18} /> },
   { id: 'financial', label: 'Financeiro', icon: <CreditCard size={18} /> },
+  { id: 'dependents', label: 'Dependentes', icon: <Users size={18} /> },
 ];
 
 const ID_DAS_ABAS = 'colaborador';
@@ -108,7 +123,8 @@ const EmployeeModalContent: React.FC<ContentProps> = ({ onClose, onSave, employe
   const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialForm);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    const value = MASCARAS_DO_COLABORADOR[name]?.(e.target.value) ?? e.target.value;
     const updatedData = { ...formData, [name]: value };
     filledByRole.current.delete(name);
 
@@ -194,8 +210,10 @@ const EmployeeModalContent: React.FC<ContentProps> = ({ onClose, onSave, employe
         {listError && <ErrorAlert message={listError} />}
         <TabPanel idPrefix={ID_DAS_ABAS} id={activeTab}>
           {activeTab === 'personal' && <PersonalTab formData={formData} handleChange={handleChange} />}
+          {activeTab === 'documents' && <DocumentsTab formData={formData} handleChange={handleChange} />}
           {activeTab === 'work' && <WorkTab formData={formData} handleChange={handleChange} cargos={cargosList} departamentos={departamentosList} />}
           {activeTab === 'financial' && <FinancialTab formData={formData} handleChange={handleChange} />}
+          {activeTab === 'dependents' && <DependentsTab employeeId={employeeToEdit?.id} />}
         </TabPanel>
       </div>
     </Modal>

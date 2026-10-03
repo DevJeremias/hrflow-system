@@ -4,15 +4,18 @@ import { SendHorizontal, ShieldCheck, Zap, Sparkles } from "lucide-react";
 import httpClient from '../../services/httpClient';
 import Button from '../../components/ui/Button';
 import Field, { Input } from '../../components/ui/Field';
+import { mascaraCnpj } from '../../utils/mascaras';
 
 export default function Contact() {
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     nomeEmpresa: '',
+    cnpj: '',
     nomeAdmin: '',
     email: '',
-    senha: ''
+    senha: '',
+    confirmacaoSenha: ''
   });
   
   const [erro, setErro] = useState('');
@@ -20,11 +23,16 @@ export default function Contact() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: name === 'cnpj' ? mascaraCnpj(value) : value });
   };
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErro('');
+    if (formData.senha !== formData.confirmacaoSenha) {
+      setErro('A confirmação da senha não confere.');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -96,11 +104,17 @@ export default function Contact() {
                 <Field label="Nome da empresa" name="nomeEmpresa" required>
                   <Input type="text" autoComplete="organization" value={formData.nomeEmpresa} onChange={handleChange} placeholder="Sua empresa" />
                 </Field>
+                <Field label="CNPJ da empresa" name="cnpj" required>
+                  <Input type="text" inputMode="numeric" autoComplete="off" value={formData.cnpj} onChange={handleChange} placeholder="00.000.000/0000-00" />
+                </Field>
                 <Field label="E-mail corporativo" name="email" required>
                   <Input type="email" autoComplete="email" value={formData.email} onChange={handleChange} placeholder="email@empresa.com" />
                 </Field>
                 <Field label="Senha de acesso" name="senha" required>
                   <Input type="password" autoComplete="new-password" value={formData.senha} onChange={handleChange} placeholder="••••••••" />
+                </Field>
+                <Field label="Confirme a senha" name="confirmacaoSenha" required>
+                  <Input type="password" autoComplete="new-password" value={formData.confirmacaoSenha} onChange={handleChange} placeholder="••••••••" />
                 </Field>
 
                 <div className="pt-4 flex flex-col gap-4">

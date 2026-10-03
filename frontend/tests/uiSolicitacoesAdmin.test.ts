@@ -67,7 +67,8 @@ const abrir = async (itens: unknown[] = [solicitacao(11, 'Ana'), solicitacao(12,
   totalDaFila = total;
   respostaDaDecisao = () => json(solicitacao(11, 'Ana', { status: 'Aprovada' }));
   const host = await montar(comConsulta(createElement(UiProviders, null, createElement(Requests))));
-  await esperar(30);
+  // A fila e o saldo chegam em duas consultas: com a máquina carregada 30 ms não bastam.
+  await esperar(100);
   return host;
 };
 

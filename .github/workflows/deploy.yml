@@ -1,0 +1,68 @@
+name: Deploy
+
+# Publicar é mesclar na main. A máquina de produção não recebe comando daqui: o timer hrflow-deploy.timer dela vê o
+# CI verde na main, compila as imagens naquele SHA, faz dump, migra, sobe e confere /api/ready (deploy/auto-deploy.sh);
+# se não ficar saudável, volta à versão anterior. Este workflow só acompanha: com o CI verde, espera
+# https://hrflow.calliari.dev dizer que roda o SHA mesclado e falha, de forma visível, se isso não acontecer no prazo
+# ou se /api/ready não responder 200 em 60 s. A conta AWS da organização bloqueia provedor OIDC por SCP, por isso não
+# há role nem secret aqui, e nenhuma imagem é publicada em registro: o pacote do GHCR ficaria na conta do dono.
+#
+# workflow_dispatch só refaz a espera por um SHA da main (padrão: a cabeça dela). Passos e rollback: docs/runbook.md.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: SHA completo na main, ou vazio para a cabeça atual da main
+        required: false
+
+permissions:
+  contents: read
+
+# Uma espera por vez, e nunca cortar uma em andamento.
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+env:
+  SHA: ${{ github.event.workflow_run.head_sha || inputs.sha || github.sha }}
+  URL_PUBLICA: https://hrflow.calliari.dev
+
+jobs:
+  publicado:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # A máquina olha o GitHub a cada 2 minutos; compilar as imagens na t4g.micro, migrar e subir leva mais alguns.
+      # 30 minutos é folga.
+      - name: Espera a produção rodar este SHA
+        run: |
+          fim=$((SECONDS + 1800))
+          versao=
+          while [ "$SECONDS" -lt "$fim" ]; do
+            versao="$(curl -fsS --max-time 10 "$URL_PUBLICA/api/health" 2>/dev/null | jq -r '.versao // empty' || true)"
+            [ "$versao" = "$SHA" ] && break
+            echo "no ar: ${versao:-sem resposta} (esperado ${SHA:0:12})"
+            sleep 15
+          done
+          if [ "$versao" != "$SHA" ]; then
+            echo "::error::$URL_PUBLICA não passou a rodar ${SHA:0:12} em 30 minutos (no ar: ${versao:-sem resposta}). Se a versão no ar é a anterior, a máquina recusou ou desfez a publicação (build, migração ou saúde): veja 'journalctl -u hrflow-deploy.service' na máquina (runbook, Incidente)."
+            exit 1
+          fi
+
+      - name: Teste de fumaça em /api/ready
+        run: |
+          fim=$((SECONDS + 60))
+          until curl -fsS --max-time 5 -o /dev/null -w 'ready: %{http_code}\n' "$URL_PUBLICA/api/ready"; do
+            if [ "$SECONDS" -ge "$fim" ]; then
+              echo "::error::$URL_PUBLICA/api/ready não respondeu 200 em 60 s"
+              exit 1
+            fi
+            sleep 3
+          done

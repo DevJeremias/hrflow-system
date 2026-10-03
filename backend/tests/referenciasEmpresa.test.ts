@@ -197,8 +197,8 @@ describe('referências de cargo e departamento entre empresas', { skip: banco.sk
             );
             const corpo = { nome: 'Pessoa Ficticia Edicao', email: 'pessoa.edicao@exemplo.invalid' };
 
-            const cargo = await chamar('PUT', `/api/funcionarios/${id}`, empresaA, { ...corpo, cargo_id: cargoB, departamento_id: deptoA });
-            const depto = await chamar('PUT', `/api/funcionarios/${id}`, empresaA, { ...corpo, cargo_id: cargoA, departamento_id: deptoB });
+            const cargo = await chamar('PATCH', `/api/funcionarios/${id}`, empresaA, { ...corpo, cargo_id: cargoB, departamento_id: deptoA });
+            const depto = await chamar('PATCH', `/api/funcionarios/${id}`, empresaA, { ...corpo, cargo_id: cargoA, departamento_id: deptoB });
             assert.equal(cargo.status, 400);
             assert.equal(depto.status, 400);
 

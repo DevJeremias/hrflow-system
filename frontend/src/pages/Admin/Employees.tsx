@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
+import { FileUp, KeyRound, Lock, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
 import { Employee, EmployeeForm } from '../../services/employeeService';
 import { useFuncionarios, useInvalidarPorColaboradores, useSalvarColaborador } from '../../queries/funcionarios';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
+import ImportEmployeesModal from '../../components/Admin/ImportEmployeesModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageHeader from '../../components/ui/PageHeader';
 import Button, { IconButton } from '../../components/ui/Button';
@@ -46,6 +47,7 @@ const Employees: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const [lifecycleAction, setLifecycleAction] = useState<LifecycleAction | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // A busca vai ao servidor depois de uma pausa na digitação: encontra qualquer colaborador da
   // empresa, não só os da página aberta.
@@ -72,7 +74,7 @@ const Employees: React.FC = () => {
   const loading = isPending;
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
-  // Os dados vão por PUT; a situação (Férias, Inativo com data e motivo) só muda por PATCH.
+  // Os dados vão por PATCH, só o que mudou; a situação (Férias, Inativo com data e motivo) vai por PATCH /:id/status.
   const handleSave = async (employeeData: EmployeeForm) => {
     await salvar.mutateAsync({ dados: employeeData, original: employeeToEdit });
     setIsModalOpen(false);
@@ -174,13 +176,20 @@ const Employees: React.FC = () => {
         />
       )}
 
+      {isImportOpen && <ImportEmployeesModal onClose={() => setIsImportOpen(false)} />}
+
       <PageHeader
         title="Colaboradores"
         description="Gerencie as informações dos funcionários da empresa."
         actions={(
-          <Button size="lg" icon={<Plus size={20} aria-hidden="true" />} onClick={() => { setEmployeeToEdit(null); setIsModalOpen(true); }}>
-            Adicionar Colaborador
-          </Button>
+          <>
+            <Button size="lg" variant="secondary" icon={<FileUp size={20} aria-hidden="true" />} onClick={() => setIsImportOpen(true)}>
+              Importar CSV
+            </Button>
+            <Button size="lg" icon={<Plus size={20} aria-hidden="true" />} onClick={() => { setEmployeeToEdit(null); setIsModalOpen(true); }}>
+              Adicionar Colaborador
+            </Button>
+          </>
         )}
       />
 

@@ -9,6 +9,7 @@ import { emitirToken } from './auth.sessao.ts';
 const CUSTO_DO_HASH = 10;
 
 const EMAIL_JA_CADASTRADO = 'E-mail já cadastrado.';
+const CNPJ_JA_CADASTRADO = 'Este CNPJ já está cadastrado em outra empresa.';
 
 export interface LoginFeito {
     // Só viaja em cookie HttpOnly: não entra no corpo da resposta nem chega ao JavaScript.
@@ -32,16 +33,17 @@ export interface IdentidadeDoUsuario {
 }
 
 // Cria a empresa e o usuário administrador ao mesmo tempo.
-export const registrarConta = async ({ nomeEmpresa, nomeAdmin, email, senha }: DadosDeRegistro): Promise<void> => {
+export const registrarConta = async ({ nomeEmpresa, cnpj, nomeAdmin, email, senha }: DadosDeRegistro): Promise<void> => {
     // Evita o custo do hash quando o e-mail já existe. A corrida entre dois cadastros
     // iguais é resolvida pela chave única de usuarios.email, dentro da transação.
     if (await repositorio.emailJaCadastrado(email)) throw new ErroDeAuth('conflito', EMAIL_JA_CADASTRADO);
 
     const senhaCripto = await bcrypt.hash(senha, CUSTO_DO_HASH);
     try {
-        await repositorio.criarEmpresaComAdministrador({ nomeEmpresa, nomeAdmin, email, senhaCripto });
+        await repositorio.criarEmpresaComAdministrador({ nomeEmpresa, cnpj, nomeAdmin, email, senhaCripto });
     } catch (erro) {
-        if ((erro as { code?: string }).code === 'ER_DUP_ENTRY') throw new ErroDeAuth('conflito', EMAIL_JA_CADASTRADO);
+        const { code, sqlMessage } = erro as { code?: string; sqlMessage?: string };
+        if (code === 'ER_DUP_ENTRY') throw new ErroDeAuth('conflito', sqlMessage?.includes('uq_empresas_cnpj') ? CNPJ_JA_CADASTRADO : EMAIL_JA_CADASTRADO);
         throw erro;
     }
 };
