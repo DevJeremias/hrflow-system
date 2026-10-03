@@ -84,7 +84,7 @@ test('mostra erro de carregamento e oferece nova tentativa', async () => {
   const { host, root } = await renderScreen();
   await assentar();
   assert.match(host.textContent ?? '', /Erro ao buscar os registros de ponto/);
-  const retry = host.querySelector('button');
+  const retry = [...host.querySelectorAll('button')].find((botao) => botao.textContent === 'Tentar novamente');
   assert.ok(retry, 'a tela deve permitir nova tentativa');
   globalThis.fetch = (async () => new Response('[]', { status: 200, headers: { 'X-Total-Count': '0' } })) as typeof fetch;
   await act(async () => { retry.click(); });

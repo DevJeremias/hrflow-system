@@ -89,8 +89,7 @@ const EmployeeDashboard: React.FC = () => {
           month={historyMonth} 
           setMonth={setHistoryMonth} 
           historyData={historico.data ?? SEM_REGISTROS} 
-          weeklyData={totais.data?.totals ?? SEM_REGISTROS}
-          monthlySummary={totais.data?.monthlySummary ?? null}
+          monthTotals={totais.data ?? null}
           onSaveNote={handleSaveNote} 
         />
       </div>

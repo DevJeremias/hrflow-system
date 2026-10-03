@@ -203,7 +203,13 @@ export interface CorpoDeRegistroApi {
   longitude?: number;
 }
 
-// Cada item de GET /api/ponto/historico/:funcionarioId?mes=.
+export type StatusDoDiaApi = 'ok' | 'atraso' | 'incompleto' | 'falta' | 'justificado' | 'fim_de_semana';
+
+export type StatusDaJustificativaApi = 'pendente' | 'aprovada' | 'recusada';
+
+// Cada item de GET /api/ponto/historico/:funcionarioId?mes=. `open` marca o dia ainda sem apuração
+// (futuro, hoje sem saída ou antes da admissão); `delay` e os ajustes são 'HH:MM'; `note*` é a
+// justificativa do colaborador e o que o RH decidiu sobre ela.
 export interface DiaDoHistoricoApi {
   id: string;
   date: string;
@@ -212,31 +218,43 @@ export interface DiaDoHistoricoApi {
   lunchIn: string;
   exit: string;
   totalHours: string;
-  status: 'OK' | 'Atraso' | 'Falta' | 'Incompleto';
+  status: StatusDoDiaApi;
+  open: boolean;
+  delay: string;
   note: string;
+  noteStatus: StatusDaJustificativaApi | null;
+  noteReply: string | null;
   negativeAdjust: string;
   positiveAdjust: string;
 }
 
-export interface TotalSemanalApi {
-  id: string;
-  weekLabel: string;
+export interface TotaisDoPeriodoApi {
   workloadLimit: string;
-  workloadPreset: string;
   workloadDone: string;
-  presenceTime: string;
   pendingTime: string;
   excessTime: string;
-  hoursBank: string;
-  dailyAdjustBalance: string;
+  delayTime: string;
+  absences: number;
+  incompleteDays: number;
 }
 
-export type ResumoMensalApi = Omit<TotalSemanalApi, 'id' | 'weekLabel'>;
+export interface TotalSemanalApi extends TotaisDoPeriodoApi {
+  id: string;
+  weekLabel: string;
+}
+
+export interface JornadaApi {
+  weeklyHours: number;
+  entry: string;
+  exit: string;
+  toleranceMinutes: number;
+}
 
 // GET /api/ponto/totais/:funcionarioId?mes=
 export interface TotaisDePontoApi {
+  workSchedule: JornadaApi;
   totals: TotalSemanalApi[];
-  monthlySummary: ResumoMensalApi;
+  monthlySummary: TotaisDoPeriodoApi;
 }
 
 // Cada item de GET /api/ponto?mes=&busca=&pagina=&limite= (o total vem em X-Total-Count).
@@ -247,6 +265,27 @@ export interface PontoDaEmpresaApi {
   nome_funcionario: string;
   date: string;
   time: string;
+}
+
+// Cada item de GET /api/ponto/justificativas?mes=&status= e a resposta de PATCH /api/ponto/justificativas/:id.
+export interface JustificativaApi {
+  id: number;
+  funcionario_id: number;
+  nome_funcionario: string;
+  date: string;
+  note: string;
+  status: StatusDaJustificativaApi;
+  reply: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Corpo de PATCH /api/ponto/justificativas/:id. A recusa exige o motivo.
+export interface DecisaoDeJustificativaApi {
+  status: 'aprovada' | 'recusada';
+  resposta?: string;
 }
 
 // --- Perfil ----------------------------------------------------------------------------------

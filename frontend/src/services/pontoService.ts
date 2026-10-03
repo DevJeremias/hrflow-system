@@ -1,11 +1,14 @@
 import httpClient from './httpClient';
 import type {
-  CorpoDeRegistroApi, DiaDoHistoricoApi, PontoDaEmpresaApi, RegistroDePontoApi, TotaisDePontoApi, TotalSemanalApi,
+  CorpoDeRegistroApi, DecisaoDeJustificativaApi, DiaDoHistoricoApi, JornadaApi, JustificativaApi, PontoDaEmpresaApi,
+  RegistroDePontoApi, StatusDaJustificativaApi, StatusDoDiaApi, TotaisDePontoApi, TotaisDoPeriodoApi, TotalSemanalApi,
 } from '../types/api';
 
 // src/services/pontoService.ts
 
 export type PointRecord = RegistroDePontoApi;
+export type DayStatus = StatusDoDiaApi;
+export type JustificationStatus = StatusDaJustificativaApi;
 export type HistoryDay = DiaDoHistoricoApi;
 export type CompanyPointRecord = PontoDaEmpresaApi;
 
@@ -21,8 +24,12 @@ export interface CompanyPointPage {
   total: number;
 }
 
+export type PeriodTotals = TotaisDoPeriodoApi;
 export type WeeklyTotal = TotalSemanalApi;
-export type MonthlyTotals = TotaisDePontoApi;
+export type WorkSchedule = JornadaApi;
+export type MonthTotals = TotaisDePontoApi;
+export type Justification = JustificativaApi;
+export type JustificationDecision = DecisaoDeJustificativaApi;
 
 // A rota correta (no singular) do seu Back-end
 const API_URL = '/ponto'; 
@@ -62,7 +69,9 @@ export const pontoService = {
   },
 
   getHistoricoMes: async (funcionarioId: number, month: string): Promise<HistoryDay[]> => {
-    return await httpClient<HistoryDay[]>(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar o histórico do mês' });
+    const data = await httpClient<HistoryDay[]>(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar o histórico do mês' });
+    if (!Array.isArray(data)) throw new Error('Resposta inválida ao buscar o histórico do mês');
+    return data;
   },
 
   // Resolve só depois que o servidor confirma a gravação; qualquer falha propaga como HttpError.
@@ -74,7 +83,27 @@ export const pontoService = {
     });
   },
 
-  getTotaisSemanais: async (funcionarioId: number, month: string): Promise<MonthlyTotals> => {
-    return await httpClient<MonthlyTotals>(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar os totais do mês' });
+  getTotaisDoMes: async (funcionarioId: number, month: string): Promise<MonthTotals> => {
+    const data = await httpClient<MonthTotals>(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar os totais do mês' });
+    if (!Array.isArray(data?.totals) || !data.monthlySummary || !data.workSchedule) throw new Error('Resposta inválida ao buscar os totais do mês');
+    return data;
+  },
+
+  // Justificativas do mês de todos os colaboradores da empresa, só do `status` pedido quando houver.
+  getJustificativas: async (mes: string, status?: JustificationStatus): Promise<Justification[]> => {
+    const params = new URLSearchParams({ mes });
+    if (status) params.set('status', status);
+    const data = await httpClient<Justification[]>(`${API_URL}/justificativas?${params}`, { auth: true, errorMessage: 'Erro ao buscar as justificativas' });
+    if (!Array.isArray(data)) throw new Error('Resposta inválida ao buscar as justificativas');
+    return data;
+  },
+
+  // Resolve com a justificativa já decidida; a recusa precisa do motivo (o servidor recusa sem ele).
+  decidirJustificativa: async (id: number, decisao: JustificationDecision): Promise<Justification> => {
+    return await httpClient<Justification>(`${API_URL}/justificativas/${id}`, {
+      method: 'PATCH',
+      auth: true,
+      body: JSON.stringify(decisao)
+    });
   }
 };

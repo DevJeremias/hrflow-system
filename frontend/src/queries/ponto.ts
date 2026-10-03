@@ -24,7 +24,7 @@ export const useHistoricoDoMes = (funcionarioId: number | null, mes: string) => 
 
 export const useTotaisDoMes = (funcionarioId: number | null, mes: string) => useQuery({
   queryKey: chaves.totaisDoMes(funcionarioId ?? 0, mes),
-  queryFn: () => pontoService.getTotaisSemanais(funcionarioId as number, mes),
+  queryFn: () => pontoService.getTotaisDoMes(funcionarioId as number, mes),
   enabled: funcionarioId !== null,
   placeholderData: keepPreviousData,
 });
@@ -46,10 +46,11 @@ export const useSalvarJustificativa = (funcionarioId: number | null, mes: string
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ data, texto }: { data: string; texto: string }) => pontoService.salvarJustificativa(data, texto),
-    // A lista só muda depois que o servidor confirma a gravação.
+    // A lista só muda depois que o servidor confirma a gravação. Enviada ou reenviada, a justificativa
+    // volta a ficar pendente para o RH.
     onSuccess: (_, { data, texto }) => {
       queryClient.setQueryData<HistoryDay[]>(chaves.historicoDoMes(funcionarioId ?? 0, mes), (dias) =>
-        dias?.map((dia) => (dia.id === data ? { ...dia, note: texto.trim() } : dia)));
+        dias?.map((dia) => (dia.id === data ? { ...dia, note: texto.trim(), noteStatus: 'pendente', noteReply: null } : dia)));
     },
   });
 };
