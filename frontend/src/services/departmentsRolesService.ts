@@ -17,9 +17,9 @@ export interface Role {
   id: string;
   title: string;
   department: string;
-  deptSigla: string;
-  level: string;
-  salary: number;
+  departmentId: string;
+  level: string | null;
+  salary: number | null;
   occupants: number;
   earnings?: any[];
   deductions?: any[];
@@ -35,9 +35,9 @@ export const getDepartments = async (): Promise<Department[]> => {
     sigla: d.sigla,
     description: d.descricao || '',
     manager: d.gestor || 'Não definido',
-    collaborators: 0,
-    active: 0,
-    rolesCount: 0
+    collaborators: Number(d.total_colaboradores) || 0,
+    active: Number(d.colaboradores_ativos) || 0,
+    rolesCount: Number(d.total_cargos) || 0
   }));
 };
 
@@ -74,10 +74,11 @@ export const getRoles = async (): Promise<Role[]> => {
     id: c.id.toString(),
     title: c.nome,
     department: c.departamento_nome,
-    deptSigla: c.departamento_nome,
-    level: c.nivel || 'Júnior',
-    salary: parseFloat(c.salario_base) || 0,
-    occupants: 0
+    departmentId: c.departamento_id?.toString() ?? '',
+    level: c.nivel || null,
+    // A API grava 0.00 quando o cargo nasce sem salário: zero e ausente significam o mesmo.
+    salary: parseFloat(c.salario_base) || null,
+    occupants: Number(c.ocupantes) || 0
   }));
 };
 

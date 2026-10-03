@@ -10,10 +10,19 @@ const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
 exports.listarDepartamentos = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;
-        const [rows] = await db.query(
-            'SELECT * FROM departamentos WHERE empresa_id = ? ORDER BY id LIMIT ? OFFSET ?',
-            [empresa_id, ...limiteEDeslocamento(req.dadosValidados.query)]
-        );
+        const sql = `
+            SELECT d.*,
+                   COUNT(f.id) AS total_colaboradores,
+                   COUNT(CASE WHEN f.status = 'Ativo' THEN 1 END) AS colaboradores_ativos,
+                   (SELECT COUNT(*) FROM cargos c WHERE c.departamento_id = d.id AND c.empresa_id = d.empresa_id) AS total_cargos
+            FROM departamentos d
+            LEFT JOIN funcionarios f ON f.departamento_id = d.id AND f.empresa_id = d.empresa_id
+            WHERE d.empresa_id = ?
+            GROUP BY d.id
+            ORDER BY d.id
+            LIMIT ? OFFSET ?
+        `;
+        const [rows] = await db.query(sql, [empresa_id, ...limiteEDeslocamento(req.dadosValidados.query)]);
         const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM departamentos WHERE empresa_id = ?', [empresa_id]);
         enviarPagina(res, rows, total);
     } catch (error) {
@@ -59,7 +68,10 @@ exports.deletarDepartamento = async (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     try {
-        const [cargos] = await db.query('SELECT id FROM cargos WHERE departamento_id = ?', [id]);
+        const [[departamento]] = await db.query('SELECT id FROM departamentos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        if (!departamento) return res.status(404).json({ erro: "Departamento não encontrado." });
+
+        const [cargos] = await db.query('SELECT id FROM cargos WHERE departamento_id = ? AND empresa_id = ?', [id, empresa_id]);
         if (cargos.length > 0) {
             return res.status(400).json({ erro: "Não é possível excluir um departamento que possui cargos associados." });
         }
@@ -81,10 +93,13 @@ exports.listarCargos = async (req, res) => {
     try {
         const empresa_id = req.usuario.empresa_id;
         const sql = `
-            SELECT c.*, d.nome as departamento_nome 
+            SELECT c.*, d.nome as departamento_nome, d.sigla as departamento_sigla,
+                   COUNT(f.id) AS ocupantes
             FROM cargos c
             LEFT JOIN departamentos d ON c.departamento_id = d.id AND d.empresa_id = c.empresa_id
+            LEFT JOIN funcionarios f ON f.cargo_id = c.id AND f.empresa_id = c.empresa_id AND f.status = 'Ativo'
             WHERE c.empresa_id = ?
+            GROUP BY c.id, d.nome, d.sigla
             ORDER BY c.id
             LIMIT ? OFFSET ?
         `;
@@ -138,7 +153,10 @@ exports.deletarCargo = async (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     try {
-        const [funcs] = await db.query('SELECT id FROM funcionarios WHERE cargo_id = ? AND status = "Ativo"', [id]);
+        const [[cargo]] = await db.query('SELECT id FROM cargos WHERE id = ? AND empresa_id = ?', [id, empresa_id]);
+        if (!cargo) return res.status(404).json({ erro: "Cargo não encontrado." });
+
+        const [funcs] = await db.query('SELECT id FROM funcionarios WHERE cargo_id = ? AND empresa_id = ? AND status = "Ativo"', [id, empresa_id]);
         if (funcs.length > 0) {
             return res.status(400).json({ erro: "Não é possível remover este cargo porque existem colaboradores ativos alocados nele." });
         }
