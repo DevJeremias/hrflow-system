@@ -127,6 +127,18 @@ test('login de colaborador leva ao painel do colaborador', async () => {
   await waitFor(() => assert.equal(estado().rota, '/meu-painel'));
 });
 
+test('login com senha provisória leva à troca de senha, não ao painel', async () => {
+  montar(({ caminho, metodo }) => {
+    if (metodo === 'POST') return { corpo: {} };
+    if (caminho === '/auth/sessao') return { corpo: sessao('Colaborador', { senha_provisoria: true }) };
+    return { status: 404 };
+  }, { comCookie: false });
+
+  await userEvent.setup().click(screen.getByRole('button', { name: 'entrar' }));
+  await waitFor(() => assert.equal(estado().rota, '/trocar-senha'));
+  assert.equal(estado().perfil, 'Colaborador');
+});
+
 test('login recusado mostra a mensagem do servidor e não autentica', async () => {
   montar(({ metodo }) => (metodo === 'POST'
     ? { status: 401, corpo: { erro: 'E-mail ou senha incorretos.' } }

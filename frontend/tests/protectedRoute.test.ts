@@ -13,7 +13,7 @@ import type { ViteDevServer } from 'vite';
 type Perfil = 'Administrador' | 'RH' | 'Colaborador';
 
 let server: ViteDevServer;
-let ProtectedRoute: ComponentType<{ children: ReactNode; allowedRoles?: readonly Perfil[] }>;
+let ProtectedRoute: ComponentType<{ children: ReactNode; allowedRoles?: readonly Perfil[]; trocaDeSenha?: boolean }>;
 let AuthProvider: ComponentType<{ children: ReactNode }>;
 let restaurarApi: () => void;
 
@@ -33,10 +33,11 @@ afterEach(() => {
   restaurarApi?.();
 });
 
-const sessao = (perfil: Perfil) => ({ id: 3, nome: 'Pessoa Ficticia', perfil, funcionario_id: perfil === 'Colaborador' ? 5 : null, empresa_nome: 'Empresa Ficticia' });
+const sessao = (perfil: Perfil, extra: Record<string, unknown> = {}) =>
+  ({ id: 3, nome: 'Pessoa Ficticia', perfil, funcionario_id: perfil === 'Colaborador' ? 5 : null, empresa_nome: 'Empresa Ficticia', ...extra });
 
 // Com `perfil`, o cookie de CSRF existe e GET /auth/sessao responde com essa pessoa; sem ele, não há sessão.
-const montar = (perfil: Perfil | null, allowedRoles?: readonly Perfil[], respostaDaSessao?: () => Parameters<typeof resposta>[0] | Response) => {
+const montar = (perfil: Perfil | null, allowedRoles?: readonly Perfil[], respostaDaSessao?: () => Parameters<typeof resposta>[0] | Response, { trocaDeSenha = false }: { trocaDeSenha?: boolean } = {}) => {
   if (perfil) dom.window.document.cookie = 'hrflow_csrf=token-ficticio; path=/';
   const api = simularApi(({ caminho }) => {
     if (caminho === '/auth/sessao') return (respostaDaSessao?.() ?? { corpo: sessao(perfil as Perfil) }) as Response;
@@ -48,8 +49,9 @@ const montar = (perfil: Perfil | null, allowedRoles?: readonly Perfil[], respost
     createElement(QueryClientProvider, { client: new QueryClient() },
       createElement(AuthProvider, null,
         createElement(Routes, null,
-          createElement(Route, { path: '/protegida', element: createElement(ProtectedRoute, { allowedRoles }, createElement('p', null, 'Conteúdo protegido')) }),
+          createElement(Route, { path: '/protegida', element: createElement(ProtectedRoute, { allowedRoles, trocaDeSenha }, createElement('p', null, 'Conteúdo protegido')) }),
           createElement(Route, { path: '/login', element: createElement('p', null, 'Tela de login') }),
+          createElement(Route, { path: '/trocar-senha', element: createElement('p', null, 'Tela de troca de senha') }),
           createElement(Route, { path: '/admin', element: createElement('p', null, 'Painel da gestão') }),
           createElement(Route, { path: '/meu-painel', element: createElement('p', null, 'Painel do colaborador') }),
         )))));
@@ -118,4 +120,20 @@ test('"Sair e entrar novamente" encerra a sessão e abre o login', async () => {
   await userEvent.setup().click(screen.getByRole('button', { name: 'Sair e entrar novamente' }));
   assert.ok(await screen.findByText('Tela de login'));
   assert.ok(chamadas.some((chamada) => chamada.metodo === 'POST' && chamada.caminho === '/auth/logout'));
+});
+
+test('quem entrou com senha provisória só vê a troca de senha, qualquer que seja a rota', async () => {
+  montar('Colaborador', undefined, () => ({ corpo: sessao('Colaborador', { senha_provisoria: true }) }));
+  assert.ok(await screen.findByText('Tela de troca de senha'));
+  assert.equal(screen.queryByText('Conteúdo protegido'), null);
+});
+
+test('a rota da troca de senha abre para quem tem senha provisória e manda os demais ao painel', async () => {
+  montar('Colaborador', undefined, () => ({ corpo: sessao('Colaborador', { senha_provisoria: true }) }), { trocaDeSenha: true });
+  assert.ok(await screen.findByText('Conteúdo protegido'));
+  limparTela();
+  restaurarApi();
+
+  montar('Colaborador', undefined, undefined, { trocaDeSenha: true });
+  assert.ok(await screen.findByText('Painel do colaborador'));
 });
