@@ -3,14 +3,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { lerSessao, ehGestao, rotaInicial } from '../src/utils/sessao.ts';
 
-const sessaoValida = () => ({ id: 3, nome: 'Rita RH Ficticia', perfil: 'RH', funcionario_id: 1, avatar: null });
+const sessaoValida = () => ({ id: 3, nome: 'Rita RH Ficticia', perfil: 'RH', funcionario_id: 1, empresa_nome: 'Empresa Ficticia Alfa Ltda', avatar: null });
 
 test('lerSessao converte a resposta do servidor no usuário do front-end', () => {
-  assert.deepEqual(lerSessao(sessaoValida()), { id: 3, nome: 'Rita RH Ficticia', role: 'RH', funcionarioId: 1, avatar: null });
+  assert.deepEqual(lerSessao(sessaoValida()), { id: 3, nome: 'Rita RH Ficticia', role: 'RH', funcionarioId: 1, empresaNome: 'Empresa Ficticia Alfa Ltda', avatar: null });
 });
 
 test('lerSessao aceita administrador sem vínculo e avatar ausente', () => {
-  const usuario = lerSessao({ id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', funcionario_id: null });
+  const usuario = lerSessao({ id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', funcionario_id: null, empresa_nome: 'Empresa Ficticia Alfa Ltda' });
   assert.equal(usuario?.funcionarioId, null);
   assert.equal(usuario?.avatar, null);
 });
@@ -28,7 +28,10 @@ const invalidas: Record<string, unknown> = {
   'nome vazio': { ...sessaoValida(), nome: '   ' },
   'nome que não é texto': { ...sessaoValida(), nome: { $ne: '' } },
   'vínculo em texto': { ...sessaoValida(), funcionario_id: '1' },
-  'vínculo ausente': { id: 3, nome: 'Rita', perfil: 'RH' },
+  'vínculo ausente': { id: 3, nome: 'Rita', perfil: 'RH', empresa_nome: 'Empresa Ficticia Alfa Ltda' },
+  'empresa ausente': { ...sessaoValida(), empresa_nome: undefined },
+  'empresa vazia': { ...sessaoValida(), empresa_nome: '  ' },
+  'empresa que não é texto': { ...sessaoValida(), empresa_nome: 7 },
   'avatar que não é texto': { ...sessaoValida(), avatar: 42 },
 };
 for (const [nome, dados] of Object.entries(invalidas)) {

@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const estrutura = require('../schemas/estruturaSchemas');
-const { atualizarMeusDados, alterarSenha } = require('../schemas/perfilSchemas');
+const { atualizarMeusDados, alterarSenha } = require('../modules/perfil/perfil.schemas.ts');
 const { paginacao } = require('../schemas/paginacao');
 const { TAMANHO_MAXIMO_BYTES } = require('../modules/funcionarios/index.ts');
 const { traduzirErro } = require('../utils/erros');

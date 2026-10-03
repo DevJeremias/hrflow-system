@@ -48,7 +48,6 @@ Como o Node só apaga os tipos, o código precisa ser o que a remoção de tipos
 * `import type` para o que só existe nos tipos.
 * Imports relativos levam a extensão real do arquivo: `./ponto.service.ts` para TypeScript e `../../config/db.js` para JavaScript.
 * Use exports nomeados. `modules/package.json` marca a pasta como módulo ES, e o código CommonJS pede o módulo com `require('./modules/ponto/index.ts')` e desestrutura o que precisa (`const { pontoRoutes } = require(...)`).
-* Testes em TypeScript usam a extensão `.test.mts` (módulo ES, com `import`): `tests/` ainda é CommonJS por causa dos testes em JavaScript, e o `tsc` decide o formato pela extensão. `npm test` roda os dois tipos.
 
 Os arquivos JavaScript importados por um módulo (`config/db.js`, `schemas/comum.js`, os middlewares) são lidos pelo `tsc` com os tipos que ele infere, sem conferi-los (`checkJs` desligado). Duas consequências:
 
@@ -57,7 +56,7 @@ Os arquivos JavaScript importados por um módulo (`config/db.js`, `schemas/comum
 
 ## Testes
 
-Os testes de integração continuam em `tests/`, em JavaScript, contra um MySQL real (veja o README da raiz). Ao migrar um módulo:
+Os testes de integração ficam em `tests/`, contra um MySQL real (veja o README da raiz), e os do módulo migrado são TypeScript (`*.test.ts`, rodados pelo mesmo `node --test`). Como `tests/` ainda mistura arquivos CommonJS, o `tsc` confere os `.ts` com o `tests/tsconfig.json` (módulos ES), e `npm run typecheck` roda as duas conferências. Ao migrar um módulo:
 
 * Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os `require` que apontam para os arquivos movidos.
 * Para fixar "agora", o serviço expõe `relogio.agora`; o teste a substitui e a restaura no fim.
