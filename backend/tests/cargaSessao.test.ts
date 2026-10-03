@@ -43,15 +43,20 @@ describe('carga na sessão', { skip: banco.skip }, () => {
     });
 
     it(`${CHAMADAS} chamadas simultâneas de /api/auth/sessao devolvem só 200 ou 503 com Retry-After, nunca 500`, async () => {
-        // Segura todas as conexões por 1 s: a fila enche de forma determinística, sem depender da velocidade da
-        // máquina. As ${FILA} primeiras chamadas esperam na fila e as demais são recusadas na hora.
-        const ocupadas = Array.from({ length: CONEXOES }, () => pool.query('SELECT SLEEP(1)'));
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const respostas = await Promise.all(Array.from({ length: CHAMADAS }, () =>
+        // Retém as conexões do pool (sem consulta, sem prazo) até a fila encher de verdade: as ${FILA}
+        // primeiras chamadas esperam na fila e as demais são recusadas na hora. Só então as conexões
+        // voltam, e as que esperavam são atendidas. Nada aqui depende da velocidade da máquina: um
+        // prazo fixo (SLEEP) deixava a rajada chegar depois que o banco já estava livre.
+        const retidas = await Promise.all(Array.from({ length: CONEXOES }, () => pool.getConnection()));
+        let concluidas = 0;
+        const chamadas = Array.from({ length: CHAMADAS }, () =>
             fetch(`${baseUrl}/api/auth/sessao`, { headers: cabecalhosDaSessao(token) })
-                .then(async (resposta) => { await resposta.arrayBuffer(); return resposta; })));
-        await Promise.all(ocupadas);
+                .then(async (resposta) => { await resposta.arrayBuffer(); concluidas += 1; return resposta; }));
+
+        const limite = Date.now() + 30_000;
+        while (concluidas < CHAMADAS - FILA && Date.now() < limite) await new Promise((resolve) => setTimeout(resolve, 20));
+        for (const conexao of retidas) conexao.release();
+        const respostas = await Promise.all(chamadas);
 
         const contagem = new Map<number, number>();
         for (const resposta of respostas) contagem.set(resposta.status, (contagem.get(resposta.status) ?? 0) + 1);
