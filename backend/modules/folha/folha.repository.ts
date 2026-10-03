@@ -2,6 +2,8 @@
 // negócio. As consultas rodam no pool ou, dentro de emTransacao, numa conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { gravarAuditoria } from '../../shared/utils/auditar.ts';
+import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
 import type { Rubrica } from './folha.regras.ts';
 
 export type StatusDaFolha = 'aberta' | 'fechada';
@@ -155,6 +157,10 @@ const criarRepositorio = (executor: Connection) => ({
              WHERE id = ?`,
             [usuarioId, empresa.razao_social, empresa.cnpj, folhaId]
         );
+    },
+
+    auditar(autoria: Autoria, evento: EventoDeAuditoria): Promise<void> {
+        return gravarAuditoria(executor, autoria, evento);
     },
 
     async itensDaFolha(folhaId: number): Promise<ItemGravado[]> {

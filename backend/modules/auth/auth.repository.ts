@@ -2,6 +2,8 @@
 // de negócio.
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { gravarAuditoria } from '../../shared/utils/auditar.ts';
+import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
 import { urlDoAvatarSql } from '../../shared/utils/avatar.ts';
 import type { UsuarioDoToken } from './auth.sessao.ts';
 
@@ -60,10 +62,11 @@ export const criarEmpresaComAdministrador = async ({ nomeEmpresa, nomeAdmin, ema
     }
 };
 
+export const auditar = (autoria: Autoria, evento: EventoDeAuditoria): Promise<void> => gravarAuditoria(db, autoria, evento);
+
 export const usuarioPorEmail = async (email: string): Promise<Usuario | undefined> => {
     const [usuarios] = await db.query<Usuario[]>(
-        // Colunas explícitas: o login não precisa do avatar, que pesa megabytes.
-        'SELECT id, nome, senha, perfil, empresa_id, funcionario_id, sessao_versao, senha_provisoria FROM usuarios WHERE email = ?',
+                'SELECT id, nome, senha, perfil, empresa_id, funcionario_id, sessao_versao, senha_provisoria FROM usuarios WHERE email = ?',
         [email]
     );
     return usuarios[0];

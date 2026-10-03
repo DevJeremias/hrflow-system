@@ -5,6 +5,7 @@ import * as service from './folha.service.ts';
 import { ErroDeFolha } from './folha.erros.ts';
 import type { TipoDeErro } from './folha.erros.ts';
 import type { CompetenciaDaRota, ConsultaDeHolerite } from './folha.schemas.ts';
+import { autoriaDe } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404, conflito: 409, incompleto: 422 };
@@ -42,7 +43,7 @@ export const consultarFolha = async (req: Request, res: Response) => {
 export const processarFolha = async (req: Request, res: Response) => {
     try {
         const { competencia } = entradaDe<CompetenciaDaRota>(req, 'params');
-        const { folha, criada } = await service.processarFolha({ empresaId: usuarioDe(req).empresa_id, competencia });
+        const { folha, criada } = await service.processarFolha({ empresaId: usuarioDe(req).empresa_id, competencia, autoria: autoriaDe(req) });
         res.status(criada ? 201 : 200).json(folha);
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao processar folha de pagamento');
@@ -53,7 +54,7 @@ export const fecharFolha = async (req: Request, res: Response) => {
     try {
         const { empresa_id, id } = usuarioDe(req);
         const { competencia } = entradaDe<CompetenciaDaRota>(req, 'params');
-        res.json(await service.fecharFolha({ empresaId: empresa_id, usuarioId: id, competencia }));
+        res.json(await service.fecharFolha({ empresaId: empresa_id, usuarioId: id, competencia, autoria: autoriaDe(req) }));
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao fechar a folha de pagamento');
     }

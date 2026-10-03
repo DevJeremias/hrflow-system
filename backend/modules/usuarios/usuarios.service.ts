@@ -7,6 +7,8 @@ import * as repositorio from './usuarios.repository.ts';
 import type { UsuarioListado } from './usuarios.repository.ts';
 import { ErroDeUsuario } from './usuarios.erros.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro } from './usuarios.schemas.ts';
+import { diferencas } from '../../shared/utils/auditar.ts';
+import type { Autoria } from '../../shared/utils/auditar.ts';
 import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 import { gerarSenhaProvisoria } from '../../shared/utils/senhaProvisoria.ts';
@@ -39,13 +41,14 @@ export const listarUsuarios = async (empresaId: number, paginacao: { pagina: num
     return { usuarios, total };
 };
 
-export const criarUsuario = async (empresaId: number, dados: CorpoDoCadastro): Promise<UsuarioCriado> => {
+export const criarUsuario = async (empresaId: number, autoria: Autoria, dados: CorpoDoCadastro): Promise<UsuarioCriado> => {
     const senhaProvisoria = gerarSenhaProvisoria();
     const senhaCriptografada = await bcrypt.hash(senhaProvisoria, VOLTAS_DO_HASH);
 
     const usuario = await repositorio.emTransacao(async (repo) => {
         if (await repo.emailEmUso(dados.email)) throw emailDuplicado();
         const id = await repo.inserir({ ...dados, senhaCriptografada, empresaId });
+        await repo.auditar(autoria, { acao: 'usuario.criado', entidade: 'usuario', entidadeId: id, depois: { nome: dados.nome, email: dados.email, perfil: dados.perfil } });
         return (await repo.buscarDaEmpresa(id, empresaId))!;
     });
     return { usuario, senha_provisoria: senhaProvisoria };
@@ -56,7 +59,7 @@ interface Operador {
     empresa_id: number;
 }
 
-export const atualizarUsuario = async (operador: Operador, id: number, dados: CorpoDaEdicao): Promise<UsuarioAlterado> => {
+export const atualizarUsuario = async (operador: Operador, autoria: Autoria, id: number, dados: CorpoDaEdicao): Promise<UsuarioAlterado> => {
     const empresaId = operador.empresa_id;
     const propria = operador.id === id;
     const senhaProvisoria = dados.redefinir_senha ? gerarSenhaProvisoria() : undefined;
@@ -86,7 +89,14 @@ export const atualizarUsuario = async (operador: Operador, id: number, dados: Co
 
         await repo.atualizar({ id, empresaId, nome: dados.nome, email: dados.email, perfil: dados.perfil });
         if (senhaCriptografada) await repo.definirSenhaProvisoria(id, empresaId, senhaCriptografada);
-        return (await repo.buscarDaEmpresa(id, empresaId))!;
+        const depois = (await repo.buscarDaEmpresa(id, empresaId))!;
+
+        const mudancas = diferencas(atual, depois, ['nome', 'email', 'perfil']);
+        const alvo = { entidade: 'usuario', entidadeId: id, funcionarioId: atual.funcionario_id };
+        if (mudancas) await repo.auditar(autoria, { acao: 'usuario.editado', ...alvo, ...mudancas });
+        // Só o fato fica na trilha: nem a senha nem o hash.
+        if (senhaCriptografada) await repo.auditar(autoria, { acao: 'usuario.senha_redefinida', ...alvo });
+        return depois;
     });
     return { usuario, ...(senhaProvisoria && { senha_provisoria: senhaProvisoria }) };
 };

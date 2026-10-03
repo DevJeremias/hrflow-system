@@ -3,6 +3,8 @@
 // conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { gravarAuditoria } from '../../shared/utils/auditar.ts';
+import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
 import type { DecisaoDaJustificativa, TipoRegistro } from './ponto.regras.ts';
 
 export interface UltimoRegistro extends RowDataPacket {
@@ -236,13 +238,17 @@ const criarRepositorio = (executor: Connection) => ({
         );
     },
 
-    async instanteDaJustificativa(funcionarioId: number, data: string): Promise<number> {
-        const [[salva]] = await executor.query<(RowDataPacket & { instante: number })[]>(
-            `SELECT UNIX_TIMESTAMP(atualizado_em) AS instante
+    async instanteDaJustificativa(funcionarioId: number, data: string): Promise<{ id: number; instante: number }> {
+        const [[salva]] = await executor.query<(RowDataPacket & { id: number; instante: number })[]>(
+            `SELECT id, UNIX_TIMESTAMP(atualizado_em) AS instante
              FROM justificativas_ponto WHERE funcionario_id = ? AND data_referencia = ?`,
             [funcionarioId, data]
         );
-        return salva.instante;
+        return salva;
+    },
+
+    auditar(autoria: Autoria, evento: EventoDeAuditoria): Promise<void> {
+        return gravarAuditoria(executor, autoria, evento);
     },
 
     // Justificativas da empresa em [de, ate), de todos os colaboradores ou só de `funcionarioId`, e só

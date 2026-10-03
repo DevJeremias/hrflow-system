@@ -6,6 +6,7 @@ import type { DecisaoDaJustificativa, Jornada, StatusDoDia, TipoRegistro, Valida
 import * as repositorio from './ponto.repository.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { ConsultaDePontosDaEmpresa, ConsultaDeJustificativas, DecisaoRecebida } from './ponto.schemas.ts';
+import type { Autoria } from '../../shared/utils/auditar.ts';
 
 export { relogio } from './ponto.fuso.ts';
 const agoraEmSegundos = (): number => Math.floor(fuso.relogio.agora() / 1000);
@@ -314,7 +315,7 @@ export interface DadosDaJustificativa {
 
 // O colaborador e a empresa vêm do token: o corpo e a URL só dizem o dia e o texto. Uma justificativa
 // aprovada fecha o dia; uma recusada pode ser reenviada e volta a ficar pendente para o RH.
-export const enviarJustificativa = async ({ empresaId, funcionarioId, data, texto }: DadosDaJustificativa): Promise<Pick<Justificativa, 'date' | 'note' | 'status' | 'updatedAt'>> => {
+export const enviarJustificativa = async ({ empresaId, funcionarioId, data, texto, autoria }: DadosDaJustificativa & { autoria: Autoria }): Promise<Pick<Justificativa, 'date' | 'note' | 'status' | 'updatedAt'>> => {
     if (!funcionarioId) {
         throw new ErroDePonto('proibido', 'Acesso negado. Apenas colaboradores vinculados podem justificar o ponto.');
     }
@@ -327,7 +328,9 @@ export const enviarJustificativa = async ({ empresaId, funcionarioId, data, text
             throw new ErroDePonto('conflito', 'O RH já aprovou a justificativa deste dia e ela não pode mais ser alterada.');
         }
         await repo.salvarJustificativa({ empresaId, funcionarioId, data, texto });
-        return repo.instanteDaJustificativa(funcionarioId, data);
+        const salva = await repo.instanteDaJustificativa(funcionarioId, data);
+        await repo.auditar(autoria, { acao: 'justificativa.enviada', entidade: 'justificativa', entidadeId: salva.id, funcionarioId, depois: { data, texto } });
+        return salva.instante;
     });
     return { date: data, note: texto, status: 'pendente', updatedAt: paraIso(atualizadoEm) };
 };
@@ -358,11 +361,12 @@ export interface DadosDaDecisao extends DecisaoRecebida {
     // Quem decide: o usuário e o colaborador a que ele está vinculado, se houver.
     usuarioId: number;
     funcionarioIdDoUsuario: number | null;
+    autoria: Autoria;
 }
 
 // Quem decide vem do token. O RH pode mudar a decisão depois, mas nunca decide a justificativa
 // do próprio ponto.
-export const decidirJustificativa = async ({ empresaId, id, status, resposta, usuarioId, funcionarioIdDoUsuario }: DadosDaDecisao): Promise<Justificativa> => {
+export const decidirJustificativa = async ({ empresaId, id, status, resposta, usuarioId, funcionarioIdDoUsuario, autoria }: DadosDaDecisao): Promise<Justificativa> => {
     const respostaValida = exigir(regras.validarDecisao(status, resposta));
     return repositorio.emTransacao(async (repo) => {
         const atual = await repo.justificativaDaEmpresa(id, empresaId, { travar: true });
@@ -371,6 +375,14 @@ export const decidirJustificativa = async ({ empresaId, id, status, resposta, us
             throw new ErroDePonto('proibido', 'Você não pode decidir a justificativa do seu próprio ponto.');
         }
         await repo.decidirJustificativa({ id, empresaId, status, resposta: respostaValida, decididoPor: usuarioId });
+        await repo.auditar(autoria, {
+            acao: 'justificativa.decidida',
+            entidade: 'justificativa',
+            entidadeId: id,
+            funcionarioId: atual.funcionario_id,
+            antes: { status: atual.status, resposta: atual.resposta },
+            depois: { data: atual.date, status, resposta: respostaValida },
+        });
         return paraJustificativa((await repo.justificativaDaEmpresa(id, empresaId))!);
     });
 };

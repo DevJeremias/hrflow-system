@@ -368,13 +368,14 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
             const avatar = await imagemReal('png');
             const ok = await chamar('PUT', '/api/perfil/meus-dados', meusDados({ avatar }), comoColaborador());
             assert.equal(ok.status, 200);
-            const [[linha]] = await pool.query<RowDataPacket[]>('SELECT avatar FROM funcionarios WHERE id = ?', [funcionarioColaborador]);
-            assert.equal(linha.avatar, avatar);
+            const [[linha]] = await pool.query<RowDataPacket[]>('SELECT tipo, imagem FROM avatares WHERE usuario_id = ?', [usuarioColaborador]);
+            assert.equal(linha.tipo, 'image/png');
+            assert.ok(linha.imagem.equals(Buffer.from(avatar.slice(avatar.indexOf(',') + 1), 'base64')));
 
             const remover = await chamar('PUT', '/api/perfil/meus-dados', meusDados({ avatar: '' }), comoColaborador());
             assert.equal(remover.status, 200);
-            const [[sem]] = await pool.query<RowDataPacket[]>('SELECT avatar FROM usuarios WHERE id = ?', [usuarioColaborador]);
-            assert.equal(sem.avatar, null);
+            const [sem] = await pool.query<RowDataPacket[]>('SELECT usuario_id FROM avatares WHERE usuario_id = ?', [usuarioColaborador]);
+            assert.equal(sem.length, 0);
         });
 
         for (const [nome, avatar, mensagem] of [
@@ -388,13 +389,13 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
                 const { status, corpo } = await chamar('PUT', '/api/perfil/meus-dados', meusDados({ avatar }), comoColaborador());
                 assert.equal(status, 400);
                 assert.match(corpo.erro, mensagem);
-                const [[linha]] = await pool.query<RowDataPacket[]>('SELECT avatar FROM usuarios WHERE id = ?', [usuarioColaborador]);
-                assert.equal(linha.avatar, null, 'nada foi gravado');
+                const [linhas] = await pool.query<RowDataPacket[]>('SELECT usuario_id FROM avatares WHERE usuario_id = ?', [usuarioColaborador]);
+                assert.equal(linhas.length, 0, 'nada foi gravado');
             });
         }
 
-        it('recusa nome e e-mail ausentes e telefone inválido', async () => {
-            const { status, corpo } = await chamar('PUT', '/api/perfil/meus-dados', { telefone: 'abc' }, comoColaborador());
+        it('recusa nome vazio, e-mail inválido e telefone inválido', async () => {
+            const { status, corpo } = await chamar('PUT', '/api/perfil/meus-dados', { nome: '', email: 'x', telefone: 'abc' }, comoColaborador());
             assert.equal(status, 400);
             assert.deepEqual(corpo.detalhes.map((d: any) => d.campo), ['nome', 'email', 'telefone']);
         });

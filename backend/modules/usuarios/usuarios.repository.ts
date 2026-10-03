@@ -2,6 +2,8 @@
 // regra de negócio. As consultas rodam no pool ou, dentro de emTransacao, numa conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { gravarAuditoria } from '../../shared/utils/auditar.ts';
+import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
 
 // Uma conta como a lista mostra: o nome é o do cadastro do funcionário quando há vínculo.
 export interface UsuarioListado extends RowDataPacket {
@@ -88,6 +90,10 @@ const criarRepositorio = (executor: Connection) => ({
              WHERE id = ? AND empresa_id = ?`,
             [nome ?? null, email ?? null, perfil ?? null, id, empresaId]
         );
+    },
+
+    auditar(autoria: Autoria, evento: EventoDeAuditoria): Promise<void> {
+        return gravarAuditoria(executor, autoria, evento);
     },
 
     // Troca a senha por uma provisória e derruba as sessões abertas.

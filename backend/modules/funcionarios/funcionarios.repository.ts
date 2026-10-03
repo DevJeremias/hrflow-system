@@ -3,6 +3,8 @@
 // emTransacao, numa conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { gravarAuditoria } from '../../shared/utils/auditar.ts';
+import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
 import { cargoDaEmpresa, departamentoDaEmpresa } from '../estrutura/index.ts';
 import type { DadosDoFuncionario, FiltrosDeFuncionarios, Status } from './funcionarios.schemas.ts';
 
@@ -35,6 +37,8 @@ export interface FuncionarioListado extends RowDataPacket {
     motivo_desligamento: string | null;
     usuario_perfil: string | null;
     tem_movimento: number;
+    // O cadastro teve os dados pessoais apagados a pedido do titular (docs/lgpd.md).
+    anonimizado: number;
 }
 
 // O funcionário e o acesso dele, o que as ações do ciclo de vida precisam saber do alvo.
@@ -43,8 +47,43 @@ export interface AlvoDoCicloDeVida extends RowDataPacket {
     nome: string;
     status: Status;
     data_admissao: string | null;
+    data_desligamento: string | null;
+    motivo_desligamento: string | null;
+    anonimizado_em: Date | null;
     usuario_id: number | null;
     usuario_perfil: string | null;
+}
+
+// O cadastro como está agora, com o nome do cargo e do departamento: a base para dizer o que uma
+// edição mudou. As datas voltam como AAAA-MM-DD e o salário como texto (DECIMAL).
+export interface CadastroAtual extends RowDataPacket, Omit<DadosDoFuncionario, 'tipo_conta' | 'tipo_contrato' | 'salario_base'> {
+    tipo_conta: string | null;
+    tipo_contrato: string | null;
+    salario_base: string | null;
+    cargo_nome: string | null;
+    departamento_nome: string | null;
+}
+
+// Um período do histórico contratual (migration 0017).
+export interface PeriodoContratual extends RowDataPacket {
+    id: number;
+    salario_base: string | null;
+    cargo_id: number | null;
+    cargo: string | null;
+    departamento_id: number | null;
+    departamento: string | null;
+    vigencia_inicio: string;
+    vigencia_fim: string | null;
+}
+
+export interface NovoPeriodo {
+    empresaId: number;
+    funcionarioId: number;
+    salario: number | string | null;
+    cargoId: number | null;
+    departamentoId: number | null;
+    inicio: string;
+    registradoPor: number | null;
 }
 
 export interface NovoStatus {
@@ -100,7 +139,7 @@ export interface AtualizacaoDoFuncionario extends DadosDoFuncionario {
     empresaId: number;
 }
 
-const criarRepositorio = (executor: Connection) => ({
+export const criarRepositorio = (executor: Connection) => ({
     // `limite` e `deslocamento` recortam a página, em ordem alfabética (o desempate por id mantém a
     // paginação estável).
     async listarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios, limite: number, deslocamento: number): Promise<FuncionarioListado[]> {
@@ -114,7 +153,8 @@ const criarRepositorio = (executor: Connection) => ({
                     c.nome AS cargo_nome, d.nome AS departamento_nome,
                     (SELECT u.perfil FROM usuarios u WHERE u.funcionario_id = f.id AND u.empresa_id = f.empresa_id LIMIT 1) AS usuario_perfil,
                     (EXISTS (SELECT 1 FROM registro_pontos r WHERE r.funcionario_id = f.id)
-                     OR EXISTS (SELECT 1 FROM justificativas_ponto j WHERE j.funcionario_id = f.id)) AS tem_movimento
+                     OR EXISTS (SELECT 1 FROM justificativas_ponto j WHERE j.funcionario_id = f.id)) AS tem_movimento,
+                    (f.anonimizado_em IS NOT NULL) AS anonimizado
              ${JUNCOES}
              WHERE ${onde}
              ORDER BY f.nome, f.id
@@ -130,6 +170,11 @@ const criarRepositorio = (executor: Connection) => ({
             `SELECT COUNT(*) AS total ${JUNCOES} WHERE ${onde}`, valores
         );
         return total;
+    },
+
+    async funcionarioDaEmpresa(funcionarioId: number, empresaId: number): Promise<boolean> {
+        const [linhas] = await executor.query<RowDataPacket[]>('SELECT id FROM funcionarios WHERE id = ? AND empresa_id = ?', [funcionarioId, empresaId]);
+        return linhas.length > 0;
     },
 
     cargoDaEmpresa(cargoId: number, empresaId: number): Promise<boolean> {
@@ -191,12 +236,93 @@ const criarRepositorio = (executor: Connection) => ({
         return resultado.affectedRows > 0;
     },
 
-    // Mantém a credencial de acesso igual ao cadastro do funcionário.
+    // Mantém a credencial de acesso igual ao cadastro do funcionário. Trocar o e-mail de login revoga
+    // as sessões abertas, como trocar a senha.
     async sincronizarUsuario(funcionarioId: number, empresaId: number, nome: string, email: string): Promise<void> {
         await executor.query(
-            'UPDATE usuarios SET email = ?, nome = ? WHERE funcionario_id = ? AND empresa_id = ?',
-            [email, nome, funcionarioId, empresaId]
+            'UPDATE usuarios SET sessao_versao = sessao_versao + (email <> ?), email = ?, nome = ? WHERE funcionario_id = ? AND empresa_id = ?',
+            [email, email, nome, funcionarioId, empresaId]
         );
+    },
+
+    // O cadastro antes de uma edição, com a linha travada: o que a trilha de auditoria chama de "antes".
+    async cadastroAtual(funcionarioId: number, empresaId: number): Promise<CadastroAtual | undefined> {
+        const [linhas] = await executor.query<CadastroAtual[]>(
+            `SELECT f.nome, f.email, f.cpf, f.telefone,
+                    DATE_FORMAT(f.data_nascimento, '%Y-%m-%d') AS data_nascimento, DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS data_admissao,
+                    f.endereco, f.banco, f.agencia, f.conta, f.tipo_conta, f.nivel, f.tipo_contrato, f.salario_base,
+                    f.cargo_id, f.departamento_id, c.nome AS cargo_nome, d.nome AS departamento_nome
+             FROM funcionarios f
+             LEFT JOIN cargos c ON c.id = f.cargo_id AND c.empresa_id = f.empresa_id
+             LEFT JOIN departamentos d ON d.id = f.departamento_id AND d.empresa_id = f.empresa_id
+             WHERE f.id = ? AND f.empresa_id = ?
+             FOR UPDATE`,
+            [funcionarioId, empresaId]
+        );
+        return linhas[0];
+    },
+
+    async nomeDoCargo(cargoId: number, empresaId: number): Promise<string | null> {
+        const [linhas] = await executor.query<(RowDataPacket & { nome: string })[]>('SELECT nome FROM cargos WHERE id = ? AND empresa_id = ?', [cargoId, empresaId]);
+        return linhas[0]?.nome ?? null;
+    },
+
+    async nomeDoDepartamento(departamentoId: number, empresaId: number): Promise<string | null> {
+        const [linhas] = await executor.query<(RowDataPacket & { nome: string })[]>('SELECT nome FROM departamentos WHERE id = ? AND empresa_id = ?', [departamentoId, empresaId]);
+        return linhas[0]?.nome ?? null;
+    },
+
+    // O período em vigor (sem vigencia_fim) do histórico contratual; a linha do funcionário já está
+    // travada pelo chamador, então não há dois períodos abertos.
+    async periodoAberto(funcionarioId: number): Promise<PeriodoContratual | undefined> {
+        const [linhas] = await executor.query<PeriodoContratual[]>(
+            `SELECT id, salario_base, cargo_id, cargo, departamento_id, departamento,
+                    DATE_FORMAT(vigencia_inicio, '%Y-%m-%d') AS vigencia_inicio, DATE_FORMAT(vigencia_fim, '%Y-%m-%d') AS vigencia_fim
+             FROM historico_contratual WHERE funcionario_id = ? AND vigencia_fim IS NULL`,
+            [funcionarioId]
+        );
+        return linhas[0];
+    },
+
+    async fecharPeriodo(periodoId: number, fim: string): Promise<void> {
+        await executor.query('UPDATE historico_contratual SET vigencia_fim = ? WHERE id = ?', [fim, periodoId]);
+    },
+
+    // Os nomes do cargo e do departamento entram como estão hoje.
+    async abrirPeriodo({ empresaId, funcionarioId, salario, cargoId, departamentoId, inicio, registradoPor }: NovoPeriodo): Promise<void> {
+        await executor.query(
+            `INSERT INTO historico_contratual
+                (empresa_id, funcionario_id, salario_base, cargo_id, cargo, departamento_id, departamento, vigencia_inicio, registrado_por)
+             SELECT ?, ?, ?, ?, (SELECT nome FROM cargos WHERE id = ? AND empresa_id = ?),
+                    ?, (SELECT nome FROM departamentos WHERE id = ? AND empresa_id = ?), ?, ?`,
+            [empresaId, funcionarioId, salario, cargoId, cargoId, empresaId, departamentoId, departamentoId, empresaId, inicio, registradoPor]
+        );
+    },
+
+    // Corrige o período aberto no lugar, para duas edições no mesmo dia não deixarem um período vazio.
+    async corrigirPeriodo(periodoId: number, empresaId: number, { salario, cargoId, departamentoId, registradoPor }: Pick<NovoPeriodo, 'salario' | 'cargoId' | 'departamentoId' | 'registradoPor'>): Promise<void> {
+        await executor.query(
+            `UPDATE historico_contratual
+             SET salario_base = ?, cargo_id = ?, cargo = (SELECT nome FROM cargos WHERE id = ? AND empresa_id = ?),
+                 departamento_id = ?, departamento = (SELECT nome FROM departamentos WHERE id = ? AND empresa_id = ?), registrado_por = ?
+             WHERE id = ?`,
+            [salario, cargoId, cargoId, empresaId, departamentoId, departamentoId, empresaId, registradoPor, periodoId]
+        );
+    },
+
+    async historicoDoFuncionario(funcionarioId: number, empresaId: number): Promise<PeriodoContratual[]> {
+        const [linhas] = await executor.query<PeriodoContratual[]>(
+            `SELECT id, salario_base, cargo_id, cargo, departamento_id, departamento,
+                    DATE_FORMAT(vigencia_inicio, '%Y-%m-%d') AS vigencia_inicio, DATE_FORMAT(vigencia_fim, '%Y-%m-%d') AS vigencia_fim
+             FROM historico_contratual WHERE funcionario_id = ? AND empresa_id = ?
+             ORDER BY vigencia_inicio DESC, id DESC`,
+            [funcionarioId, empresaId]
+        );
+        return linhas;
+    },
+
+    auditar(autoria: Autoria, evento: EventoDeAuditoria): Promise<void> {
+        return gravarAuditoria(executor, autoria, evento);
     },
 
     // Invalida os tokens já emitidos para o funcionário (o authMiddleware confere sessao_versao).
@@ -212,6 +338,7 @@ const criarRepositorio = (executor: Connection) => ({
     async alvoDoCicloDeVida(funcionarioId: number, empresaId: number): Promise<AlvoDoCicloDeVida | undefined> {
         const [linhas] = await executor.query<AlvoDoCicloDeVida[]>(
             `SELECT f.id, f.nome, f.status, DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS data_admissao,
+                    DATE_FORMAT(f.data_desligamento, '%Y-%m-%d') AS data_desligamento, f.motivo_desligamento, f.anonimizado_em,
                     u.id AS usuario_id, u.perfil AS usuario_perfil
              FROM funcionarios f
              LEFT JOIN usuarios u ON u.funcionario_id = f.id AND u.empresa_id = f.empresa_id
@@ -279,4 +406,4 @@ export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDeFuncio
     }
 };
 
-export const { listarDaEmpresa, contarDaEmpresa } = criarRepositorio(db);
+export const { listarDaEmpresa, contarDaEmpresa, historicoDoFuncionario, funcionarioDaEmpresa } = criarRepositorio(db);
