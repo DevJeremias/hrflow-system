@@ -220,8 +220,8 @@ describe('relatórios', { skip: banco.skip }, () => {
         it('o total do PDF e do JSON é exatamente o da folha fechada', async () => {
             const { empresaId } = await criarEmpresa(db);
             const admin = (await criarUsuario(db, { empresaId, perfil: 'Administrador' })).token;
-            const tecnologia = await departamento(empresaId, 'Tecnologia');
-            const financeiro = await departamento(empresaId, 'Financeiro');
+            const tecnologia = await departamento(empresaId, 'Engenharia');
+            const financeiro = await departamento(empresaId, 'Contabilidade');
             const nova = async (nome: string, salario: number, dep: number | null) => {
                 const id = await criarFuncionario(db, empresaId, { nome, salario, admissao: '2024-01-02' });
                 if (dep) await noDepartamento(id, dep);
@@ -243,7 +243,7 @@ describe('relatórios', { skip: banco.skip }, () => {
             const { status, corpo } = await json(`/api/relatorios/custo-departamento?competencia=${competencia}`, admin);
             assert.equal(status, 200);
             assert.equal(corpo.statusDaFolha, 'fechada');
-            assert.deepEqual(corpo.departamentos.map((d: { departamento: string; colaboradores: number }) => [d.departamento, d.colaboradores]), [['Financeiro', 1], ['Não definido', 1], ['Tecnologia', 2]]);
+            assert.deepEqual(corpo.departamentos.map((d: { departamento: string; colaboradores: number }) => [d.departamento, d.colaboradores]), [['Contabilidade', 1], ['Engenharia', 2], ['Não definido', 1]]);
 
             // O total é o da folha, centavo a centavo, e a soma das linhas é o total.
             assert.deepEqual(
@@ -260,7 +260,7 @@ describe('relatórios', { skip: banco.skip }, () => {
             const textos = textosDoPdf(pdf);
             const moeda = (valor: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor).replace(/\s/g, ' ');
             for (const esperado of [
-                'Custo por departamento', 'Tecnologia', 'Financeiro', 'Não definido', 'Total',
+                'Custo por departamento', 'Engenharia', 'Contabilidade', 'Não definido', 'Total',
                 moeda(folha.totais.bruto), moeda(folha.totais.descontos), moeda(folha.totais.liquido), moeda(folha.totais.encargos),
                 moeda(Math.round((folha.totais.bruto + folha.totais.encargos) * 100) / 100),
             ]) {
