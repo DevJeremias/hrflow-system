@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Briefcase, Plus, BuildingIcon } from 'lucide-react';
-import type { Department, Role } from '../../services/departmentsRolesService';
+import type { Department, DepartmentForm, Role, RoleForm } from '../../services/departmentsRolesService';
 import {
   useCargos, useDepartamentos, useExcluirCargo, useExcluirDepartamento, useSalvarCargo, useSalvarDepartamento,
 } from '../../queries/estrutura';
 import DepartmentCard from '../../components/Admin/OrgDepartmentCard';
 import RolesTable from '../../components/Admin/OrgRolesTable';
-import FormModal, { type OrgFormData } from '../../components/Admin/OrgFormModal';
+import FormModal from '../../components/Admin/OrgFormModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 
@@ -47,11 +47,11 @@ const DepartmentsRoles: React.FC = () => {
   };
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
-  const handleSave = async (form: OrgFormData) => {
-    if (form.type === 'department') {
-      await salvarDepartamento.mutateAsync(form.data);
+  const handleSave = async (data: DepartmentForm | RoleForm) => {
+    if ('title' in data) {
+      await salvarCargo.mutateAsync(data);
     } else {
-      await salvarCargo.mutateAsync(form.data);
+      await salvarDepartamento.mutateAsync(data);
     }
 
     setModalConfig({ ...modalConfig, isOpen: false });

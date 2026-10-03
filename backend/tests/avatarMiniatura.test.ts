@@ -7,16 +7,12 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import express from 'express';
 import sharp from 'sharp';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import { dataUrl } from './support/imagens.ts';
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import tratarErros from '../shared/middlewares/tratarErros.ts';
-import { authRoutes } from '../modules/auth/index.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
+import { criarApp } from '../app.ts';
 import { TAMANHO_MAXIMO_BYTES } from '../modules/funcionarios/index.ts';
 
 const LIMITE_DA_RESPOSTA = 10 * 1024;
@@ -56,12 +52,7 @@ describe('miniatura do avatar', { skip: banco.skip }, () => {
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use('/api/auth', authRoutes);
-        app.use(express.json({ limit: '4mb' }));
-        app.use('/api/perfil', authMiddleware, perfilRoutes);
-        app.use(tratarErros);
-        servidor = http.createServer(app);
+        servidor = http.createServer(criarApp());
         await new Promise<void>((resolve) => servidor.listen(0, '127.0.0.1', resolve));
         baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`;
 

@@ -18,7 +18,9 @@ export const useInvalidarPorColaboradores = () => {
     queryClient.invalidateQueries({ queryKey: chaves.funcionarios }),
     queryClient.invalidateQueries({ queryKey: chaves.folha }),
     queryClient.invalidateQueries({ queryKey: chaves.dashboard }),
-    queryClient.invalidateQueries({ queryKey: chaves.estrutura }),
+    // Só as contagens da estrutura mudam: marca como desatualizada e deixa a tela de estrutura
+    // buscar ao abrir. O modal do colaborador, aberto na hora, não precisa refazer cargos e departamentos.
+    queryClient.invalidateQueries({ queryKey: chaves.estrutura, refetchType: 'none' }),
   ]);
 };
 

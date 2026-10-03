@@ -74,16 +74,12 @@ const RoleForm: React.FC<RoleFormProps> = ({ item, departments }) => {
 // ==========================================
 // MODAL PRINCIPAL
 // ==========================================
-export type OrgFormData =
-  | { type: 'department'; data: DepartmentFormData }
-  | { type: 'role'; data: RoleFormData };
-
 interface Props {
   type: 'department' | 'role';
   item?: Department | Role | null;
   departments: Department[];
   onClose: () => void;
-  onSave: (form: OrgFormData) => Promise<void>;
+  onSave: (data: DepartmentFormData | RoleFormData) => Promise<void>;
 }
 
 const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSave }) => {
@@ -106,8 +102,8 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
     setSubmitError(null);
     try {
       await onSave(isDept
-        ? { type: 'department', data: { id: item?.id, name: data.name, sigla: data.sigla, description: data.description, manager: data.manager } }
-        : { type: 'role', data: { id: item?.id, title: data.title, department: data.department, level: data.level, salary: data.salary } });
+        ? { id: item?.id, name: data.name, sigla: data.sigla, description: data.description, manager: data.manager }
+        : { id: item?.id, title: data.title, department: data.department, level: data.level, salary: data.salary });
     } catch (error) {
       setSubmitError(mensagemDeErro(error, 'Não foi possível salvar. Tente novamente.'));
     } finally {
