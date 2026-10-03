@@ -80,6 +80,8 @@ export interface FuncionarioApi {
   // Perfil do acesso vinculado (null: sem acesso) e se há ponto ou justificativa.
   usuario_perfil: string | null;
   tem_movimento: boolean;
+  // Os dados pessoais foram apagados a pedido do titular (LGPD).
+  anonimizado: boolean;
 }
 
 // Filtros de GET /api/funcionarios.
@@ -373,14 +375,21 @@ export interface PerfilApi {
   tipo_conta: string | null;
   cargo: string | null;
   departamento: string | null;
+  // O encarregado pelo tratamento de dados que a empresa indicou; null enquanto ela não indicar.
+  encarregado: { nome: string; email: string } | null;
 }
 
-// Corpo de PUT /api/perfil/meus-dados. `avatar` ausente mantém a foto, '' a remove e um data URL a troca.
-export interface CorpoDeMeusDadosApi {
-  nome: string;
-  email: string;
-  telefone: string;
+// Corpo de PUT /api/perfil/meus-dados. Chave ausente mantém o dado. `avatar` '' remove a foto e um data URL a troca.
+// Telefone e foto o colaborador grava; os demais campos viram solicitação (POST /api/solicitacoes-alteracao),
+// salvo para o Administrador, que os grava direto (trocar o e-mail exige `senhaAtual`).
+export interface CorpoDeMeusDadosApi extends CorpoDeSolicitacaoApi {
+  telefone?: string;
   avatar?: string;
+}
+
+// Resposta de PUT /api/perfil/meus-dados: trocar o e-mail encerra as sessões abertas.
+export interface MeusDadosSalvosApi extends MensagemApi {
+  sessaoEncerrada: boolean;
 }
 
 // Corpo de PUT /api/perfil/alterar-senha.
@@ -461,6 +470,82 @@ export interface NotificacaoApi {
 export interface ListaDeNotificacoesApi {
   naoLidas: number;
   itens: NotificacaoApi[];
+}
+
+// --- Solicitações de alteração cadastral (B-22) ----------------------------------------------
+
+export type CampoDoPedidoApi = 'nome' | 'email' | 'endereco' | 'banco' | 'agencia' | 'conta' | 'tipo_conta';
+export type StatusDoPedidoApi = 'pendente' | 'aprovada' | 'recusada' | 'cancelada';
+
+// POST /api/solicitacoes-alteracao: só o que a pessoa quer mudar. Trocar o e-mail exige a senha atual.
+export interface CorpoDeSolicitacaoApi {
+  nome?: string;
+  email?: string;
+  endereco?: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  tipo_conta?: string;
+  senhaAtual?: string;
+}
+
+// O pedido como a API o devolve: o que se quer gravar e o que valia quando se pediu.
+export interface SolicitacaoDeAlteracaoApi {
+  id: number;
+  status: StatusDoPedidoApi;
+  solicitante: { nome: string; perfil: Perfil };
+  alteracoes: Partial<Record<CampoDoPedidoApi, string | null>>;
+  anteriores: Partial<Record<CampoDoPedidoApi, string | null>>;
+  resposta: string | null;
+  decidido_por: string | null;
+  decidido_em: string | null;
+  criado_em: string;
+}
+
+// Corpo de PATCH /api/solicitacoes-alteracao/:id.
+export interface CorpoDeDecisaoDoPedidoApi {
+  status: 'aprovada' | 'recusada';
+  resposta?: string;
+}
+
+// --- Auditoria e histórico contratual (B-22) -------------------------------------------------
+
+// Cada item de GET /api/auditoria (o total vem em X-Total-Count): quem fez o quê e quando, com o valor de
+// antes e o de depois só dos campos que mudaram.
+export interface RegistroDeAuditoriaApi {
+  id: number;
+  acao: string;
+  entidade: string;
+  entidade_id: number | null;
+  funcionario_id: number | null;
+  usuario_id: number | null;
+  usuario_nome: string | null;
+  perfil: string | null;
+  ip: string | null;
+  antes: Record<string, unknown> | null;
+  depois: Record<string, unknown> | null;
+  criado_em: string;
+}
+
+// Filtros de GET /api/auditoria. `entidade=funcionario` com `id` lista tudo o que diz respeito ao colaborador.
+export interface ConsultaDeAuditoriaApi {
+  pagina: number;
+  limite: number;
+  entidade?: string;
+  id?: number;
+  acao?: string;
+}
+
+// Cada item de GET /api/funcionarios/:id/historico-contratual: um período com o mesmo salário, cargo e departamento.
+export interface PeriodoContratualApi {
+  id: number;
+  salario_base: string | null;
+  cargo_id: number | null;
+  cargo: string | null;
+  departamento_id: number | null;
+  departamento: string | null;
+  vigencia_inicio: string;
+  vigencia_fim: string | null;
 }
 
 // --- Solicitações (sem backend ainda) --------------------------------------------------------

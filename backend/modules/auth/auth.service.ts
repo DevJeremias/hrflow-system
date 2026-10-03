@@ -10,6 +10,9 @@ import * as repositorio from './auth.repository.ts';
 import type { DadosDeEsqueciSenha, DadosDeLogin, DadosDeRedefinicao, DadosDeRegistro } from './auth.schemas.ts';
 import { LINK_INVALIDO } from './auth.schemas.ts';
 import { emitirToken } from './auth.sessao.ts';
+import { autoriaDoLogin } from '../../shared/utils/auditar.ts';
+import type { EventoDeAuditoria } from '../../shared/utils/auditar.ts';
+import appLogger from '../../shared/observabilidade/logger.ts';
 
 const CUSTO_DO_HASH = 10;
 
@@ -54,13 +57,29 @@ export const registrarConta = async ({ nomeEmpresa, cnpj, nomeAdmin, email, senh
     }
 };
 
+// O login e a falha dele entram na trilha de auditoria. Uma falha ao gravar a linha não pode trocar a
+// resposta do login por um 500 (nem esconder que a senha estava errada): vai para o log.
+const registrarLogin = async (ip: string | null, conta: Parameters<typeof autoriaDoLogin>[1], funcionarioId: number | null, evento: Omit<EventoDeAuditoria, 'entidade' | 'entidadeId' | 'funcionarioId'>) => {
+    try {
+        await repositorio.auditar(autoriaDoLogin(ip, conta), { ...evento, entidade: 'usuario', entidadeId: conta?.id ?? null, funcionarioId });
+    } catch (erro) {
+        appLogger.error({ err: erro }, 'Falha ao gravar o login na trilha de auditoria.');
+    }
+};
+
 // O token carrega a identidade completa e a versão da sessão (ver auth.sessao.ts), com o nome real
 // do colaborador: o administrador tem o nome em usuarios, o colaborador na tabela funcionarios.
-export const login = async ({ email, senha }: DadosDeLogin): Promise<LoginFeito> => {
+export const login = async ({ email, senha }: DadosDeLogin, ip: string | null): Promise<LoginFeito> => {
     const usuario = await repositorio.usuarioPorEmail(email);
-    if (!usuario) throw new ErroDeAuth('naoAutenticado', 'E-mail ou senha inválidos.');
+    if (!usuario) {
+        await registrarLogin(ip, null, null, { acao: 'login.falha', depois: { motivo: 'conta_inexistente' } });
+        throw new ErroDeAuth('naoAutenticado', 'E-mail ou senha inválidos.');
+    }
 
-    if (!await bcrypt.compare(senha, usuario.senha)) throw new ErroDeAuth('naoAutenticado', 'E-mail ou senha inválidos.');
+    if (!await bcrypt.compare(senha, usuario.senha)) {
+        await registrarLogin(ip, usuario, usuario.funcionario_id, { acao: 'login.falha', depois: { motivo: 'senha_incorreta' } });
+        throw new ErroDeAuth('naoAutenticado', 'E-mail ou senha inválidos.');
+    }
 
     let nome = usuario.nome;
     if (usuario.funcionario_id) {
@@ -68,12 +87,14 @@ export const login = async ({ email, senha }: DadosDeLogin): Promise<LoginFeito>
         if (funcionario) {
             // Só depois da senha correta, para a resposta não revelar o estado de contas alheias.
             if (funcionario.status === 'Inativo') {
+                await registrarLogin(ip, usuario, usuario.funcionario_id, { acao: 'login.falha', depois: { motivo: 'acesso_desativado' } });
                 throw new ErroDeAuth('proibido', 'Acesso desativado. Procure o RH da sua empresa.');
             }
             nome = funcionario.nome;
         }
     }
 
+    await registrarLogin(ip, usuario, usuario.funcionario_id, { acao: 'login.sucesso' });
     return { token: emitirToken(usuario, nome), perfil: usuario.perfil, nome, senhaProvisoria: Boolean(usuario.senha_provisoria) };
 };
 

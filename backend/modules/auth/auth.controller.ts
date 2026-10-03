@@ -6,6 +6,7 @@ import { ErroDeAuth } from './auth.erros.ts';
 import type { TipoDeErro } from './auth.erros.ts';
 import type { DadosDeEsqueciSenha, DadosDeLogin, DadosDeRedefinicao, DadosDeRegistro } from './auth.schemas.ts';
 import { encerrarSessao, iniciarSessao } from './auth.sessao.ts';
+import { ipDaRequisicao } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { naoAutenticado: 401, proibido: 403, conflito: 409, invalido: 400, naoDisponivel: 501 };
@@ -40,7 +41,7 @@ export const registrarConta = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
     try {
-        const { token, perfil, nome, senhaProvisoria } = await service.login(corpoDe<DadosDeLogin>(req));
+        const { token, perfil, nome, senhaProvisoria } = await service.login(corpoDe<DadosDeLogin>(req), ipDaRequisicao(req));
         iniciarSessao(req, res, token);
         res.json({ perfil, nome, senhaProvisoria });
     } catch (erro) {

@@ -13,7 +13,10 @@ perfilRoutes.use(verificarPerfil(['Administrador', 'RH', 'Colaborador']));
 
 perfilRoutes.get('/meus-dados', perfilController.obterMeuPerfil);
 perfilRoutes.get('/avatar', perfilController.obterMeuAvatar);
-perfilRoutes.put('/meus-dados', validarEntrada({ body: atualizarMeusDados }), perfilController.atualizarMeusDados);
+// Trocar o e-mail confere a senha atual: o limite conta as tentativas erradas.
+perfilRoutes.put('/meus-dados',
+    validarEntrada({ body: atualizarMeusDados }), limitadores.confirmarSenhaPorUsuario,
+    perfilController.atualizarMeusDados);
 perfilRoutes.put('/alterar-senha',
     validarEntrada({ body: alterarSenha }), limitadores.alterarSenhaPorUsuario,
     perfilController.alterarMinhaSenha);

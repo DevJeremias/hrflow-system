@@ -18,13 +18,13 @@ backend/
 │   ├── middlewares/        # autenticação, perfis, validação de entrada, limites de tentativas, erros
 │   ├── observabilidade/    # logger pino, log por requisição (reqId), encerramento ordenado, Sentry opcional
 │   ├── schemas/            # blocos zod comuns, regras de texto, e-mail e senha, paginação
-│   └── utils/              # fuso da empresa e relógio, tradução de erros do MySQL, paginação das respostas
+│   └── utils/              # fuso da empresa e relógio, tradução de erros do MySQL, paginação das respostas, gravação da trilha de auditoria (auditar.ts)
 ├── migrations/             # schema versionado (SQL numerado) e auditorias; não é código
 ├── tests/                  # testes de integração e de unidade (*.test.ts)
 └── types/                  # declarações que só o tsc usa (express.d.ts)
 ```
 
-As áreas são `auth`, `dashboard`, `empresa`, `estrutura`, `folha`, `funcionarios`, `notificacoes` (o sino e os avisos de holerite e de justificativa), `perfil`, `ponto`, `relatorios` (headcount, aniversariantes, custo por departamento e absenteísmo, em JSON, CSV e PDF), `saude` (health e ready, só rotas) e `usuarios` (contas de acesso, só do Administrador). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
+As áreas são `auditoria` (leitura da trilha de auditoria), `auth`, `dashboard`, `empresa`, `estrutura`, `folha`, `funcionarios`, `notificacoes` (o sino e os avisos de holerite e de justificativa), `perfil`, `ponto`, `relatorios` (headcount, aniversariantes, custo por departamento e absenteísmo, em JSON, CSV e PDF), `saude` (health e ready, só rotas), `solicitacoes` (pedidos de alteração cadastral que o RH aprova) e `usuarios` (contas de acesso, só do Administrador). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
 
 ## Regras de estrutura
 
@@ -62,6 +62,7 @@ rotas -> controlador -> serviço -> repositório -> banco
 * **Controlador** é fino: extrai da requisição o que o serviço precisa (a empresa e o colaborador vêm do token em `req.usuario`, nunca do corpo), chama uma função do serviço e responde. Não tem regra nem SQL.
 * **Serviço** decide. Recebe parâmetros simples, devolve o formato que o front-end consome e lança `ErroDePonto` quando uma regra recusa a operação. O tipo do erro (`proibido`, `invalido`, `inexistente`, `conflito`) diz o que aconteceu; quem o transforma em status HTTP (403, 400, 404, 409) é o controlador.
 * **Repositório** executa as consultas e devolve as linhas como o MySQL as entrega. `emTransacao` reserva uma conexão, confirma se o trabalho terminar e desfaz se ele lançar erro; o repositório que ele entrega usa essa conexão, e é assim que o serviço mantém uma regra e a escrita dela na mesma transação.
+* **Toda mudança de dados ou acesso entra na trilha de auditoria.** O repositório expõe `auditar(autoria, evento)` (de `shared/utils/auditar.ts`), que grava na mesma conexão da transação: o serviço a chama depois de mudar o dado, e a linha confirma ou desfaz junto. O controlador entrega a `autoria` (quem e de qual IP) com `autoriaDe(req)`. Nunca coloque senha, hash nem imagem em `antes` ou `depois`. Detalhes em `docs/lgpd.md`.
 * **Falhas inesperadas** vão ao `responderErro` (`shared/utils/erros.ts`), que traduz o erro do MySQL ou do pool em 4xx ou 503 (com `Retry-After` quando o banco está fora ou o pool cheio) e devolve o resto como 500 com a mensagem do endpoint. Todo 5xx é registrado com o `reqId` da requisição (`res.req.log`) e vai ao Sentry quando há `SENTRY_DSN`. Não use `console.error` nem responda `res.status(500)` à mão num controlador.
 
 ## TypeScript sem etapa de build

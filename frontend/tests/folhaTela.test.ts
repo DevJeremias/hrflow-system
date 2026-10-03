@@ -341,7 +341,7 @@ test('o Administrador preenche razão social e CNPJ com máscara e salva', async
   await esperar();
 
   const envio = chamadas.find((c) => c.metodo === 'PUT');
-  assert.deepEqual(envio?.corpo, { razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' });
+  assert.deepEqual(envio?.corpo, { razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional', encarregado_nome: '', encarregado_email: '' });
   assert.match(texto(host), /Dados da empresa salvos/);
   assert.equal(host.querySelector<HTMLInputElement>('[name="cnpj"]')!.value, '11.222.333/0001-81');
 });

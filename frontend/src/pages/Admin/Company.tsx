@@ -19,13 +19,17 @@ interface Formulario {
   cnpj: string;
   regime: string;
   fuso: string;
+  encarregadoNome: string;
+  encarregadoEmail: string;
 }
 
 const formularioDe = (empresa: CompanyData): Formulario => ({
   razaoSocial: empresa.razao_social ?? '',
   cnpj: mascararCnpj(empresa.cnpj ?? ''),
   regime: empresa.regime_tributario ?? '',
-  fuso: empresa.fuso
+  fuso: empresa.fuso,
+  encarregadoNome: empresa.encarregado_nome ?? '',
+  encarregadoEmail: empresa.encarregado_email ?? ''
 });
 
 // Os dados legais que o holerite imprime. O RH confere; só o Administrador altera.
@@ -38,7 +42,7 @@ const Company: React.FC = () => {
   // O formulário nasce da empresa carregada; `editado` guarda o que o RH digitou (nulo até ele digitar
   // ou a empresa ser gravada).
   const [editado, setEditado] = useState<Formulario | null>(null);
-  const form = editado ?? (empresa ? formularioDe(empresa) : { razaoSocial: '', cnpj: '', regime: '', fuso: FUSO_PADRAO });
+  const form = editado ?? (empresa ? formularioDe(empresa) : { razaoSocial: '', cnpj: '', regime: '', fuso: FUSO_PADRAO, encarregadoNome: '', encarregadoEmail: '' });
   const loading = isPending;
   const loadError = error ? mensagemDeErro(error, 'Erro ao buscar os dados da empresa') : null;
   const [saving, setSaving] = useState(false);
@@ -63,7 +67,9 @@ const Company: React.FC = () => {
         razao_social: form.razaoSocial,
         cnpj: form.cnpj,
         regime_tributario: (form.regime || null) as CompanyData['regime_tributario'],
-        fuso: form.fuso
+        fuso: form.fuso,
+        encarregado_nome: form.encarregadoNome,
+        encarregado_email: form.encarregadoEmail
       });
       setEditado(formularioDe(gravada));
       setSaved(true);
@@ -124,6 +130,21 @@ const Company: React.FC = () => {
                 {FUSOS_DO_BRASIL.map(({ zona }) => <option key={zona} value={zona}>{rotuloDoFuso(zona)}</option>)}
               </Select>
             </Field>
+
+            <fieldset className="space-y-4 border-t border-line pt-6">
+              <legend className="text-sm font-bold uppercase tracking-wider text-ink-muted">Encarregado pelo tratamento de dados (LGPD)</legend>
+              <p className="text-sm text-ink-muted">
+                A pessoa que a empresa indica para receber os pedidos dos titulares. Os colaboradores a veem em "Meu Perfil", na aba Privacidade.
+              </p>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <Field label="Nome do encarregado" name="encarregadoNome">
+                  <Input autoComplete="off" maxLength={255} disabled={!podeEditar} value={form.encarregadoNome} onChange={(e) => alterar({ encarregadoNome: e.target.value })} />
+                </Field>
+                <Field label="E-mail do encarregado" name="encarregadoEmail">
+                  <Input type="email" autoComplete="off" disabled={!podeEditar} value={form.encarregadoEmail} onChange={(e) => alterar({ encarregadoEmail: e.target.value })} />
+                </Field>
+              </div>
+            </fieldset>
 
             {saveError && <ErrorAlert message={saveError} />}
             {saved && <p role="status" className="rounded-control border border-success-line bg-success-soft p-4 text-sm font-semibold text-success">Dados da empresa salvos.</p>}

@@ -1,7 +1,7 @@
 import { ehAdministrador, ehGestao, temAreaPessoal } from './sessao.ts';
 import type { User } from './sessao.ts';
 
-export type IconeDoMenu = 'dashboard' | 'colaboradores' | 'estrutura' | 'folha' | 'empresa' | 'ponto' | 'gestaoPonto' | 'relatorios' | 'holerite' | 'solicitacoes' | 'usuarios' | 'perfil';
+export type IconeDoMenu = 'dashboard' | 'colaboradores' | 'estrutura' | 'folha' | 'empresa' | 'ponto' | 'gestaoPonto' | 'relatorios' | 'holerite' | 'solicitacoes' | 'usuarios' | 'aprovacoes' | 'auditoria' | 'perfil';
 
 export interface ItemDoMenu {
   path: string;
@@ -24,12 +24,14 @@ export const menuDoUsuario = (user: Pick<User, 'role' | 'funcionarioId'>, { soli
       itens: [
         { path: '/admin', label: 'Dashboard', icone: 'dashboard' },
         { path: '/admin/colaboradores', label: 'Colaboradores', icone: 'colaboradores' },
+        { path: '/admin/aprovacoes', label: 'Aprovações', icone: 'aprovacoes' },
         ...(ehAdministrador(user.role) ? [{ path: '/admin/estrutura', label: 'Depto & Cargos', icone: 'estrutura' as const }] : []),
         { path: '/admin/folha', label: 'Folha de Pagamento', icone: 'folha' },
         { path: '/admin/empresa', label: 'Empresa', icone: 'empresa' },
         { path: '/admin/gestao-ponto', label: 'Gestão de Ponto', icone: 'gestaoPonto' },
         { path: '/admin/relatorios', label: 'Relatórios', icone: 'relatorios' },
         ...(ehAdministrador(user.role) ? [{ path: '/admin/usuarios', label: 'Usuários', icone: 'usuarios' as const }] : []),
+        { path: '/admin/auditoria', label: 'Auditoria', icone: 'auditoria' },
       ],
     });
   }

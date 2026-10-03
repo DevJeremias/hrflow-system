@@ -42,6 +42,7 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 *   **Fuso por empresa:** o Administrador escolhe o fuso da empresa na tela Empresa (padrão Belém). O "dia" do ponto, o "hoje" das justificativas, o mês da folha e o relógio do portal seguem esse fuso, não o do servidor nem o do navegador: uma empresa em Manaus vira o dia uma hora depois da de Belém.
 *   **Dashboard e relatórios:** o painel mostra os colaboradores ativos dos últimos 12 meses, admitidos, desligados e turnover do mês, e os aniversariantes; a tela Relatórios (`/admin/relatorios`) traz headcount e turnover por período, custo da folha por departamento (a mesma folha, somada por setor), absenteísmo por departamento e aniversariantes, e exporta cada um em CSV (UTF-8 com BOM, pronto para o Excel brasileiro) e em PDF. Os mesmos relatórios saem em JSON em `GET /api/relatorios/{headcount,aniversariantes,custo-departamento,absenteismo}`.
 *   **Notificações:** o sino do cabeçalho avisa o colaborador do holerite disponível (ao fechar a folha) e da decisão de cada justificativa. Com o e-mail configurado (`EMAIL_TRANSPORT`, ver `backend/.env.example`), o mesmo aviso sai por e-mail em pt-BR.
+*   **Auditoria, histórico e LGPD:** toda ação que muda dados ou acesso entra numa trilha (quem, o quê, quando, IP, antes e depois) que o RH lê em **Auditoria**; salário, cargo e departamento têm histórico contratual com vigência; o colaborador grava sozinho só telefone e foto, e nome, e-mail, endereço e dados bancários passam por aprovação em **Aprovações**; a empresa exporta os dados de um colaborador e o Administrador anonimiza o cadastro de quem já saiu. A política de retenção e o que cada ação apaga estão em `docs/lgpd.md`.
 *   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem os seus holerites, um por mês fechado, com a empresa e o CNPJ da época.
 
 ## 📂 Estrutura de Diretórios
@@ -51,7 +52,7 @@ hrflow-system/
 ├── e2e/                   # Fluxos de ponta a ponta (Playwright) e a configuração deles
 ├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*) e guardar-estrutura.mts (guarda de .js/.jsx)
 ├── backend/               # API em TypeScript; estrutura e regras em backend/README.md
-│   ├── modules/           # Um módulo por área (auth, ponto, dashboard, folha, empresa, perfil, estrutura, funcionarios, saude)
+│   ├── modules/           # Um módulo por área (auth, ponto, dashboard, folha, empresa, perfil, estrutura, funcionarios, saude, usuarios, auditoria, solicitacoes, notificacoes, relatorios)
 │   ├── shared/            # O que mais de uma área usa: config, db (pool, migrations, fixtures), middlewares, schemas, utils
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
 │   ├── tests/             # Testes de integração (MySQL descartável) e o apoio deles em tests/support
@@ -227,7 +228,7 @@ Os testes de componente (`frontend/tests/*Modal.test.ts`, `protectedRoute.test.t
 
 ### Testes de ponta a ponta (Playwright)
 
-Dois fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, e o RH cadastra um colaborador e o encontra na folha (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
+Três fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, o RH cadastra um colaborador e o encontra na folha, e o colaborador pede a troca do nome, o RH aprova e a auditoria registra a mudança (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
 
 ```bash
 npm run db:setup

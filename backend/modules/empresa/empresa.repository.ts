@@ -10,20 +10,24 @@ export interface EmpresaGravada extends RowDataPacket {
     cnpj: string | null;
     regime_tributario: DadosDaEmpresa['regime_tributario'];
     fuso: string;
+    encarregado_nome: string | null;
+    encarregado_email: string | null;
 }
 
 export const empresaPorId = async (empresaId: number): Promise<EmpresaGravada | undefined> => {
     const [empresas] = await db.query<EmpresaGravada[]>(
-        'SELECT nome, razao_social, cnpj, regime_tributario, fuso FROM empresas WHERE id = ?',
+        'SELECT nome, razao_social, cnpj, regime_tributario, fuso, encarregado_nome, encarregado_email FROM empresas WHERE id = ?',
         [empresaId]
     );
     return empresas[0];
 };
 
 export const atualizarDados = async (empresaId: number, dados: DadosDaEmpresa): Promise<void> => {
+    // O encarregado só muda quando o corpo o traz (as duas chaves vêm juntas, o schema garante).
+    const encarregado = dados.encarregado_nome === undefined ? '' : ', encarregado_nome = ?, encarregado_email = ?';
     await db.query(
-        'UPDATE empresas SET razao_social = ?, cnpj = ?, regime_tributario = ?, fuso = COALESCE(?, fuso) WHERE id = ?',
-        [dados.razao_social, dados.cnpj, dados.regime_tributario, dados.fuso, empresaId]
+        `UPDATE empresas SET razao_social = ?, cnpj = ?, regime_tributario = ?, fuso = COALESCE(?, fuso)${encarregado} WHERE id = ?`,
+        [dados.razao_social, dados.cnpj, dados.regime_tributario, dados.fuso, ...(dados.encarregado_nome === undefined ? [] : [dados.encarregado_nome, dados.encarregado_email]), empresaId]
     );
 };
 

@@ -101,6 +101,13 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
                 : await inserir('INSERT INTO cargos (nome, nivel, departamento_id, empresa_id) VALUES (?, ?, ?, ?)', [nome, 'Pleno', departamento, empresa]);
             return `/api/estrutura/${tabela}/${id}`;
         };
+        const colaboradorInativo = async () => {
+            const id = await inserir(
+                "INSERT INTO funcionarios (nome, email, salario_base, status, data_desligamento, motivo_desligamento, empresa_id) VALUES (?, ?, 3000, 'Inativo', '2026-01-10', 'Teste', ?)",
+                [`Alvo ${++sequencia}`, emailNovo(), empresa]
+            );
+            return `/api/funcionarios/${id}`;
+        };
         const contaAlheia = async () => {
             const { usuario } = await criarUsuario(db, { empresaId: empresa, perfil: 'RH' });
             return `/api/usuarios/${usuario.id}`;
@@ -128,6 +135,13 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'listar os dependentes do colaborador', metodo: 'GET', caminho: async () => `${await colaboradorAlheio()}/dependentes`, permitido: GESTAO },
             { rotulo: 'cadastrar dependente do colaborador', metodo: 'POST', caminho: async () => `${await colaboradorAlheio()}/dependentes`, corpo: () => ({ nome: 'Filha Ficticia', parentesco: 'Filho(a)', data_nascimento: '2018-05-01' }), permitido: GESTAO },
             { rotulo: 'redefinir a senha do colaborador', metodo: 'POST', caminho: async () => `${await colaboradorComAcesso()}/redefinir-senha`, permitido: GESTAO },
+
+            { rotulo: 'ver o histórico contratual do colaborador', metodo: 'GET', caminho: async () => `${await colaboradorAlheio()}/historico-contratual`, permitido: GESTAO },
+            { rotulo: 'exportar os dados do colaborador', metodo: 'GET', caminho: async () => `${await colaboradorAlheio()}/exportar`, permitido: GESTAO },
+            { rotulo: 'anonimizar o cadastro de um ex-colaborador', metodo: 'POST', caminho: async () => `${await colaboradorInativo()}/anonimizar`, permitido: SO_ADMIN },
+            { rotulo: 'ler a trilha de auditoria', metodo: 'GET', caminho: () => '/api/auditoria', permitido: GESTAO },
+            { rotulo: 'listar as solicitações de alteração', metodo: 'GET', caminho: () => '/api/solicitacoes-alteracao', permitido: GESTAO },
+            { rotulo: 'ver as próprias solicitações de alteração', metodo: 'GET', caminho: () => '/api/solicitacoes-alteracao/minhas', permitido: IDENTIDADES },
 
             { rotulo: 'consultar empresa', metodo: 'GET', caminho: () => '/api/empresa', permitido: GESTAO },
             { rotulo: 'alterar empresa', metodo: 'PUT', caminho: () => '/api/empresa', corpo: () => ({ razao_social: 'Empresa Ficticia Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' }), permitido: SO_ADMIN },
@@ -179,6 +193,14 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             }
         });
 
+        it('decidir solicitação de alteração é da gestão: o Colaborador recebe 403 e a gestão chega à regra (404 sem solicitação)', async () => {
+            const corpo = { status: 'aprovada' };
+            assert.equal((await chamar('PATCH', '/api/solicitacoes-alteracao/999999', tokens.Colaborador, corpo)).status, 403);
+            for (const identidade of GESTAO) {
+                assert.equal((await chamar('PATCH', '/api/solicitacoes-alteracao/999999', tokens[identidade], corpo)).status, 404);
+            }
+        });
+
         it('a matriz do código lista só o que as rotas pedem', () => {
             assert.deepEqual(PERMISSOES['usuarios:gerir'], SO_ADMIN);
             assert.deepEqual(PERMISSOES['estrutura:gerir'], SO_ADMIN);
@@ -186,6 +208,10 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             assert.deepEqual(PERMISSOES['empresa:gerir'], SO_ADMIN);
             assert.deepEqual(PERMISSOES['empresa:consultar'], GESTAO);
             assert.deepEqual(PERMISSOES['colaboradores:gerir'], GESTAO);
+            assert.deepEqual(PERMISSOES['colaboradores:exportar'], GESTAO);
+            assert.deepEqual(PERMISSOES['colaboradores:anonimizar'], SO_ADMIN);
+            assert.deepEqual(PERMISSOES['auditoria:consultar'], GESTAO);
+            assert.deepEqual(PERMISSOES['solicitacoes:decidir'], GESTAO);
             assert.deepEqual(PERMISSOES['folha:processar'], GESTAO);
             assert.deepEqual(PERMISSOES['ponto:consultar-empresa'], GESTAO);
             assert.deepEqual(PERMISSOES['dashboard:consultar'], GESTAO);

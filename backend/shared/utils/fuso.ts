@@ -4,8 +4,11 @@
 // no SQL), que não dependem do fuso da sessão do MySQL nem do fuso do processo Node.
 export const FUSO_PADRAO = 'America/Belem';
 
-// Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia.
-export const relogio = { agora: (): number => Date.now() };
+// O relógio do servidor, trocável nos testes para fixar "agora" perto da virada do dia, vive em relogio.ts
+// (também o usa quem não pode importar este módulo): é um objeto só, e trocar `agora` vale para todos.
+import { relogio } from './relogio.ts';
+
+export { relogio };
 
 export const agoraEmSegundos = (): number => Math.floor(relogio.agora() / 1000);
 

@@ -146,10 +146,9 @@ describe('busca de funcionários', { skip: banco.skip }, () => {
     });
 
     it('a listagem traz o que a tela usa e nunca o avatar', async () => {
-        await db.query('UPDATE funcionarios SET avatar = ? WHERE nome = ?', ['data:image/png;base64,AAAA', 'Gamma Pessoa 52']);
         const { corpo } = await listar('?busca=Gamma%20Pessoa%2052');
         assert.deepEqual(Object.keys(corpo[0]).sort(), [
-            'agencia', 'bairro', 'banco', 'cargo_id', 'cargo_nome', 'cep', 'cidade', 'complemento', 'conta', 'contato_emergencia_nome',
+            'agencia', 'anonimizado', 'bairro', 'banco', 'cargo_id', 'cargo_nome', 'cep', 'cidade', 'complemento', 'conta', 'contato_emergencia_nome',
             'contato_emergencia_parentesco', 'contato_emergencia_telefone', 'cpf', 'ctps', 'data_admissao', 'data_desligamento',
             'data_nascimento', 'departamento_id', 'departamento_nome', 'email', 'empresa_id', 'endereco', 'id', 'logradouro', 'matricula',
             'motivo_desligamento', 'nivel', 'nome', 'numero', 'pis', 'rg', 'salario_base', 'status', 'telefone', 'tem_movimento',
