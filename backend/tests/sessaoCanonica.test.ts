@@ -7,12 +7,12 @@ import type http from 'node:http';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
-import banco from '../support/bancoDeTeste.js';
-import { cabecalhosDaSessao, tokenDaResposta } from '../support/sessao.js';
-import pool from '../../config/db.js';
-import { carregarFixtures } from '../../seeds/fixtures.js';
-import { authRoutes } from '../../modules/auth/index.ts';
-import { pararServidor, subirServidor } from './servidor.ts';
+import banco from './support/bancoDeTeste.js';
+import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
+import pool from '../config/db.js';
+import { carregarFixtures } from '../seeds/fixtures.js';
+import { authRoutes } from '../modules/auth/index.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-ficticia-1';
 

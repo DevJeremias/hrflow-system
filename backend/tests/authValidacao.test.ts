@@ -2,8 +2,8 @@
 // Não precisam de banco.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validarLogin, validarRegistro } from '../../modules/auth/auth.schemas.ts';
-import trustProxy from '../../utils/trustProxy.js';
+import { validarLogin, validarRegistro } from '../modules/auth/auth.schemas.ts';
+import trustProxy from '../utils/trustProxy.js';
 
 const { interpretarTrustProxy } = trustProxy;
 

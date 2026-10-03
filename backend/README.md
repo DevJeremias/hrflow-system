@@ -7,7 +7,7 @@ API REST em Node.js com Express e MySQL. Este README descreve o padrão dos mód
 O back-end está sendo reorganizado como um monólito modular, módulo por módulo. Convivem dois formatos:
 
 * **Código legado em JavaScript (CommonJS):** `controllers/`, `routes/`, `schemas/`, `utils/` e `middlewares/`, que ainda misturam HTTP, regra e SQL no controlador. Nada disso muda até o módulo correspondente ser migrado.
-* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência. Para escrever um módulo novo, copie a estrutura dele.
+* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência; `modules/dashboard` e `modules/folha` já seguem o padrão. Para escrever um módulo novo, copie a estrutura dele.
 
 Migre um módulo inteiro por vez, sem reescrever os outros.
 
@@ -56,7 +56,7 @@ Os arquivos JavaScript importados por um módulo (`config/db.js`, `schemas/comum
 
 ## Testes
 
-Os testes de integração ficam em `tests/`, contra um MySQL real (veja o README da raiz). Os das áreas ainda não migradas continuam em JavaScript (CommonJS); os das áreas migradas são TypeScript em `tests/<área>/*.test.ts`, onde um `package.json` com `"type": "module"` os torna ES modules, como em `modules/`. Os dois formatos rodam no mesmo `npm test`. Ao migrar um módulo:
+Os testes de integração ficam em `tests/`, contra um MySQL real (veja o README da raiz), e os do módulo migrado são TypeScript (`*.test.ts`, rodados pelo mesmo `node --test`). Como `tests/` ainda mistura arquivos CommonJS, o `tsc` confere os `.ts` com o `tests/tsconfig.json` (módulos ES), e `npm run typecheck` roda as duas conferências. Ao migrar um módulo:
 
 * Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os `require` que apontam para os arquivos movidos.
 * Para fixar "agora", o serviço expõe `relogio.agora`; o teste a substitui e a restaura no fim.

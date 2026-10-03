@@ -8,13 +8,13 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import type { Request } from 'express';
 import type { ResultSetHeader } from 'mysql2/promise';
-import banco from '../support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from '../support/sessao.js';
-import pool from '../../config/db.js';
-import authMiddleware from '../../middlewares/authMiddleware.js';
-import { criarAuthRouter } from '../../modules/auth/index.ts';
-import { cookieSeguro, tokenCsrf, COOKIE_SESSAO, COOKIE_CSRF } from '../../modules/auth/auth.sessao.ts';
-import { pararServidor, subirServidor } from './servidor.ts';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
+import pool from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import { criarAuthRouter } from '../modules/auth/index.ts';
+import { cookieSeguro, tokenCsrf, COOKIE_SESSAO, COOKIE_CSRF } from '../modules/auth/auth.sessao.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-ficticia-1';
 

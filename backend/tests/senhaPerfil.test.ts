@@ -2,21 +2,30 @@
 // teto de tentativas por usuário e recusa uma senha nova igual à atual. Cada cenário roda de ponta
 // a ponta contra o MySQL migrado (tests/support/bancoDeTeste.js); sem HRFLOW_TEST_DB_HOST os testes
 // são marcados como ignorados, nunca como aprovados.
-const { before, after, describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const http = require('node:http');
-const bcrypt = require('bcrypt');
-const banco = require('./support/bancoDeTeste');
-const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
+import { before, after, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import bcrypt from 'bcrypt';
+import express from 'express';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
+import pool from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import { perfilRoutes } from '../modules/perfil/index.ts';
 
 describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {
     const senhaAtual = 'senha-atual-ficticia';
-    let server, baseUrl, pool, empresa, hash;
+    let server: http.Server;
+    let baseUrl: string;
+    let empresa: number;
+    let hash: string;
 
-    const trocar = async (token, corpo) => {
+    const trocar = async (token: string, corpo: { senhaAtual: string; novaSenha: string }) => {
         const resposta = await fetch(`${baseUrl}/api/perfil/alterar-senha`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
+            headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) } as Record<string, string>,
             body: JSON.stringify(corpo),
         });
         return { status: resposta.status, retryAfter: resposta.headers.get('retry-after'), corpo: await resposta.json() };
@@ -26,18 +35,15 @@ describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        pool = require('../config/db');
 
-        const express = require('express');
-        const authMiddleware = require('../middlewares/authMiddleware');
         const app = express();
         app.use(express.json());
-        app.use('/api/perfil', authMiddleware, require('../routes/perfilRoutes').criarRouter());
+        app.use('/api/perfil', authMiddleware, perfilRoutes);
         server = http.createServer(app);
-        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-        baseUrl = `http://127.0.0.1:${server.address().port}`;
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+        baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-        [{ insertId: empresa }] = await pool.query("INSERT INTO empresas (nome) VALUES ('Empresa Senha Ficticia')");
+        [{ insertId: empresa }] = await pool.query<ResultSetHeader>("INSERT INTO empresas (nome) VALUES ('Empresa Senha Ficticia')");
         hash = await bcrypt.hash(senhaAtual, 4);
     });
 
@@ -75,7 +81,7 @@ describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {
         assert.equal(status, 400);
         assert.match(corpo.erro, /diferente da atual/);
 
-        const [[atual]] = await pool.query('SELECT senha, sessao_versao FROM usuarios WHERE id = ?', [usuario.id]);
+        const [[atual]] = await pool.query<RowDataPacket[]>('SELECT senha, sessao_versao FROM usuarios WHERE id = ?', [usuario.id]);
         assert.equal(atual.senha, hash);
         assert.equal(atual.sessao_versao, usuario.sessao_versao);
     });

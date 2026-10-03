@@ -8,14 +8,14 @@ import type http from 'node:http';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
-import banco from '../support/bancoDeTeste.js';
-import { cabecalhosDaSessao, tokenDaResposta } from '../support/sessao.js';
-import pool from '../../config/db.js';
-import authMiddleware from '../../middlewares/authMiddleware.js';
-import funcionarioRoutes from '../../routes/funcionarioRoutes.js';
-import perfilRoutes from '../../routes/perfilRoutes.js';
-import { criarAuthRouter } from '../../modules/auth/index.ts';
-import { pararServidor, subirServidor } from './servidor.ts';
+import banco from './support/bancoDeTeste.js';
+import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
+import pool from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import funcionarioRoutes from '../routes/funcionarioRoutes.js';
+import { perfilRoutes } from '../modules/perfil/index.ts';
+import { criarAuthRouter } from '../modules/auth/index.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 // O que os testes leem das claims do token que o login emitiu.
 interface Claims extends jwt.JwtPayload {

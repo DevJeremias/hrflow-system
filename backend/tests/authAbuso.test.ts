@@ -13,7 +13,7 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import mysql from 'mysql2/promise';
 import type { Connection, Pool, RowDataPacket } from 'mysql2/promise';
-import { pararServidor, subirServidor } from './servidor.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const host = process.env.HRFLOW_TEST_DB_HOST;
 const port = process.env.HRFLOW_TEST_DB_PORT ? Number(process.env.HRFLOW_TEST_DB_PORT) : undefined;
@@ -41,7 +41,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     const senhaFicticia = 'senha-ficticia-1';
     let admin: Connection | undefined;
     let pool: Pool;
-    let criarAuthRouter: typeof import('../../modules/auth/index.ts').criarAuthRouter;
+    let criarAuthRouter: typeof import('../modules/auth/index.ts').criarAuthRouter;
     const servidores: http.Server[] = [];
 
     // Monta o mesmo desenho do server.js: auth antes do parser global de 10mb.
@@ -94,8 +94,8 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         process.env.DB_NAME = dbName;
         process.env.JWT_SECRET = jwtSecret;
         // Só depois das variáveis de ambiente acima: o pool e o segredo JWT as leem ao carregar.
-        pool = (await import('../../config/db.js')).default;
-        ({ criarAuthRouter } = await import('../../modules/auth/index.ts'));
+        pool = (await import('../config/db.js')).default;
+        ({ criarAuthRouter } = await import('../modules/auth/index.ts'));
     });
 
     after(async () => {

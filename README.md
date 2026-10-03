@@ -47,7 +47,7 @@ hrflow-system/
 ├── scripts/               # dev.mjs, run-workspace.mjs e db.mjs (comandos db:*)
 ├── backend/
 │   ├── config/            # Conexões de banco de dados (db.js)
-│   ├── controllers/       # Lógica de negócio (folhaController, funcionarioController)
+│   ├── controllers/       # Lógica de negócio legada (funcionarioController)
 │   ├── db/                # Aplicador de migrations
 │   ├── middlewares/       # Proteções JWT e validação de perfis (Admin/Colaborador)
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias

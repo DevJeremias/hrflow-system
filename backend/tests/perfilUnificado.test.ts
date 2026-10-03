@@ -2,36 +2,39 @@
 // (variáveis HRFLOW_TEST_DB_*). Sem HRFLOW_TEST_DB_HOST os testes são marcados como
 // ignorados, nunca como aprovados.
 // O perfil tem uma única API (/api/perfil): a mesma resposta para Administrador, RH e Colaborador.
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const bcrypt = require('bcrypt');
-const express = require('express');
-const banco = require('./support/bancoDeTeste');
-const { criarUsuario, cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
-const { dataUrl } = require('./support/imagens');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import bcrypt from 'bcrypt';
+import express from 'express';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
+import { dataUrl } from './support/imagens.js';
 
-const db = require('../config/db');
-const authMiddleware = require('../middlewares/authMiddleware');
-const tratarErros = require('../middlewares/tratarErros');
-const perfilRoutes = require('../routes/perfilRoutes');
-const authRoutes = require('../modules/auth/index.ts').authRoutes;
+import db from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import tratarErros from '../middlewares/tratarErros.js';
+import { authRoutes } from '../modules/auth/index.ts';
+import { perfilRoutes } from '../modules/perfil/index.ts';
 
 const semBanco = banco.skip;
 
-const ctx = {};
-let servidor;
-let baseUrl;
+const ctx = {} as Record<string, any>;
+let servidor: Server;
+let baseUrl: string;
 
-const chamar = async (metodo, caminho, token, corpo) => {
+const chamar = async (metodo: string, caminho: string, token?: string, corpo?: object) => {
     const resposta = await fetch(`${baseUrl}${caminho}`, {
         method: metodo,
-        headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
+        headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) } as Record<string, string>,
         body: corpo ? JSON.stringify(corpo) : undefined,
     });
     return { status: resposta.status, corpo: await resposta.json() };
 };
 
-const inserir = async (sql, valores) => (await db.query(sql, valores))[0].insertId;
+const inserir = async (sql: string, valores: unknown[]) => (await db.query<ResultSetHeader>(sql, valores))[0].insertId;
 
 test.before(async () => {
     if (semBanco) return;
@@ -41,10 +44,10 @@ test.before(async () => {
     ctx.empresaA = await inserir('INSERT INTO empresas (nome) VALUES (?)', [`Empresa Ficticia A ${sufixo}`]);
     ctx.empresaB = await inserir('INSERT INTO empresas (nome) VALUES (?)', [`Empresa Ficticia B ${sufixo}`]);
 
-    const [[{ departamento }]] = await db.query('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [ctx.empresaA]);
+    const [[{ departamento }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [ctx.empresaA]);
     ctx.cargo = await inserir('INSERT INTO cargos (nome, nivel, departamento_id, empresa_id) VALUES (?, ?, ?, ?)', ['Analista Ficticio', 'Pleno', departamento, ctx.empresaA]);
     ctx.departamento = departamento;
-    const [[{ nome: nomeDepartamento }]] = await db.query('SELECT nome FROM departamentos WHERE id = ?', [departamento]);
+    const [[{ nome: nomeDepartamento }]] = await db.query<RowDataPacket[]>('SELECT nome FROM departamentos WHERE id = ?', [departamento]);
     ctx.nomeDepartamento = nomeDepartamento;
 
     ctx.funcionario = await inserir(
@@ -68,7 +71,7 @@ test.before(async () => {
     app.use('/api/perfil', authMiddleware, perfilRoutes);
     app.use(tratarErros);
     await new Promise((resolve) => { servidor = app.listen(0, '127.0.0.1', resolve); });
-    baseUrl = `http://127.0.0.1:${servidor.address().port}/api`;
+    baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api`;
 });
 
 test.after(async () => {
@@ -178,6 +181,6 @@ test('login, sessão e atualização de perfil não acessam funcionário de outr
         nome: 'Nome Atualizado Fictício', email: ctx.cruzado.usuario.email, telefone: '0000000000', avatar: null,
     });
     assert.equal(atualizacao.status, 200);
-    const [[funcionario]] = await db.query('SELECT nome, telefone, banco FROM funcionarios WHERE id = ?', [ctx.funcionarioDeOutraEmpresa]);
+    const [[funcionario]] = await db.query<RowDataPacket[]>('SELECT nome, telefone, banco FROM funcionarios WHERE id = ?', [ctx.funcionarioDeOutraEmpresa]);
     assert.deepEqual(funcionario, { nome: 'Eva Externa Ficticia', telefone: null, banco: 'Banco Alheio Ficticio' });
 });

@@ -7,6 +7,10 @@ const { emitirToken, tokenCsrf, COOKIE_SESSAO, CABECALHO_CSRF } = require('../..
 
 let contador = 0;
 
+/**
+ * @param {any} pool
+ * @param {{ empresaId: number, perfil: string, funcionarioId?: number | null, senhaHash?: string }} opcoes
+ */
 const criarUsuario = async (pool, { empresaId, perfil, funcionarioId = null, senhaHash = 'hash-ficticio' }) => {
     const email = `usuario${process.pid}-${++contador}@exemplo.invalid`;
     const [r] = await pool.query(

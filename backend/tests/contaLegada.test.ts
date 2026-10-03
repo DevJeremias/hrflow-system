@@ -7,11 +7,11 @@ import assert from 'node:assert/strict';
 import type http from 'node:http';
 import express from 'express';
 import type { ResultSetHeader } from 'mysql2/promise';
-import banco from '../support/bancoDeTeste.js';
-import { criarUsuario, tokenDaResposta } from '../support/sessao.js';
-import pool from '../../config/db.js';
-import { criarAuthRouter } from '../../modules/auth/index.ts';
-import { pararServidor, subirServidor } from './servidor.ts';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, tokenDaResposta } from './support/sessao.js';
+import pool from '../config/db.js';
+import { criarAuthRouter } from '../modules/auth/index.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-legada-ficticia';
 const HASH_BCRYPTJS_2B = '$2b$10$RCdzwpKK.eQPnNLbn53EkeZu3B6XsI5PPKl91m5zI0BzwKpMnfgCm';
