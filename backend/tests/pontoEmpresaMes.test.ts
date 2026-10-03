@@ -11,9 +11,10 @@ import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import db from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
 import { consultaDosPontosDaEmpresa } from '../modules/ponto/ponto.repository.ts';
-import * as fuso from '../modules/ponto/ponto.fuso.ts';
+import { criarFuso } from '../shared/utils/fuso.ts';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
+const fuso = criarFuso('America/Belem');
 const semBanco = banco.skip;
 const OUTUBRO = '2026-10';
 const SETEMBRO = '2026-09';

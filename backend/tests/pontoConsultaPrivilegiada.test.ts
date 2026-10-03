@@ -11,9 +11,10 @@ import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import db from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
 import { relogio } from '../modules/ponto/ponto.service.ts';
-import * as fuso from '../modules/ponto/ponto.fuso.ts';
+import { criarFuso } from '../shared/utils/fuso.ts';
 import type { ResultSetHeader } from 'mysql2/promise';
 
+const fuso = criarFuso('America/Belem');
 const semBanco = banco.skip;
 const MES = '2026-03';
 const DIA = '2026-03-10';

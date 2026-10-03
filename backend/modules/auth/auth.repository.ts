@@ -21,6 +21,7 @@ export interface IdentidadeDaSessao extends RowDataPacket {
     perfil: string;
     empresa_id: number;
     empresa_nome: string;
+    empresa_fuso: string;
     funcionario_id: number | null;
     // Endereço da miniatura (GET /api/perfil/avatar), nunca a imagem.
     avatar: string | null;
@@ -79,7 +80,7 @@ export const funcionarioDoUsuario = async (funcionarioId: number, empresaId: num
 
 export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDaSessao | undefined> => {
     const [linhas] = await db.query<IdentidadeDaSessao[]>(
-        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, ${urlDoAvatarSql('u')} AS avatar, u.senha_provisoria,
+        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, e.fuso AS empresa_fuso, u.funcionario_id, ${urlDoAvatarSql('u')} AS avatar, u.senha_provisoria,
                 COALESCE(f.nome, u.nome) AS nome
          FROM usuarios u
          JOIN empresas e ON e.id = u.empresa_id

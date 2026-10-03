@@ -25,6 +25,7 @@ export interface IdentidadeDoUsuario {
     perfil: string;
     empresa_id: number;
     empresa_nome: string;
+    empresa_fuso: string;
     funcionario_id: number | null;
     avatar: string | null;
     nome: string;
@@ -75,6 +76,6 @@ export const login = async ({ email, senha }: DadosDeLogin): Promise<LoginFeito>
 export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDoUsuario> => {
     const identidade = await repositorio.identidadeDaSessao(usuarioId);
     if (!identidade) throw new ErroDeAuth('naoAutenticado', 'Sessão encerrada. Faça login novamente.');
-    const { id, perfil, empresa_id, empresa_nome, funcionario_id, avatar, nome, senha_provisoria } = identidade;
-    return { id, perfil, empresa_id, empresa_nome, funcionario_id, avatar, nome, senha_provisoria: Boolean(senha_provisoria) };
+    const { id, perfil, empresa_id, empresa_nome, empresa_fuso, funcionario_id, avatar, nome, senha_provisoria } = identidade;
+    return { id, perfil, empresa_id, empresa_nome, empresa_fuso, funcionario_id, avatar, nome, senha_provisoria: Boolean(senha_provisoria) };
 };

@@ -1,16 +1,17 @@
 // Regras do ponto: quem pode marcar, em que sequência, o que cada dia mostra. Não conhece HTTP
 // (falhas de regra saem como ErroDePonto) e só chega ao banco pelo repositório.
-import * as fuso from './ponto.fuso.ts';
+import { agoraEmSegundos, mesValido } from '../../shared/utils/fuso.ts';
+import type { Fuso } from '../../shared/utils/fuso.ts';
+import { fusoDaEmpresa } from '../empresa/index.ts';
 import * as regras from './ponto.regras.ts';
 import type { DecisaoDaJustificativa, Jornada, StatusDoDia, TipoRegistro, Validacao } from './ponto.regras.ts';
 import * as repositorio from './ponto.repository.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { ConsultaDePontosDaEmpresa, ConsultaDeJustificativas, DecisaoRecebida } from './ponto.schemas.ts';
 
-export { relogio } from './ponto.fuso.ts';
-const agoraEmSegundos = (): number => Math.floor(fuso.relogio.agora() / 1000);
+export { relogio } from '../../shared/utils/fuso.ts';
 
-const intervaloDoDia = (segundos: number): fuso.Intervalo => fuso.limitesDoDia(fuso.diaLocal(segundos));
+const intervaloDoDia = (fuso: Fuso, segundos: number) => fuso.limitesDoDia(fuso.diaLocal(segundos));
 
 // Primeiro dia do mês seguinte a 'AAAA-MM', como 'AAAA-MM-01'.
 const proximoMes = (mes: string): string => {
@@ -72,7 +73,7 @@ export interface Justificativa {
     updatedAt: string;
 }
 
-const montarRegistro = (id: number, tipo: TipoRegistro, segundos: number): RegistroMarcado => ({
+const montarRegistro = (fuso: Fuso, id: number, tipo: TipoRegistro, segundos: number): RegistroMarcado => ({
     id: id.toString(),
     type: tipo,
     time: fuso.horaLocal(segundos),
@@ -97,8 +98,10 @@ export const registrarPonto = async ({ empresaId, funcionarioId, corpo }: DadosD
     const { latitude, longitude } = exigir(regras.validarCoordenadas(entrada));
     const observacao = exigir(regras.validarObservacao(entrada.observacao));
 
+    // O "dia" da marcação é o da empresa: uma empresa em Manaus vira o dia uma hora depois da de Belém.
+    const fuso = await fusoDaEmpresa(empresaId);
     const agora = agoraEmSegundos();
-    const { inicio, fim } = intervaloDoDia(agora);
+    const { inicio, fim } = intervaloDoDia(fuso, agora);
 
     const id = await repositorio.emTransacao(async (repo) => {
         // O bloqueio da linha do colaborador serializa marcações simultâneas (duplo clique, duas
@@ -127,7 +130,7 @@ export const registrarPonto = async ({ empresaId, funcionarioId, corpo }: DadosD
         return repo.inserirRegistro({ funcionarioId, empresaId, tipo, latitude, longitude, instante: agora, observacao });
     });
 
-    return montarRegistro(id, tipo, agora);
+    return montarRegistro(fuso, id, tipo, agora);
 };
 
 export interface ConsultaDoColaborador {
@@ -137,12 +140,13 @@ export interface ConsultaDoColaborador {
 
 // A autorização do colaborador consultado já foi decidida na rota; a empresa continua vindo do token.
 export const listarPontosHoje = async ({ empresaId, funcionarioId }: ConsultaDoColaborador): Promise<RegistroMarcado[]> => {
-    const { inicio, fim } = intervaloDoDia(agoraEmSegundos());
+    const fuso = await fusoDaEmpresa(empresaId);
+    const { inicio, fim } = intervaloDoDia(fuso, agoraEmSegundos());
     const pontos = await repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim);
-    return pontos.map((p) => montarRegistro(p.id, p.tipo_registro, p.instante));
+    return pontos.map((p) => montarRegistro(fuso, p.id, p.tipo_registro, p.instante));
 };
 
-const minutoDoDia = (segundos: number): number => {
+const minutoDoDia = (fuso: Fuso, segundos: number): number => {
     const [horas, minutos] = fuso.horaLocal(segundos).split(':').map(Number);
     return horas * 60 + minutos;
 };
@@ -162,9 +166,10 @@ interface JornadaDoMes extends Jornada {
 
 // Lê o mês inteiro do colaborador e apura cada dia, inclusive os sem marcação.
 const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }) => {
-    if (!fuso.mesValido(mes)) {
+    if (!mesValido(mes)) {
         throw new ErroDePonto('invalido', 'Informe o mês no formato AAAA-MM (ex.: 2026-03).');
     }
+    const fuso = await fusoDaEmpresa(empresaId);
     const { inicio, fim } = fuso.limitesDoMes(mes);
     const { de, ate } = datasDoMes(mes);
 
@@ -188,7 +193,7 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
     const marcacoesDoDia = new Map<string, regras.Marcacao[]>();
     for (const p of pontos) {
         const dia = fuso.diaLocal(p.instante);
-        marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(p.instante) }]);
+        marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(fuso, p.instante) }]);
     }
     const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j]));
 
@@ -288,14 +293,15 @@ export interface PontoDaEmpresa {
     time: string;
 }
 
-// Uma página das marcações do mês de Belém, da mais recente à mais antiga, e o total do mês.
+// Uma página das marcações do mês da empresa, da mais recente à mais antiga, e o total do mês.
 export const listarPontosDaEmpresa = async ({ empresaId, consulta }: { empresaId: number; consulta: ConsultaDePontosDaEmpresa }): Promise<{ registros: PontoDaEmpresa[]; total: number }> => {
     const { mes, funcionarioId, busca, pagina, limite } = consulta;
+    const fuso = await fusoDaEmpresa(empresaId);
     const { pontos, total } = await repositorio.registrosDaEmpresa({
         empresaId, ...fuso.limitesDoMes(mes), funcionarioId, busca, limite, deslocamento: (pagina - 1) * limite,
     });
 
-    // data_hora_oficial segue como instante ISO em UTC; date e time são o relógio de Belém.
+    // data_hora_oficial segue como instante ISO em UTC; date e time são o relógio da empresa.
     const registros = pontos.map(({ instante, ...p }) => ({
         ...p,
         data_hora_oficial: paraIso(instante),
@@ -317,6 +323,10 @@ export interface DadosDaJustificativa {
 export const enviarJustificativa = async ({ empresaId, funcionarioId, data, texto }: DadosDaJustificativa): Promise<Pick<Justificativa, 'date' | 'note' | 'status' | 'updatedAt'>> => {
     if (!funcionarioId) {
         throw new ErroDePonto('proibido', 'Acesso negado. Apenas colaboradores vinculados podem justificar o ponto.');
+    }
+
+    if (data > (await fusoDaEmpresa(empresaId)).diaLocal(agoraEmSegundos())) {
+        throw new ErroDePonto('invalido', 'Data da justificativa deve estar entre 1900-01-01 e hoje.');
     }
 
     const atualizadoEm = await repositorio.emTransacao(async (repo) => {

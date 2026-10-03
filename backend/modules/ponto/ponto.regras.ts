@@ -65,7 +65,7 @@ export const validarCoordenadas = ({ latitude, longitude }: { latitude?: unknown
 // ---------------------------------------------------------------------------------------------
 // Apuração: o que cada dia vale diante da jornada do colaborador. Funções puras: o serviço traz as
 // marcações e a jornada do banco e o "hoje" do relógio, e aqui só se calcula. Todo horário é em
-// minutos desde a meia-noite de Belém; todo dia é 'AAAA-MM-DD'.
+// minutos desde a meia-noite do fuso da empresa; todo dia é 'AAAA-MM-DD'.
 // ---------------------------------------------------------------------------------------------
 
 export interface Marcacao {

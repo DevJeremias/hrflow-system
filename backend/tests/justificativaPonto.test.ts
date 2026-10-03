@@ -10,7 +10,7 @@ import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 
 import db from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
-import * as fuso from '../modules/ponto/ponto.fuso.ts';
+import { criarFuso } from '../shared/utils/fuso.ts';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 const semBanco = banco.skip;
@@ -196,7 +196,7 @@ test('a consulta exige o mês no formato AAAA-MM', { skip: semBanco }, async () 
 
 test('entradas inválidas são recusadas com 400 e nada é gravado', { skip: semBanco }, async () => {
     const antes = await linhasNoBanco(ctx.alvo);
-    const amanha = fuso.diaLocal(Math.floor(Date.now() / 1000) + 86400 * 2);
+    const amanha = criarFuso('America/Belem').diaLocal(Math.floor(Date.now() / 1000) + 86400 * 2);
     const casos: [string, unknown][] = [
         [DIA, ''],
         [DIA, '   '],

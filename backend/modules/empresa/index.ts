@@ -1,2 +1,3 @@
 // Superfície pública do módulo: o que o resto da aplicação pode importar.
 export { empresaRoutes } from './empresa.routes.ts';
+export { fusoDaEmpresa } from './empresa.service.ts';

@@ -11,7 +11,7 @@ export interface ContagensDaEmpresa extends RowDataPacket {
     marcacoes_hoje: number;
 }
 
-// Instantes em segundos Unix: [inicio, fim) é o dia de Belém (ponto.fuso.ts).
+// Instantes em segundos Unix: [inicio, fim) é o dia da empresa (shared/utils/fuso.ts).
 export const contagensDaEmpresa = async (empresaId: number, inicio: number, fim: number): Promise<ContagensDaEmpresa> => {
     const [[linha]] = await db.query<ContagensDaEmpresa[]>(
         `SELECT

@@ -1,7 +1,8 @@
 // Regras da folha por competência: quem entra, o cálculo de cada colaborador (folha.regras.ts), o
 // processamento que pode se repetir enquanto a folha está aberta e o fechamento que a trava. Não
 // conhece HTTP (falhas de regra saem como ErroDeFolha) e só chega ao banco pelo repositório.
-import { relogio, diaLocal } from '../ponto/index.ts';
+import { relogio, agoraEmSegundos } from '../../shared/utils/fuso.ts';
+import { fusoDaEmpresa } from '../empresa/index.ts';
 import { competenciaDoDia, primeiroDia, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
 import { CODIGO_SALARIO, calcularHolerite, emCentavos, emReais, haTabelaVigente, rubricasDoHolerite } from './folha.regras.ts';
 import * as repositorio from './folha.repository.ts';
@@ -53,11 +54,11 @@ export interface FolhaDaCompetencia {
 
 const paraIso = (segundos: number): string => new Date(segundos * 1000).toISOString();
 
-const hojeEmCompetencia = (): string => competenciaDoDia(diaLocal(Math.floor(relogio.agora() / 1000)));
+const hojeEmCompetencia = async (empresaId: number): Promise<string> => competenciaDoDia((await fusoDaEmpresa(empresaId)).diaLocal(agoraEmSegundos()));
 
 // A folha só existe para um mês que já começou e para o qual há tabela de INSS.
-const exigirCompetenciaProcessavel = (competencia: string) => {
-    if (competencia > hojeEmCompetencia()) {
+const exigirCompetenciaProcessavel = async (empresaId: number, competencia: string) => {
+    if (competencia > await hojeEmCompetencia(empresaId)) {
         throw new ErroDeFolha('invalido', `A competência ${rotuloDaCompetencia(competencia)} ainda não começou: não é possível processar a folha.`);
     }
     if (!haTabelaVigente(primeiroDia(competencia))) {
@@ -158,7 +159,7 @@ export const consultarFolha = async ({ empresaId, competencia }: { empresaId: nu
 
 // Cria a folha da competência ou, estando ela aberta, a recalcula com os dados de agora.
 export const processarFolha = async ({ empresaId, competencia }: { empresaId: number; competencia: string }): Promise<{ folha: FolhaDaCompetencia; criada: boolean }> => {
-    exigirCompetenciaProcessavel(competencia);
+    await exigirCompetenciaProcessavel(empresaId, competencia);
     const { criada, folhaId } = await repositorio.emTransacao(async (repo) => {
         const criada = await repo.criarFolhaSeNaoExiste(empresaId, competencia);
         const folha = (await repo.travarFolha(empresaId, competencia))!;
