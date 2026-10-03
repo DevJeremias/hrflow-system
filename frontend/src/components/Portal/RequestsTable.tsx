@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { FileText, Paperclip, Clock, CheckCircle2, XCircle, Filter } from 'lucide-react';
+import { FileText, Filter } from 'lucide-react';
 import { EmployeeRequest, RequestStatus, RequestType } from '../../services/requestService';
-import Badge from '../ui/Badge';
-import { IconButton } from '../ui/Button';
+import { TIPOS_DE_SOLICITACAO, formatarDia, rotuloDosDias } from '../../utils/solicitacoes';
+import AnexoDaSolicitacao from '../AnexoDaSolicitacao';
+import StatusDaSolicitacao from '../StatusDaSolicitacao';
 import Card, { CardHeader } from '../ui/Card';
 import DataTable, { type Column } from '../ui/DataTable';
 import Field, { Select } from '../ui/Field';
@@ -11,18 +12,6 @@ interface Props {
   requests: EmployeeRequest[];
 }
 
-const formatDate = (dateString: string) => dateString.split('-').reverse().join('/');
-
-const StatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
-  switch (status) {
-    case 'Aprovada': return <Badge tone="success" className="gap-1.5"><CheckCircle2 size={12} aria-hidden="true" /> Aprovada</Badge>;
-    case 'Recusada': return <Badge tone="danger" className="gap-1.5"><XCircle size={12} aria-hidden="true" /> Recusada</Badge>;
-    default: return <Badge tone="warning" className="gap-1.5"><Clock size={12} aria-hidden="true" /> Pendente</Badge>;
-  }
-};
-
-const TIPOS: RequestType[] = ['Férias', 'Licença Médica', 'Licença Maternidade', 'Licença Paternidade', 'Acidente de Trabalho', 'Outros'];
-
 const columns: Column<EmployeeRequest>[] = [
   {
     key: 'type',
@@ -30,25 +19,33 @@ const columns: Column<EmployeeRequest>[] = [
     cell: (req) => (
       <>
         <p className="font-semibold text-ink">{req.type}</p>
-        <p className="mt-0.5 text-xs text-ink-muted">Feito em {formatDate(req.requestDate)}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">Feito em {formatarDia(req.requestDate)}</p>
       </>
     ),
   },
   {
     key: 'period',
     header: 'Período solicitado',
-    cell: (req) => <span className="font-semibold text-ink">{formatDate(req.startDate)} <span className="mx-1 font-normal text-ink-muted">até</span> {formatDate(req.endDate)}</span>,
+    cell: (req) => (
+      <>
+        <span className="font-semibold text-ink lg:whitespace-nowrap">{formatarDia(req.startDate)} <span className="mx-1 font-normal text-ink-muted">até</span> {formatarDia(req.endDate)}</span>
+        <p className="mt-0.5 text-xs text-ink-muted">{rotuloDosDias(req.days)}</p>
+      </>
+    ),
   },
   { key: 'observation', header: 'Observação', cell: (req) => <p className="max-w-[16rem] truncate text-ink-muted" title={req.observation}>{req.observation}</p> },
+  { key: 'attachment', header: 'Anexo', align: 'center', cell: (req) => <AnexoDaSolicitacao request={req} /> },
   {
-    key: 'attachment',
-    header: 'Anexo',
-    align: 'center',
-    cell: (req) => req.hasAttachment
-      ? <IconButton label={`Baixar anexo da solicitação de ${req.type}`} size="sm"><Paperclip size={18} aria-hidden="true" /></IconButton>
-      : <span className="text-ink-muted">Sem anexo</span>,
+    key: 'status',
+    header: 'Status',
+    align: 'right',
+    cell: (req) => (
+      <>
+        <StatusDaSolicitacao status={req.status} />
+        {req.reply && <p className="mt-1.5 max-w-[16rem] text-xs text-ink-muted md:ml-auto">{req.status === 'Recusada' ? 'Motivo: ' : ''}{req.reply}</p>}
+      </>
+    ),
   },
-  { key: 'status', header: 'Status', align: 'right', cell: (req) => <StatusBadge status={req.status} /> },
 ];
 
 const RequestsTable: React.FC<Props> = ({ requests }) => {
@@ -72,7 +69,7 @@ const RequestsTable: React.FC<Props> = ({ requests }) => {
             <Field label="Tipo" name="filtroTipo" hideLabel className="w-full sm:w-52">
               <Select value={filterType} onChange={(e) => setFilterType(e.target.value as RequestType | 'Todos')}>
                 <option value="Todos">Todos os Tipos</option>
-                {TIPOS.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
+                {TIPOS_DE_SOLICITACAO.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
               </Select>
             </Field>
             <Field label="Status" name="filtroStatus" hideLabel className="w-full sm:w-48">
@@ -93,6 +90,7 @@ const RequestsTable: React.FC<Props> = ({ requests }) => {
           rows={filteredRequests}
           rowKey={(req) => req.id}
           stackBelow="lg"
+          compact
           empty={<p className="px-6 py-12 text-center font-semibold text-ink-muted">Nenhuma solicitação encontrada para os filtros selecionados.</p>}
         />
       </div>

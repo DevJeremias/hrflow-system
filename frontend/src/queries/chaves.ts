@@ -31,4 +31,7 @@ export const chaves = {
   perfil: ['perfil'] as const,
 
   solicitacoes: ['solicitacoes'] as const,
+  minhasSolicitacoes: ['solicitacoes', 'minhas'] as const,
+  solicitacoesDaEmpresa: (consulta: { pagina: number; limite: number; status?: string }) => ['solicitacoes', 'empresa', consulta] as const,
+  saldoDeFerias: (funcionarioId: number) => ['solicitacoes', 'saldo', funcionarioId] as const,
 };

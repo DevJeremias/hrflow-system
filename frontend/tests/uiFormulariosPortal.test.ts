@@ -22,6 +22,9 @@ type Chamada = { metodo: string; caminho: string };
 let chamadas: Chamada[] = [];
 let respostaDaJustificativa: () => Response;
 let respostaDoRegistro: () => Response;
+let respostaDoPedido: () => Response;
+let minhasSolicitacoes: unknown[] = [];
+const salvos: Array<{ nome: string }> = [];
 // O que a API devolve em /ponto/hoje: depois de uma marcação o espelho recarrega o dia e a lista vem do servidor.
 let registrosDeHoje: unknown[] = [];
 let alertasNativos: string[] = [];
@@ -32,6 +35,7 @@ const HOJE = new Date().toISOString().slice(0, 10);
 const DIA = { id: HOJE, date: HOJE, entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'ok', open: false, delay: '00:00', note: '', noteStatus: null, noteReply: null, negativeAdjust: '00:00', positiveAdjust: '00:00' };
 const JORNADA = { weeklyHours: 40, entry: '08:00', exit: '17:00', toleranceMinutes: 10 };
 const TOTAIS_VAZIOS = { workloadLimit: '00:00', workloadDone: '00:00', pendingTime: '00:00', excessTime: '00:00', delayTime: '00:00', absences: 0, incompleteDays: 0 };
+const SALDO = { admissao: '2024-01-15', periodoAquisitivo: { inicio: '2026-01-15', fim: '2027-01-14' }, periodosCompletos: 2, diasAdquiridos: 60, diasAprovados: 0, diasEmAnalise: 0, saldo: 60, prazoParaGozo: '2027-01-14', vencido: false };
 const PERFIL = {
   perfil: 'Colaborador', vinculado: true, nome: 'Caio Ficticio', email: 'caio@exemplo.invalid', avatar: null, telefone: '91999990000', cpf: null, data_nascimento: null,
   data_admissao: '2024-01-10', endereco: null, tipo_contrato: 'CLT', nivel: 'Pleno', banco: 'Banco Ficticio', agencia: '0001', conta: '12345-6', tipo_conta: 'Corrente', cargo: 'Analista', departamento: 'TI',
@@ -46,13 +50,19 @@ before(async () => {
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
   ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
   dom.window.alert = (mensagem?: string) => { alertasNativos.push(String(mensagem)); };
+  // O download vira um <a download> clicado: o jsdom não navega, e o teste só anota o nome do arquivo.
+  dom.window.HTMLAnchorElement.prototype.click = function click(this: HTMLAnchorElement) { salvos.push({ nome: this.download }); };
   globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const caminho = new URL(String(entrada), 'http://localhost').pathname.replace(/^\/api/, '');
     const metodo = (init?.method ?? 'GET').toUpperCase();
     chamadas.push({ metodo, caminho });
     if (caminho === '/auth/sessao') return json({ id: 3, nome: 'Caio Ficticio', perfil: 'Colaborador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: 7, avatar: null });
     if (caminho === '/perfil/meus-dados') return json(PERFIL);
-    if (caminho === '/solicitacoes/minhas') return json([]);
+    if (caminho === '/ausencias/minhas') return json(minhasSolicitacoes);
+    if (caminho === '/ausencias/15/anexo') return json({ erro: 'Anexo não encontrado.' }, 404);
+    if (caminho === '/ausencias/12/anexo') return new Response('%PDF-1.4 atestado', { status: 200, headers: { 'Content-Type': 'application/pdf' } });
+    if (caminho === '/ausencias/saldo/7') return json(SALDO);
+    if (caminho === '/ausencias' && metodo === 'POST') return respostaDoPedido();
     if (caminho.startsWith('/ponto/hoje/')) return json(registrosDeHoje);
     if (caminho.startsWith('/ponto/historico/')) return json([DIA]);
     if (caminho.startsWith('/ponto/totais/')) return json({ workSchedule: JORNADA, totals: [], monthlySummary: TOTAIS_VAZIOS });
@@ -73,6 +83,9 @@ beforeEach(() => {
   respostaDaJustificativa = () => new Response(null, { status: 204 });
   registrosDeHoje = [];
   respostaDoRegistro = () => json({ id: 1, type: 'Entrada', time: '08:00', date: HOJE }, 201);
+  minhasSolicitacoes = [];
+  salvos.length = 0;
+  respostaDoPedido = () => json({ erro: 'Saldo de férias insuficiente: a solicitação tem 5 dias e há 0 disponíveis em 01/12/2026.' }, 409);
   Object.defineProperty(dom.window.navigator, 'geolocation', { configurable: true, value: undefined });
 });
 afterEach(desmontarTudo);
@@ -84,6 +97,9 @@ const abrirPagina = async (Pagina: ComponentType) => {
   for (let i = 0; i < 4; i += 1) await esperar(20);
   return host;
 };
+
+// 'AAAA-MM-DD' de daqui a `dias` dias em Belém: as férias não começam no passado.
+const emDias = (dias: number) => new Date(Date.now() + dias * 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Belem' });
 
 const dialogo = () => porRole(document, 'dialog')!;
 
@@ -131,15 +147,188 @@ test('Nova Solicitação: a falha do envio vira toast de erro, o modal continua 
   const host = await abrirPagina(Requests);
   await clicar(botaoPorTexto(host, /Nova Solicitação/));
   await esperar();
-  await digitar(dialogo().querySelector('[name="startDate"]')!, '2026-11-01');
-  await digitar(dialogo().querySelector('[name="endDate"]')!, '2026-11-05');
+  await digitar(dialogo().querySelector('[name="startDate"]')!, emDias(10));
+  await digitar(dialogo().querySelector('[name="endDate"]')!, emDias(14));
   await digitar(dialogo().querySelector('[name="observation"]')!, 'Motivo de teste');
   await act(async () => { dialogo().querySelector('form')!.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); });
   await esperar();
 
-  assert.match(document.querySelector('[role="alert"]')!.textContent ?? '', /Solicitações ainda não estão disponíveis/);
+  assert.match(document.querySelector('[role="alert"]')!.textContent ?? '', /Saldo de férias insuficiente/);
   assert.ok(dialogo(), 'o modal segue aberto para o usuário tentar de novo');
   assert.deepEqual(alertasNativos, []);
+});
+
+const solicitacao = (id: number, parcial: Record<string, unknown> = {}) => ({
+  id, employeeId: 7, employeeName: 'Caio Ficticio', type: 'Férias', requestDate: '2026-10-03', startDate: '2026-11-02', endDate: '2026-11-11', days: 10,
+  observation: 'Descanso.', hasAttachment: false, attachmentName: null, status: 'Pendente', reply: null, decidedBy: null, decidedAt: null, ...parcial,
+});
+
+const arquivoFalso = (nome: string, tipo: string, conteudo: BlobPart = '%PDF-1.4 atestado') => new dom.window.File([conteudo], nome, { type: tipo });
+
+const anexar = async (arquivo: File) => {
+  const campo = dialogo().querySelector<HTMLInputElement>('[name="anexo"]')!;
+  Object.defineProperty(campo, 'files', { configurable: true, value: [arquivo] });
+  await act(async () => { campo.dispatchEvent(new dom.window.Event('change', { bubbles: true })); });
+};
+
+const escolherTipo = async (tipo: string) => {
+  const campo = dialogo().querySelector<HTMLSelectElement>('[name="type"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(dom.window.HTMLSelectElement.prototype, 'value')!.set!.call(campo, tipo);
+    campo.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  });
+};
+
+const enviar = async () => {
+  await act(async () => { dialogo().querySelector('form')!.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); });
+  await esperar(30);
+};
+
+const preencher = async (inicio: string, fim: string, motivo = 'Motivo de teste') => {
+  await digitar(dialogo().querySelector('[name="startDate"]')!, inicio);
+  await digitar(dialogo().querySelector('[name="endDate"]')!, fim);
+  await digitar(dialogo().querySelector('[name="observation"]')!, motivo);
+};
+
+const abrirModal = async () => {
+  const host = await abrirPagina(Requests);
+  await clicar(botaoPorTexto(host, /Nova Solicitação/));
+  await esperar();
+  return host;
+};
+
+const posts = () => chamadas.filter((c) => c.metodo === 'POST' && c.caminho === '/ausencias');
+
+test('Nova Solicitação: término antes do início é erro no campo e nada é enviado', async () => {
+  await abrirModal();
+  await preencher(emDias(20), emDias(15));
+  await enviar();
+  assert.match(dialogo().textContent ?? '', /A data de término não pode ser anterior à data de início\./);
+  assert.equal(dialogo().querySelector('[name="endDate"]')!.getAttribute('aria-invalid'), 'true');
+  assert.deepEqual(posts(), []);
+});
+
+test('Nova Solicitação: férias no passado ou com menos de 5 dias são recusadas antes do envio', async () => {
+  await abrirModal();
+  await preencher(emDias(-3), emDias(7));
+  await enviar();
+  assert.match(dialogo().textContent ?? '', /As férias precisam começar hoje ou depois\./);
+  await preencher(emDias(10), emDias(12));
+  await enviar();
+  assert.match(dialogo().textContent ?? '', /mínimo 5 dias/);
+  assert.deepEqual(posts(), []);
+});
+
+test('Nova Solicitação: o motivo em branco é recusado', async () => {
+  await abrirModal();
+  await preencher(emDias(10), emDias(14), '   ');
+  await enviar();
+  assert.match(dialogo().textContent ?? '', /Descreva o motivo da solicitação\./);
+  assert.deepEqual(posts(), []);
+});
+
+test('Nova Solicitação: anexo acima de 5 MB ou fora de PDF, JPG e PNG é recusado no campo, e remover o limpa', async () => {
+  await abrirModal();
+  await preencher(emDias(10), emDias(14));
+
+  await anexar(arquivoFalso('grande.pdf', 'application/pdf', new Uint8Array(5 * 1024 * 1024 + 1)));
+  assert.match(dialogo().textContent ?? '', /O arquivo tem mais de 5 MB/);
+  await enviar();
+  assert.deepEqual(posts(), [], 'o anexo inválido bloqueia o envio');
+
+  await anexar(arquivoFalso('animacao.gif', 'image/gif'));
+  assert.match(dialogo().textContent ?? '', /Anexe um arquivo PDF, JPG ou PNG\./);
+
+  await clicar(botaoPorTexto(dialogo(), /Remover anexo/));
+  assert.doesNotMatch(dialogo().textContent ?? '', /Anexe um arquivo PDF, JPG ou PNG\.|O arquivo tem mais de 5 MB/);
+  await enviar();
+  assert.equal(posts().length, 1, 'sem anexo, férias seguem');
+});
+
+test('Nova Solicitação: a licença médica e o acidente de trabalho exigem anexo, a paternidade não', async () => {
+  await abrirModal();
+  await escolherTipo('Licença Médica');
+  await preencher(emDias(-5), emDias(-3));
+  await enviar();
+  assert.match(dialogo().textContent ?? '', /Anexe o atestado médico\./);
+  await escolherTipo('Acidente de Trabalho');
+  await enviar();
+  assert.match(dialogo().textContent ?? '', /Anexe o boletim de ocorrência/);
+  assert.deepEqual(posts(), []);
+  await escolherTipo('Licença Paternidade');
+  await enviar();
+  assert.equal(posts().length, 1);
+});
+
+test('Nova Solicitação: o pedido sai com o anexo em base64, o modal fecha, a lista recarrega e o RH é avisado por toast', async () => {
+  let corpoEnviado = '';
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
+    if (new URL(String(entrada), 'http://localhost').pathname === '/api/ausencias' && init?.method === 'POST') corpoEnviado = String(init.body);
+    return original(entrada, init);
+  }) as typeof fetch;
+  respostaDoPedido = () => json(solicitacao(30, { type: 'Licença Médica', hasAttachment: true, attachmentName: 'atestado.pdf' }), 201);
+
+  const host = await abrirModal();
+  await escolherTipo('Licença Médica');
+  await preencher(emDias(-5), emDias(-3), '  Consulta com atestado.  ');
+  await anexar(arquivoFalso('atestado.pdf', 'application/pdf', '%PDF-1.4 atestado'));
+  await enviar();
+  globalThis.fetch = original;
+
+  assert.deepEqual(JSON.parse(corpoEnviado), {
+    tipo: 'Licença Médica', inicio: emDias(-5), fim: emDias(-3), observacao: 'Consulta com atestado.',
+    anexo: { nome: 'atestado.pdf', tipo: 'application/pdf', conteudo: Buffer.from('%PDF-1.4 atestado').toString('base64') },
+  });
+  assert.equal(porRole(document, 'dialog'), null, 'o modal fecha');
+  assert.equal(document.querySelector('[role="status"]')?.textContent, 'Solicitação enviada ao RH.');
+  assert.equal(chamadas.filter((c) => c.caminho === '/ausencias/minhas').length, 2, 'a lista volta do servidor');
+  assert.equal(chamadas.filter((c) => c.caminho === '/ausencias/saldo/7').length, 2, 'o saldo também');
+  assert.ok(host);
+});
+
+test('Minhas Solicitações: o colaborador vê Aprovada, o motivo da recusa e baixa o anexo', async () => {
+  minhasSolicitacoes = [
+    solicitacao(12, { type: 'Licença Médica', status: 'Aprovada', hasAttachment: true, attachmentName: 'atestado.pdf', decidedBy: 'Rita' }),
+    solicitacao(13, { type: 'Férias', status: 'Recusada', reply: 'Pico de entregas.' }),
+    solicitacao(14, { type: 'Outros', status: 'Pendente' }),
+  ];
+  const host = await abrirPagina(Requests);
+  const linhas = [...host.querySelectorAll('tbody tr')].map((l) => l.textContent ?? '');
+  assert.equal(linhas.length, 3);
+  assert.match(linhas[0], /Licença Médica/);
+  assert.match(linhas[0], /Aprovada/);
+  assert.match(linhas[0], /10 dias/);
+  assert.match(linhas[1], /Recusada/);
+  assert.match(linhas[1], /Motivo: Pico de entregas\./);
+  assert.match(linhas[2], /Pendente/);
+  assert.match(linhas[2], /Sem anexo/);
+
+  await clicar(botaoPorTexto(host, /atestado\.pdf/));
+  await esperar(30);
+  assert.ok(chamadas.some((c) => c.metodo === 'GET' && c.caminho === '/ausencias/12/anexo'));
+  assert.deepEqual(salvos, [{ nome: 'atestado.pdf' }]);
+});
+
+test('Minhas Solicitações: o saldo e o período aquisitivo aparecem acima da lista, e o modal avisa o saldo ao pedir férias', async () => {
+  const host = await abrirPagina(Requests);
+  const saldo = host.querySelector('section[aria-label="Saldo de férias"]')!;
+  assert.match(saldo.textContent ?? '', /60 dias\s*disponíveis/);
+  assert.match(saldo.textContent ?? '', /15\/01\/2026 a 14\/01\/2027/);
+  await clicar(botaoPorTexto(host, /Nova Solicitação/));
+  await esperar();
+  assert.match(dialogo().textContent ?? '', /Saldo de férias: 60 dias disponíveis\./);
+  await escolherTipo('Outros');
+  assert.doesNotMatch(dialogo().textContent ?? '', /Saldo de férias: 60/);
+});
+
+test('Minhas Solicitações: falha ao baixar o anexo vira toast de erro', async () => {
+  minhasSolicitacoes = [solicitacao(15, { type: 'Licença Médica', status: 'Aprovada', hasAttachment: true, attachmentName: 'perdido.pdf' })];
+  const host = await abrirPagina(Requests);
+  await clicar(botaoPorTexto(host, /perdido\.pdf/));
+  await esperar(30);
+  assert.match(document.querySelector('[role="alert"]')?.textContent ?? '', /Anexo não encontrado\./);
+  assert.deepEqual(salvos, []);
 });
 
 test('Meus Dados: os campos de edição têm id, name, rótulo e autocomplete; sem <main> nem <label> solto', async () => {

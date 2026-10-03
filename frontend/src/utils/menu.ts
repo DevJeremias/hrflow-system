@@ -14,8 +14,8 @@ export interface SecaoDoMenu {
   itens: ItemDoMenu[];
 }
 
-// O menu de cada perfil (docs/permissoes.md, seção Menu). `solicitacoes` liga o item quando houver backend.
-export const menuDoUsuario = (user: Pick<User, 'role' | 'funcionarioId'>, { solicitacoes = false } = {}): SecaoDoMenu[] => {
+// O menu de cada perfil (docs/permissoes.md, seção Menu).
+export const menuDoUsuario = (user: Pick<User, 'role' | 'funcionarioId'>): SecaoDoMenu[] => {
   const secoes: SecaoDoMenu[] = [];
 
   if (ehGestao(user.role)) {
@@ -28,6 +28,7 @@ export const menuDoUsuario = (user: Pick<User, 'role' | 'funcionarioId'>, { soli
         { path: '/admin/folha', label: 'Folha de Pagamento', icone: 'folha' },
         { path: '/admin/empresa', label: 'Empresa', icone: 'empresa' },
         { path: '/admin/gestao-ponto', label: 'Gestão de Ponto', icone: 'gestaoPonto' },
+        { path: '/admin/solicitacoes', label: 'Solicitações', icone: 'solicitacoes' },
         ...(ehAdministrador(user.role) ? [{ path: '/admin/usuarios', label: 'Usuários', icone: 'usuarios' as const }] : []),
       ],
     });
@@ -38,8 +39,8 @@ export const menuDoUsuario = (user: Pick<User, 'role' | 'funcionarioId'>, { soli
     pessoal.push(
       { path: '/meu-painel', label: 'Meu ponto', icone: 'ponto' },
       { path: '/meu-painel/holerites', label: 'Meu holerite', icone: 'holerite' },
+      { path: '/meu-painel/solicitacoes', label: 'Minhas Solicitações', icone: 'solicitacoes' },
     );
-    if (solicitacoes) pessoal.push({ path: '/meu-painel/solicitacoes', label: 'Minhas Solicitações', icone: 'solicitacoes' });
   }
   // O Colaborador tem os dados na área pessoal; quem gere tem o perfil dentro da área administrativa.
   pessoal.push(ehGestao(user.role)

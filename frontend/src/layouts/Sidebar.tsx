@@ -18,7 +18,6 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { menuDoUsuario } from '../utils/menu';
 import type { IconeDoMenu } from '../utils/menu';
-import { solicitacoesAtivas } from '../utils/recursos';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import Avatar from '../components/ui/Avatar';
@@ -58,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () => {} })
   // Abaixo de lg o menu é uma gaveta: fechada, sai da ordem de Tab e da árvore de acessibilidade.
   const fechadaNoCelular = !desktop && !isOpen;
 
-  const secoes = user ? menuDoUsuario(user, { solicitacoes: solicitacoesAtivas() }) : [];
+  const secoes = user ? menuDoUsuario(user) : [];
 
   return (
     <>

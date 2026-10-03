@@ -66,6 +66,8 @@ export interface HttpRequestOptions extends RequestInit {
   errorMessage?: ErrorMessage;
   onResponse?: (response: Response) => void;
   timeoutMs?: number;
+  // A resposta de sucesso é um arquivo (download de anexo), devolvido como Blob em vez de lida como JSON.
+  blob?: boolean;
 }
 
 export class HttpError extends Error {
@@ -98,7 +100,7 @@ const parseResponse = async (response: Response): Promise<unknown> => {
 
 export const httpClient = async <T = unknown>(path: string, options: HttpRequestOptions = {}): Promise<T> => {
   const {
-    auth = false, errorMessage, onResponse, timeoutMs = REQUEST_TIMEOUT_MS, headers: optionHeaders, signal: callerSignal, ...requestOptions
+    auth = false, errorMessage, onResponse, timeoutMs = REQUEST_TIMEOUT_MS, blob = false, headers: optionHeaders, signal: callerSignal, ...requestOptions
   } = options;
   const headers = new Headers(optionHeaders);
 
@@ -126,7 +128,7 @@ export const httpClient = async <T = unknown>(path: string, options: HttpRequest
       signal,
     });
     // O prazo vale também para o corpo: uma resposta que para no meio não pode pendurar a tela.
-    data = await parseResponse(response);
+    data = blob && response.ok ? await response.blob() : await parseResponse(response);
   } catch (error) {
     if (timeout.aborted && !callerSignal?.aborted) throw new HttpError(TIMEOUT_ERROR_MESSAGE, 0, undefined);
     // fetch só rejeita com TypeError quando não há resposta; um abort do chamador segue como está.

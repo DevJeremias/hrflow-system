@@ -223,3 +223,17 @@ test('uma resposta de erro do servidor não é erro de rede', async () => {
   responder(500, { erro: 'falha' });
   await assert.rejects(httpClient('/x'), (erro: unknown) => erro instanceof HttpError && !erro.isNetworkError);
 });
+
+test('com blob a resposta de sucesso é o arquivo, e o erro continua sendo lido como JSON', async () => {
+  globalThis.fetch = (async () => new Response('%PDF-1.4 atestado', { status: 200, headers: { 'Content-Type': 'application/pdf' } })) as typeof fetch;
+  entrar();
+  const arquivo = await httpClient<Blob>('/ausencias/1/anexo', { auth: true, blob: true });
+  assert.equal(await arquivo.text(), '%PDF-1.4 atestado');
+  assert.equal(arquivo.type, 'application/pdf');
+
+  responder(404, { erro: 'Anexo não encontrado.' });
+  await assert.rejects(
+    () => httpClient('/ausencias/1/anexo', { auth: true, blob: true, errorMessage: (corpo) => corpo?.erro ?? 'Erro ao baixar o anexo' }),
+    (erro: HttpError) => erro.status === 404 && erro.message === 'Anexo não encontrado.',
+  );
+});
