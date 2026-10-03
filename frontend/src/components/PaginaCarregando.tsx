@@ -1,10 +1,11 @@
 import React from 'react';
+import Spinner from './ui/Spinner';
 
 // Fallback de Suspense: o código da tela ainda está chegando.
 const PaginaCarregando: React.FC = () => (
-  <div role="status" aria-label="Carregando" className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-slate-400">
-    <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-primary" />
-    <p className="font-bold">Carregando...</p>
+  <div role="status" className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-brand">
+    <Spinner size="lg" decorativo />
+    <p className="font-semibold text-ink-muted">Carregando...</p>
   </div>
 );
 

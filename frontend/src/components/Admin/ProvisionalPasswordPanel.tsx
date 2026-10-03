@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Check, KeyRound } from 'lucide-react';
+import Button from '../ui/Button';
 
 interface Props {
   nome: string;
@@ -23,26 +24,23 @@ const ProvisionalPasswordPanel: React.FC<Props> = ({ nome, email, senha, onClose
   };
 
   return (
-    <div role="status" className="rounded-3xl border border-amber-200 bg-amber-50 p-6 space-y-4 animate-in fade-in duration-300">
+    <div role="status" className="space-y-4 rounded-card border border-warning-line bg-warning-soft p-5 animate-in fade-in duration-200 sm:p-6">
       <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700 shrink-0"><KeyRound size={20} /></div>
+        <span aria-hidden="true" className="shrink-0 rounded-control bg-surface p-2.5 text-warning"><KeyRound size={20} /></span>
         <div className="min-w-0">
-          <p className="font-black text-slate-900">Senha provisória de {nome}</p>
-          <p className="text-sm font-medium text-slate-600 break-words">
+          <p className="font-bold text-ink">Senha provisória de {nome}</p>
+          <p className="break-words text-sm text-ink-muted">
             Entregue a senha a <span className="break-all">{email}</span>. Ela não aparece de novo e deve ser trocada no primeiro acesso.
           </p>
         </div>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <code data-testid="senha-provisoria" className="flex-1 rounded-2xl border border-amber-200 bg-white px-4 py-3 text-lg font-black tracking-widest text-slate-900 select-all break-all">{senha}</code>
-        <button type="button" onClick={copiar} className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 font-bold text-white hover:bg-primary transition-colors">
-          {copiada ? <Check size={18} /> : <Copy size={18} />}
-          <span>{copiada ? 'Copiada' : 'Copiar'}</span>
-        </button>
+        <code data-testid="senha-provisoria" className="flex-1 select-all break-all rounded-control border border-warning-line bg-surface px-4 py-3 text-lg font-bold tracking-widest text-ink">{senha}</code>
+        <Button onClick={copiar} icon={copiada ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}>
+          {copiada ? 'Copiada' : 'Copiar'}
+        </Button>
       </div>
-      <button type="button" onClick={onClose} className="text-sm font-bold text-slate-500 hover:text-slate-700 underline underline-offset-4">
-        Já entreguei, fechar
-      </button>
+      <Button variant="link" className="text-sm text-ink-muted hover:text-ink" onClick={onClose}>Já entreguei, fechar</Button>
     </div>
   );
 };

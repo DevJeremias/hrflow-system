@@ -45,6 +45,7 @@ let Payroll: ComponentType;
 let Payslips: ComponentType;
 let Company: ComponentType;
 let AuthProvider: ComponentType<{ children?: unknown }>;
+let UiProviders: ComponentType<{ children?: unknown }>;
 const originalFetch = globalThis.fetch;
 
 let chamadas: Chamada[] = [];
@@ -72,6 +73,7 @@ before(async () => {
   ({ default: Payslips } = await server.ssrLoadModule('/src/pages/Portal/Payslips.tsx'));
   ({ default: Company } = await server.ssrLoadModule('/src/pages/Admin/Company.tsx'));
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
+  ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
   globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const caminho = String(entrada).replace(/^\/api/, '');
     const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -138,7 +140,7 @@ const montar = async (Tela: ComponentType) => {
   const cliente = novoQueryClient();
   await act(async () => {
     root.render(createElement(QueryClientProvider, { client: cliente },
-      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));
+      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
   });
   await esperar(50);
   return host;
@@ -197,16 +199,17 @@ test('fechar o mês pede confirmação e só então chama a API; depois a folha 
   folhas[MES] = { competencia: MES, status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa: EMPRESA, totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
   const host = await montar(Payroll);
 
+  // A confirmação é um diálogo (portal no <body>), não parte da página.
   await clicar(botao(host, /Fechar mês/));
-  assert.match(texto(host), /Fechar a folha de .*\?/);
+  assert.match(texto(document.body.querySelector('[role="dialog"]') as HTMLElement), /Fechar a folha de .*\?/);
   assert.equal(chamadas.filter((c) => c.metodo === 'POST').length, 0, 'só abrir a confirmação não fecha nada');
 
-  await clicar(botao(host, /Cancelar/));
-  assert.doesNotMatch(texto(host), /Fechar a folha de/);
+  await clicar(botao(document.body.querySelector('[role="dialog"]')!, /Cancelar/));
+  assert.equal(document.body.querySelector('[role="dialog"]'), null);
   assert.equal(chamadas.filter((c) => c.metodo === 'POST').length, 0);
 
   await clicar(botao(host, /Fechar mês/));
-  await clicar(botao(host, /Confirmar fechamento/));
+  await clicar(botao(document.body.querySelector('[role="dialog"]')!, /Confirmar fechamento/));
   assert.deepEqual(chamadas.filter((c) => c.metodo === 'POST').map((c) => c.caminho), [`/folha/competencias/${MES}/fechar`]);
   const depois = texto(host);
   assert.match(depois, /Folha fechada/);
@@ -233,7 +236,7 @@ test('uma recusa da API (empresa sem CNPJ) aparece na tela e a folha continua ab
   try {
     const host = await montar(Payroll);
     await clicar(botao(host, /Fechar mês/));
-    await clicar(botao(host, /Confirmar fechamento/));
+    await clicar(botao(document.body.querySelector('[role="dialog"]')!, /Confirmar fechamento/));
     assert.match(host.querySelector('[role="alert"]')?.textContent ?? '', /Preencha a razão social e o CNPJ/);
     assert.match(texto(host), /Folha aberta/);
   } finally {
@@ -253,7 +256,7 @@ test('colaboradores sem salário aparecem em pendências, e o aviso de fechament
   assert.doesNotMatch([...host.querySelectorAll('tbody')].map((t) => t.textContent).join(' '), /Sem Salario/);
 
   await clicar(botao(host, /Fechar mês/));
-  assert.match(texto(host), /1 colaborador\(es\) sem salário ficarão sem holerite neste mês/);
+  assert.match(texto(document.body.querySelector('[role="dialog"]') as HTMLElement), /1 colaborador\(es\) sem salário ficarão sem holerite neste mês/);
 });
 
 test('escolher outra competência busca a folha daquele mês', async () => {
@@ -278,7 +281,7 @@ test('o holerite aberto pelo RH mostra razão social, CNPJ e a competência da f
   folhas['2026-08'] = { competencia: '2026-08', status: 'fechada', processadaEm: '2026-08-02T15:00:00.000Z', fechadaEm: '2026-08-05T18:30:00.000Z', empresa: EMPRESA, totais: totaisDe([ANA]), itens: [ANA], pendencias: [] };
   const host = await montar(Payroll);
   await digitar(host.querySelector<HTMLInputElement>('input[type="month"]')!, '2026-08');
-  await clicar(host.querySelector('tbody tr')!);
+  await clicar(botao(host.querySelector('tbody tr')!, /Ver holerite/));
   const modal = texto(document.body.querySelector('.holerite-impressao') as HTMLElement);
   assert.match(modal, /Empresa Ficticia Alfa Ltda/);
   assert.match(modal, /CNPJ: 11\.222\.333\/0001-81/);
@@ -297,7 +300,7 @@ test('o colaborador vê um holerite por mês fechado, com a empresa e o CNPJ de 
   assert.equal(linhas.length, 2);
   assert.match(linhas[0], /setembro de 2026.*R\$ 2\.900,00/);
   assert.match(linhas[1], /agosto de 2026.*R\$ 2\.500,00/);
-  assert.match(texto(host), /Último Bruto \(setembro de 2026\)/);
+  assert.match(texto(host), /Último bruto \(setembro de 2026\)/);
 
   await clicar(botao(host.querySelectorAll('tbody tr')[1], /Visualizar/));
   const modal = texto(document.body.querySelector('.holerite-impressao') as HTMLElement);
@@ -321,11 +324,11 @@ test('o Administrador preenche razão social e CNPJ com máscara e salva', async
   const host = await montar(Company);
   assert.match(texto(host), /Empresa Ficticia Alfa/);
 
-  await digitar(host.querySelector<HTMLInputElement>('#razao-social')!, 'Empresa Ficticia Alfa Ltda');
-  await digitar(host.querySelector<HTMLInputElement>('#cnpj')!, '11222333000181');
-  assert.equal(host.querySelector<HTMLInputElement>('#cnpj')!.value, '11.222.333/0001-81');
+  await digitar(host.querySelector<HTMLInputElement>('[name="razaoSocial"]')!, 'Empresa Ficticia Alfa Ltda');
+  await digitar(host.querySelector<HTMLInputElement>('[name="cnpj"]')!, '11222333000181');
+  assert.equal(host.querySelector<HTMLInputElement>('[name="cnpj"]')!.value, '11.222.333/0001-81');
   await act(async () => {
-    const select = host.querySelector<HTMLSelectElement>('#regime')!;
+    const select = host.querySelector<HTMLSelectElement>('[name="regime"]')!;
     Object.getOwnPropertyDescriptor(dom.window.HTMLSelectElement.prototype, 'value')!.set!.call(select, 'Simples Nacional');
     select.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
   });
@@ -335,15 +338,15 @@ test('o Administrador preenche razão social e CNPJ com máscara e salva', async
   const envio = chamadas.find((c) => c.metodo === 'PUT');
   assert.deepEqual(envio?.corpo, { razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' });
   assert.match(texto(host), /Dados da empresa salvos/);
-  assert.equal(host.querySelector<HTMLInputElement>('#cnpj')!.value, '11.222.333/0001-81');
+  assert.equal(host.querySelector<HTMLInputElement>('[name="cnpj"]')!.value, '11.222.333/0001-81');
 });
 
 test('a recusa da API (CNPJ inválido) aparece sem fingir que salvou', async () => {
   perfil = 'Administrador';
   respostaDoSalvamento = { status: 400, corpo: { erro: 'CNPJ inválido: confira os 14 dígitos.' } };
   const host = await montar(Company);
-  await digitar(host.querySelector<HTMLInputElement>('#razao-social')!, 'Empresa Ficticia Alfa Ltda');
-  await digitar(host.querySelector<HTMLInputElement>('#cnpj')!, '11222333000182');
+  await digitar(host.querySelector<HTMLInputElement>('[name="razaoSocial"]')!, 'Empresa Ficticia Alfa Ltda');
+  await digitar(host.querySelector<HTMLInputElement>('[name="cnpj"]')!, '11222333000182');
   await act(async () => { host.querySelector('form')!.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); });
   await esperar();
   assert.match(host.querySelector('[role="alert"]')?.textContent ?? '', /CNPJ inválido/);
@@ -354,10 +357,10 @@ test('o RH consulta os dados da empresa mas não os altera', async () => {
   perfil = 'RH';
   empresa = { nome: 'Empresa Ficticia Alfa', razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181', regime_tributario: 'Lucro Real' };
   const host = await montar(Company);
-  assert.equal(host.querySelector<HTMLInputElement>('#razao-social')!.value, 'Empresa Ficticia Alfa Ltda');
-  assert.equal(host.querySelector<HTMLInputElement>('#cnpj')!.value, '11.222.333/0001-81');
-  assert.equal(host.querySelector<HTMLInputElement>('#razao-social')!.disabled, true);
-  assert.equal(host.querySelector<HTMLInputElement>('#cnpj')!.disabled, true);
+  assert.equal(host.querySelector<HTMLInputElement>('[name="razaoSocial"]')!.value, 'Empresa Ficticia Alfa Ltda');
+  assert.equal(host.querySelector<HTMLInputElement>('[name="cnpj"]')!.value, '11.222.333/0001-81');
+  assert.equal(host.querySelector<HTMLInputElement>('[name="razaoSocial"]')!.disabled, true);
+  assert.equal(host.querySelector<HTMLInputElement>('[name="cnpj"]')!.disabled, true);
   assert.match(texto(host), /Somente o Administrador altera/);
   semBotao(host, /Salvar/);
 });

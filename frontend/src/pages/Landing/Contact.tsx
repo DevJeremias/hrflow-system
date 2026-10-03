@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { SendHorizontal, ShieldCheck, Zap, Sparkles } from "lucide-react";
 import httpClient from '../../services/httpClient';
+import Button from '../../components/ui/Button';
+import Field, { Input } from '../../components/ui/Field';
 
 export default function Contact() {
   const navigate = useNavigate();
@@ -51,7 +53,7 @@ export default function Contact() {
   return (
     <section className="py-1 bg-white" id="contato">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="bg-indigo-600 rounded-[3rem] p-10 md:p-20 relative overflow-hidden shadow-[0_32px_64px_-12px_rgba(79,70,229,0.25)]">
+        <div className="bg-brand rounded-[3rem] p-10 md:p-20 relative overflow-hidden shadow-[0_32px_64px_-12px_rgba(79,70,229,0.25)]">
           
           <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -59,8 +61,8 @@ export default function Contact() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
             
             <div className="text-left text-white">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-indigo-100 text-xs font-black tracking-widest uppercase mb-6">
-                <Sparkles size={14} /> Cadastro da empresa
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white text-xs font-black tracking-widest uppercase mb-6">
+                <Sparkles size={14} aria-hidden="true" /> Cadastro da empresa
               </div>
               <h2 className="text-4xl md:text-5xl font-black leading-tight mb-8">
                 Crie a conta da sua empresa.
@@ -71,93 +73,49 @@ export default function Contact() {
                   <div className="bg-white/10 p-3 rounded-2xl text-white">
                     <Zap size={24} />
                   </div>
-                  <p className="font-bold text-lg opacity-90 text-indigo-50">Folha em lote com desconto de INSS e holerite por colaborador.</p>
+                  <p className="font-bold text-lg text-white">Folha em lote com desconto de INSS e holerite por colaborador.</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="bg-white/10 p-3 rounded-2xl text-white">
                     <ShieldCheck size={24} />
                   </div>
-                  <p className="font-bold text-lg opacity-90 text-indigo-50">Acesso separado por perfil e sessão protegida.</p>
+                  <p className="font-bold text-lg text-white">Acesso separado por perfil e sessão protegida.</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl">
               <form className="space-y-4" onSubmit={handleSubmit}>
-                
-                {erro && <div className="p-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm mb-4 border border-red-100">{erro}</div>}
-                {sucesso && <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl font-bold text-sm mb-4 border border-emerald-100">Conta criada com sucesso! Redirecionando...</div>}
 
-                
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome Completo</label>
-                    <input
-                      type="text"
-                      name="nomeAdmin" 
-                      value={formData.nomeAdmin} 
-                      onChange={handleChange} 
-                      placeholder="Ex: João Silva"
-                      required
-                      className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none font-bold text-slate-900 transition-all placeholder:text-slate-300"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome da Empresa</label>
-                    <input
-                      type="text"
-                      name="nomeEmpresa" 
-                      value={formData.nomeEmpresa} 
-                      onChange={handleChange} 
-                      placeholder="Sua empresa"
-                      required
-                      className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none font-bold text-slate-900 transition-all placeholder:text-slate-300"
-                    />
-                  </div>
-                
+                {erro && <div role="alert" className="p-4 bg-danger-soft text-danger rounded-card font-semibold text-sm border border-danger-line">{erro}</div>}
+                {sucesso && <div role="status" className="p-4 bg-success-soft text-success rounded-card font-semibold text-sm border border-success-line">Conta criada com sucesso! Redirecionando...</div>}
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail Corporativo</label>
-                  <input
-                    type="email"
-                    name="email" 
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    placeholder="email@empresa.com"
-                    required
-                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none font-bold text-slate-900 transition-all placeholder:text-slate-300"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha de Acesso</label>
-                  <input
-                    type="password"
-                    name="senha" 
-                    value={formData.senha} 
-                    onChange={handleChange} 
-                    placeholder="••••••••"
-                    required
-                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none font-bold text-slate-900 transition-all placeholder:text-slate-300"
-                  />
-                </div>
+                <Field label="Nome completo" name="nomeAdmin" required>
+                  <Input type="text" autoComplete="name" value={formData.nomeAdmin} onChange={handleChange} placeholder="Ex: João Silva" />
+                </Field>
+                <Field label="Nome da empresa" name="nomeEmpresa" required>
+                  <Input type="text" autoComplete="organization" value={formData.nomeEmpresa} onChange={handleChange} placeholder="Sua empresa" />
+                </Field>
+                <Field label="E-mail corporativo" name="email" required>
+                  <Input type="email" autoComplete="email" value={formData.email} onChange={handleChange} placeholder="email@empresa.com" />
+                </Field>
+                <Field label="Senha de acesso" name="senha" required>
+                  <Input type="password" autoComplete="new-password" value={formData.senha} onChange={handleChange} placeholder="••••••••" />
+                </Field>
 
                 <div className="pt-4 flex flex-col gap-4">
-                  <button 
-                    type="submit" 
-                    disabled={loading || sucesso} 
-                    className="w-full py-5 bg-slate-900 hover:bg-indigo-600 text-white font-black rounded-2xl transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
+                  <Button type="submit" size="lg" fullWidth loading={loading} disabled={sucesso}>
                     {loading ? 'Processando...' : (
-                      <>Criar Minha Conta <SendHorizontal size={18} /></>
+                      <>Criar minha conta <SendHorizontal size={18} aria-hidden="true" /></>
                     )}
-                  </button>
+                  </Button>
 
-                  <p className="text-center text-xs font-medium text-slate-400">
-                    Ao criar a conta você declara ter lido os <Link to="/termos" className="text-indigo-600 hover:underline">Termos de Uso</Link> e a <Link to="/privacidade" className="text-indigo-600 hover:underline">Política de Privacidade</Link>.
+                  <p className="text-center text-xs font-medium text-ink-muted">
+                    Ao criar a conta você declara ter lido os <Link to="/termos" className="text-brand underline underline-offset-2 hover:text-brand-hover">Termos de Uso</Link> e a <Link to="/privacidade" className="text-brand underline underline-offset-2 hover:text-brand-hover">Política de Privacidade</Link>.
                   </p>
 
-                  <p className="text-center text-sm font-bold text-slate-400">
-                    Já possui conta? <Link to="/login" className="text-indigo-600 hover:underline">Faça login aqui</Link>
+                  <p className="text-center text-sm font-semibold text-ink-muted">
+                    Já possui conta? <Link to="/login" className="text-brand underline underline-offset-2 hover:text-brand-hover">Faça login aqui</Link>
                   </p>
                 </div>
 

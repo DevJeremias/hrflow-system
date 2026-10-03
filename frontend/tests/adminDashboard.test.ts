@@ -19,6 +19,7 @@ Object.defineProperties(globalThis, {
 
 let server: ViteDevServer;
 let Harness: ComponentType<{ initialPath: string }>;
+let cliente = novoQueryClient();
 const originalFetch = globalThis.fetch;
 
 // Fixtures da Alfa: 3 colaboradores ativos, 4 departamentos e 4 cargos.
@@ -30,13 +31,13 @@ const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo
 before(async () => {
   // O cookie de CSRF é o que diz ao AuthProvider que há uma sessão a confirmar.
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   const [{ default: Dashboard }, { AuthProvider }] = await Promise.all([
     server.ssrLoadModule('/src/pages/Admin/Dashboard.tsx'),
     server.ssrLoadModule('/src/contexts/AuthContext.tsx'),
   ]);
   const page = (path: string, element: unknown) => createElement(Route, { path, element: element as never });
-  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: novoQueryClient() },
+  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, { initialEntries: [initialPath] },
       createElement(AuthProvider, null,
         createElement(Routes, null,
@@ -52,7 +53,7 @@ after(async () => {
   dom.window.close();
 });
 
-beforeEach(() => { globalThis.fetch = originalFetch; });
+beforeEach(() => { globalThis.fetch = originalFetch; cliente = novoQueryClient(); });
 
 const renderDashboard = async () => {
   const host = document.createElement('div');
@@ -75,10 +76,10 @@ const cartao = (host: HTMLElement, rotulo: string) =>
 test('mostra as contagens reais da API, sem espera artificial', async () => {
   globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
   const { host, root } = await renderDashboard();
-  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^3Colaboradores1 inativo$/);
-  assert.match(cartao(host, 'Departamentos')?.textContent ?? '', /^4Departamentos$/);
-  assert.match(cartao(host, 'Cargos')?.textContent ?? '', /^4Cargos Cadastrados$/);
-  assert.match(cartao(host, 'Marcações Hoje')?.textContent ?? '', /^2Marcações Hoje$/);
+  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores31 inativo$/);
+  assert.match(cartao(host, 'Departamentos')?.textContent ?? '', /^Departamentos4$/);
+  assert.match(cartao(host, 'Cargos')?.textContent ?? '', /^Cargos Cadastrados4$/);
+  assert.match(cartao(host, 'Marcações Hoje')?.textContent ?? '', /^Marcações Hoje2$/);
   assert.doesNotMatch(host.textContent ?? '', /Aprovações Pendentes/);
   await act(async () => root.unmount());
   host.remove();
@@ -114,7 +115,7 @@ test('erro de rede mostra o alerta com "Tentar novamente" em vez de zeros, e ten
   globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
   await act(async () => { retry.click(); });
   assert.equal(host.querySelector('[role="alert"]'), null);
-  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^3Colaboradores/);
+  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores3/);
   await act(async () => root.unmount());
   host.remove();
 });

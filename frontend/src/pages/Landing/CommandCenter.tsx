@@ -29,22 +29,22 @@ export default function CommandCenter() {
                 <Layers size={32} />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-slate-900">Do RH ao colaborador</h4>
-                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Dois lados, um sistema</p>
+                <h3 className="text-2xl font-black text-slate-900">Do RH ao colaborador</h3>
+                <p className="text-ink-muted font-bold uppercase text-xs tracking-widest">Dois lados, um sistema</p>
               </div>
             </div>
-            <p className="text-xl text-slate-600 font-medium leading-relaxed mb-8">
+            <p className="text-xl text-ink-muted font-medium leading-relaxed mb-8">
               O RH cadastra, aprova e processa a folha. O colaborador registra o ponto, consulta os holerites e envia solicitações, cada um na sua área.
             </p>
             
             <div className="flex flex-wrap gap-4">
-              <span className="px-4 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm font-black text-orange-600">Folha</span>
-              <span className="px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-sm font-black text-purple-600">Ponto</span>
-              <span className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-sm font-black text-emerald-600">Portal do colaborador</span>
+              <span className="px-4 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm font-black text-orange-700">Folha</span>
+              <span className="px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-sm font-black text-purple-700">Ponto</span>
+              <span className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-sm font-black text-emerald-700">Portal do colaborador</span>
             </div>
           </div>
 
-          <div className="absolute top-10 right-20 animate-bounce-slow text-purple-500 hidden lg:block"><MousePointer2 size={48} /></div>
+          <div className="absolute top-10 right-20 text-purple-500 hidden lg:block"><MousePointer2 size={48} /></div>
           <div className="absolute bottom-10 left-20 animate-pulse text-emerald-500 hidden lg:block"><ShieldCheck size={56} /></div>
         </div>
         

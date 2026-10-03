@@ -33,13 +33,14 @@ before(async () => {
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
   server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
   await precarregarTelas(server);
-  const [{ default: App }, { AuthProvider }] = await Promise.all([
+  const [{ default: App }, { AuthProvider }, { default: UiProviders }] = await Promise.all([
     server.ssrLoadModule('/src/App.tsx'),
     server.ssrLoadModule('/src/contexts/AuthContext.tsx'),
+    server.ssrLoadModule('/src/components/ui/UiProviders.tsx'),
   ]);
   Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: novoQueryClient() },
     createElement(MemoryRouter, { initialEntries: [initialPath] },
-      createElement(AuthProvider, null, createElement(App))));
+      createElement(AuthProvider, null, createElement(UiProviders, null, createElement(App)))));
 });
 
 after(async () => {
@@ -155,7 +156,7 @@ test('o Administrador cria um RH e recebe a senha provisória uma única vez', a
 
   await act(async () => { [...host.querySelectorAll('button')].find((b) => b.textContent?.includes('Novo usuário'))?.click(); });
   const preencher = async (id: string, valor: string) => {
-    const campo = host.querySelector<HTMLInputElement>(`#${id}`);
+    const campo = document.querySelector<HTMLInputElement>(`[name="${id}"]`);
     assert.ok(campo, id);
     const definir = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')?.set;
     await act(async () => {
@@ -163,10 +164,10 @@ test('o Administrador cria um RH e recebe a senha provisória uma única vez', a
       campo.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     });
   };
-  await preencher('usuario-nome', 'Maria Souza');
-  await preencher('usuario-email', 'maria@exemplo.invalid');
-  await act(async () => { host.querySelector('form')?.requestSubmit(); });
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+  await preencher('nome', 'Maria Souza');
+  await preencher('email', 'maria@exemplo.invalid');
+  await act(async () => { document.querySelector('[role="dialog"] form')?.requestSubmit(); });
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
 
   const criacao = chamadas.find((chamada) => chamada.metodo === 'POST');
   assert.deepEqual(criacao?.corpo, { nome: 'Maria Souza', email: 'maria@exemplo.invalid', perfil: 'RH' });
@@ -186,13 +187,13 @@ test('o erro da API ao criar o usuário aparece no modal e o que foi digitado fi
   const { host, fechar } = await abrir('/admin/usuarios');
   await act(async () => { [...host.querySelectorAll('button')].find((b) => b.textContent?.includes('Novo usuário'))?.click(); });
   const definir = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')?.set;
-  for (const [id, valor] of [['usuario-nome', 'Maria'], ['usuario-email', 'maria@exemplo.invalid']]) {
-    const campo = host.querySelector<HTMLInputElement>(`#${id}`);
+  for (const [id, valor] of [['nome', 'Maria'], ['email', 'maria@exemplo.invalid']]) {
+    const campo = document.querySelector<HTMLInputElement>(`[name="${id}"]`);
     await act(async () => { definir?.call(campo, valor); campo?.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
   }
-  await act(async () => { host.querySelector('form')?.requestSubmit(); });
-  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
-  assert.match(host.querySelector('[role="alert"]')?.textContent ?? '', /já está registado/);
-  assert.equal(host.querySelector<HTMLInputElement>('#usuario-email')?.value, 'maria@exemplo.invalid');
+  await act(async () => { document.querySelector('[role="dialog"] form')?.requestSubmit(); });
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
+  assert.match(document.querySelector('[role="dialog"] [role="alert"]')?.textContent ?? '', /já está registado/);
+  assert.equal(document.querySelector<HTMLInputElement>('[name="email"]')?.value, 'maria@exemplo.invalid');
   await fechar();
 });

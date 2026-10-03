@@ -25,30 +25,30 @@ export default function Hero() {
       subtitleColor: "text-zinc-400",
       mainTitleColor: "text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-purple-500",
       title: "Folha, ponto e colaboradores",
-      titleColor: "text-purple-500",
+      titleColor: "text-purple-300",
       mainTitle: "Do cadastro ao holerite, no mesmo lugar.",
       desc: "Cadastre colaboradores, departamentos e cargos, registre o ponto e processe a folha de pagamento com desconto de INSS, tudo no HRFlow.",
       btnText: "Criar conta",
-      btnColor: "bg-purple-600 hover:bg-purple-500 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]",
+      btnColor: "bg-purple-600 hover:bg-purple-700 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]",
       decoration: "mosaic"
     },
     {
       id: 2,
       bg: "bg-[#f4efe8]", 
       textColor: "text-zinc-900",
-      subtitleColor: "text-zinc-600",
+      subtitleColor: "text-zinc-700",
       title: "Portal do colaborador",
       mainTitle: "Cada colaborador com o seu próprio painel.",
       desc: "Cada pessoa consulta os próprios holerites, registra o ponto e envia solicitações ao RH sem depender de planilhas ou mensagens.",
       btnText: "Criar conta",
-      btnColor: "bg-orange-500 hover:bg-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]",
+      btnColor: "bg-orange-700 hover:bg-orange-800 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]",
       decoration: "balls"
     },
     {
       id: 3,
-      bg: "bg-purple-500", 
+      bg: "bg-purple-700", 
       textColor: "text-white",
-      subtitleColor: "text-purple-100",
+      subtitleColor: "text-purple-50",
       title: "Para o RH",
       mainTitle: "Menos planilha, mais gestão de pessoas.",
       desc: "Departamentos, cargos, ponto da equipe e folha mensal reunidos em um painel, com acesso separado para Administrador, RH e Colaborador.",
@@ -90,7 +90,7 @@ export default function Hero() {
               >
                 {slide.title && (
                   <h2 
-                    className={`text-xl md:text-2xl font-black tracking-widest uppercase opacity-80 ${slide.titleColor || ''}`}
+                    className={`text-xl md:text-2xl font-black tracking-widest uppercase ${slide.titleColor || ''}`}
                   >
                     {slide.title}
                   </h2>

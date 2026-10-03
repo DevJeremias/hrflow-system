@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import Button from './ui/Button';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -34,20 +35,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     if (!this.state.failed) return this.props.children;
 
     return (
-      <div className={this.props.fullScreen ? 'flex min-h-screen items-center justify-center p-6 bg-slate-50' : 'flex justify-center py-12'}>
-        <div role="alert" className="w-full max-w-md space-y-4 rounded-2xl border border-red-100 bg-red-50 p-6 text-center">
-          <AlertTriangle size={32} className="mx-auto text-red-500" />
-          <h2 className="text-lg font-black text-slate-900">Algo deu errado</h2>
-          <p className="text-sm font-medium text-slate-600">
+      <div className={this.props.fullScreen ? 'flex min-h-screen items-center justify-center bg-surface-muted p-6' : 'flex justify-center py-12'}>
+        <div role="alert" className="w-full max-w-md space-y-4 rounded-card border border-danger-line bg-danger-soft p-6 text-center">
+          <AlertTriangle size={32} aria-hidden="true" className="mx-auto text-danger" />
+          <h2 className="text-lg font-bold text-ink">Algo deu errado</h2>
+          <p className="text-sm text-ink-muted">
             Não foi possível exibir esta tela. Recarregue a página para tentar de novo.
           </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"
-          >
-            Recarregar a página
-          </button>
+          <Button variant="danger" onClick={() => window.location.reload()}>Recarregar a página</Button>
         </div>
       </div>
     );

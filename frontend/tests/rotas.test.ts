@@ -15,6 +15,7 @@ Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: d
 let server: ViteDevServer;
 let App: typeof import('../src/App.tsx').default;
 let AuthProvider: typeof import('../src/contexts/AuthContext.tsx').AuthProvider;
+let UiProviders: typeof import('../src/components/ui/UiProviders.tsx').default;
 const originalFetch = globalThis.fetch;
 
 before(async () => {
@@ -22,6 +23,7 @@ before(async () => {
   await precarregarTelas(server);
   App = (await server.ssrLoadModule('/src/App.tsx')).default;
   AuthProvider = (await server.ssrLoadModule('/src/contexts/AuthContext.tsx')).AuthProvider;
+  UiProviders = (await server.ssrLoadModule('/src/components/ui/UiProviders.tsx')).default;
 });
 
 after(async () => {
@@ -67,7 +69,7 @@ const abrir = async (rota: string | { pathname: string; state?: unknown }) => {
   const root = createRoot(host);
   const arvore: ReactElement = comConsulta(
     createElement(MemoryRouter, { initialEntries: [rota] },
-      createElement(AuthProvider, null, createElement(App), createElement(Localizacao))));
+      createElement(AuthProvider, null, createElement(UiProviders, null, createElement(App)), createElement(Localizacao))));
   await act(async () => { root.render(arvore); });
   await assentar(300);
   return { host, root, rota: () => host.querySelector('output')?.getAttribute('data-rota') };

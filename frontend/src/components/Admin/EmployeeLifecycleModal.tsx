@@ -1,7 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Check, Copy, KeyRound, Trash2, UserCheck, UserMinus, X } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Check, Copy, KeyRound, Trash2, UserCheck, UserMinus } from 'lucide-react';
 import { Employee, employeeService } from '../../services/employeeService';
 import ErrorAlert from '../ErrorAlert';
+import Modal from '../ui/Modal';
+import Button from '../ui/Button';
+import Field, { Input } from '../ui/Field';
+import { useToast } from '../ui/toastContext';
 import { mensagemDeErro } from '../../utils/erros';
 
 export type LifecycleKind = 'offboard' | 'reactivate' | 'reset' | 'delete';
@@ -22,13 +26,15 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const CONTENT: Record<LifecycleKind, {
   title: (name: string) => string;
+  sucesso: (name: string) => string;
   effects: (name: string) => string[];
   confirm: string;
   busy: string;
   icon: React.ReactNode;
-  tone: string;
+  variant: 'primary' | 'danger';
 }> = {
   offboard: {
+    sucesso: (name) => `${name} foi inativado.`,
     title: (name) => `Inativar ou desligar ${name}`,
     effects: (name) => [
       `${name} perde o acesso ao sistema agora e as sessões abertas são encerradas.`,
@@ -38,10 +44,11 @@ const CONTENT: Record<LifecycleKind, {
     ],
     confirm: 'Inativar colaborador',
     busy: 'Inativando...',
-    icon: <UserMinus size={22} />,
-    tone: 'bg-slate-900 hover:bg-slate-700',
+    icon: <UserMinus size={22} aria-hidden="true" />,
+    variant: 'primary',
   },
   reactivate: {
+    sucesso: (name) => `${name} foi reativado.`,
     title: (name) => `Reativar ${name}`,
     effects: (name) => [
       `${name} volta a entrar no sistema com a senha que já tinha. Se ela foi esquecida, redefina-a depois.`,
@@ -50,10 +57,11 @@ const CONTENT: Record<LifecycleKind, {
     ],
     confirm: 'Reativar colaborador',
     busy: 'Reativando...',
-    icon: <UserCheck size={22} />,
-    tone: 'bg-emerald-600 hover:bg-emerald-700',
+    icon: <UserCheck size={22} aria-hidden="true" />,
+    variant: 'primary',
   },
   reset: {
+    sucesso: () => '',
     title: (name) => `Redefinir a senha de ${name}`,
     effects: (name) => [
       'Geramos uma senha provisória e a mostramos uma única vez, nesta tela. Anote-a e entregue a quem a pediu.',
@@ -62,10 +70,11 @@ const CONTENT: Record<LifecycleKind, {
     ],
     confirm: 'Gerar senha provisória',
     busy: 'Gerando...',
-    icon: <KeyRound size={22} />,
-    tone: 'bg-slate-900 hover:bg-slate-700',
+    icon: <KeyRound size={22} aria-hidden="true" />,
+    variant: 'primary',
   },
   delete: {
+    sucesso: () => 'Cadastro excluído.',
     title: (name) => `Excluir o cadastro de ${name}`,
     effects: (name) => [
       `O cadastro e o acesso de ${name} são apagados para sempre. Não há como desfazer.`,
@@ -73,12 +82,10 @@ const CONTENT: Record<LifecycleKind, {
     ],
     confirm: 'Excluir cadastro',
     busy: 'Excluindo...',
-    icon: <Trash2 size={22} />,
-    tone: 'bg-red-600 hover:bg-red-700',
+    icon: <Trash2 size={22} aria-hidden="true" />,
+    variant: 'danger',
   },
 };
-
-const fieldClass = 'w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none';
 
 // Confirmação das ações que mudam o acesso de um colaborador: cada uma diz o que vai acontecer
 // antes de acontecer, e a senha provisória aparece aqui, uma vez, e em nenhum outro lugar. Quem
@@ -92,16 +99,11 @@ const EmployeeLifecycleModal: React.FC<Props> = ({ action, onClose, onDone }) =>
   const [copied, setCopied] = useState(false);
   // O estado só muda no próximo render: o ref fecha a janela entre dois cliques seguidos.
   const submittingRef = useRef(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    dialogRef.current?.querySelector<HTMLElement>('input, button[data-primary]')?.focus();
-  }, []);
+  const toast = useToast();
 
   const { kind, employee } = action;
   const content = CONTENT[kind];
   const name = employee.nomeCompleto;
-  const titleId = 'employee-lifecycle-title';
 
   const close = () => {
     if (!submittingRef.current) onClose();
@@ -131,6 +133,7 @@ const EmployeeLifecycleModal: React.FC<Props> = ({ action, onClose, onDone }) =>
       if (kind !== 'reset') {
         await onDone();
         onClose();
+        toast.success(content.sucesso(name));
       }
     } catch (err) {
       setError(mensagemDeErro(err, 'Não foi possível concluir a ação. Tente novamente.'));
@@ -150,75 +153,57 @@ const EmployeeLifecycleModal: React.FC<Props> = ({ action, onClose, onDone }) =>
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-      onKeyDown={(e) => { if (e.key === 'Escape') close(); }}
-    >
-      <div data-testid="employee-lifecycle-backdrop" className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={close} />
-
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-5 sm:px-8">
-          <h2 id={titleId} className="flex items-center gap-3 text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
-            <span className="shrink-0 text-slate-500">{content.icon}</span>
-            <span>{content.title(name)}</span>
-          </h2>
-          <button type="button" onClick={close} aria-label="Fechar" className="shrink-0 rounded-xl p-2 text-slate-400 transition-all hover:bg-red-50 hover:text-red-500">
-            <X size={22} />
-          </button>
+    <Modal
+      title={content.title(name)}
+      size="sm"
+      onClose={close}
+      form={temporaryPassword ? undefined : { onSubmit: handleSubmit }}
+      footer={temporaryPassword ? (
+        <Button fullWidth onClick={onClose} data-autofocus>Concluir</Button>
+      ) : (
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button variant="secondary" onClick={close} disabled={submitting}>Cancelar</Button>
+          <Button type="submit" variant={content.variant} loading={submitting} data-autofocus={kind === 'offboard' ? undefined : true}>
+            {submitting ? content.busy : content.confirm}
+          </Button>
         </div>
-
-        {temporaryPassword ? (
-          <div className="space-y-5 overflow-y-auto px-6 py-6 sm:px-8">
-            <p className="font-medium text-slate-600">
-              Senha provisória de <strong>{name}</strong>. Ela não será exibida de novo: anote-a agora e entregue a quem a pediu.
-            </p>
-            <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <output data-testid="temporary-password" className="min-w-0 flex-1 select-all break-all font-mono text-2xl font-black tracking-wider text-slate-900">{temporaryPassword}</output>
-              <button type="button" onClick={copyPassword} className="flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-amber-100">
-                {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? 'Copiada' : 'Copiar'}
-              </button>
-            </div>
-            <p className="text-sm font-medium text-slate-500">No primeiro acesso, {name} será levado a trocar esta senha por uma própria.</p>
-            {error && <ErrorAlert message={error} />}
-            <button type="button" onClick={onClose} data-primary className="w-full rounded-2xl bg-slate-900 py-4 font-black text-white shadow-xl shadow-slate-200 transition-all hover:bg-primary active:scale-95">
-              Concluir
-            </button>
+      )}
+    >
+      {temporaryPassword ? (
+        <div className="space-y-5">
+          <p className="text-ink-muted">
+            Senha provisória de <strong className="text-ink">{name}</strong>. Ela não será exibida de novo: anote-a agora e entregue a quem a pediu.
+          </p>
+          <div className="flex items-center gap-3 rounded-card border border-warning-line bg-warning-soft p-4">
+            <output data-testid="temporary-password" className="min-w-0 flex-1 select-all break-all font-mono text-2xl font-bold tracking-wider text-ink">{temporaryPassword}</output>
+            <Button variant="secondary" size="sm" onClick={copyPassword} icon={copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}>
+              {copied ? 'Copiada' : 'Copiar'}
+            </Button>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-            <div className="space-y-5 overflow-y-auto px-6 py-6 sm:px-8">
-              <ul className="list-disc space-y-2 pl-5 text-sm font-medium text-slate-600">
-                {content.effects(name).map((effect) => <li key={effect}>{effect}</li>)}
-              </ul>
+          <p className="text-sm text-ink-muted">No primeiro acesso, {name} será levado a trocar esta senha por uma própria.</p>
+          {error && <ErrorAlert message={error} />}
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <ul className="list-disc space-y-2 pl-5 text-sm text-ink-muted">
+            {content.effects(name).map((effect) => <li key={effect}>{effect}</li>)}
+          </ul>
 
-              {kind === 'offboard' && (
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label htmlFor="data-desligamento" className="mb-2 block text-sm font-bold text-slate-700">Data do desligamento *</label>
-                    <input id="data-desligamento" name="dataDesligamento" type="date" required max={today()} value={date} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
-                  </div>
-                  <div>
-                    <label htmlFor="motivo-desligamento" className="mb-2 block text-sm font-bold text-slate-700">Motivo *</label>
-                    <input id="motivo-desligamento" name="motivoDesligamento" type="text" required maxLength={255} value={reason} onChange={(e) => setReason(e.target.value)} className={fieldClass} placeholder="Ex.: pedido de demissão, fim do contrato" />
-                  </div>
-                </div>
-              )}
-
-              {error && <ErrorAlert message={error} />}
+          {kind === 'offboard' && (
+            <div className="grid grid-cols-1 gap-4">
+              <Field label="Data do desligamento" name="dataDesligamento" required>
+                <Input data-autofocus type="date" autoComplete="off" max={today()} value={date} onChange={(e) => setDate(e.target.value)} />
+              </Field>
+              <Field label="Motivo" name="motivoDesligamento" required>
+                <Input type="text" autoComplete="off" maxLength={255} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: pedido de demissão, fim do contrato" />
+              </Field>
             </div>
+          )}
 
-            <div className="flex gap-4 border-t border-slate-100 px-6 py-5 sm:px-8">
-              <button type="button" onClick={close} disabled={submitting} className="flex-1 rounded-2xl bg-slate-100 py-4 font-bold text-slate-600 transition-all hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50">
-                Cancelar
-              </button>
-              <button type="submit" data-primary disabled={submitting} className={`flex-[2] rounded-2xl py-4 font-black text-white shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${content.tone}`}>
-                {submitting ? content.busy : content.confirm}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+          {error && <ErrorAlert message={error} />}
+        </div>
+      )}
+    </Modal>
   );
 };
 

@@ -1,21 +1,28 @@
 import React, { useState } from 'react';
-import { Calendar, MessageSquare, PlusCircle, Layers, X, AlertCircle } from 'lucide-react';
-import { HistoryDay, MonthTotals, PeriodTotals } from '../../services/pontoService';
+import { Calendar, MessageSquare, PlusCircle, Layers, AlertCircle } from 'lucide-react';
+import { HistoryDay, MonthTotals, PeriodTotals, WeeklyTotal } from '../../services/pontoService';
 import { ROTULO_DA_JUSTIFICATIVA, diaDaSemana, diaTemMarcacao, formatarDataIso, hojeDeBelem, podeJustificar, rotuloDoDia } from '../../utils/ponto';
+import Badge, { type BadgeTone } from '../ui/Badge';
+import Button from '../ui/Button';
+import Card, { CardHeader } from '../ui/Card';
+import DataTable, { type Column } from '../ui/DataTable';
+import Field, { Input, Textarea } from '../ui/Field';
+import Modal from '../ui/Modal';
+import ErrorAlert from '../ErrorAlert';
 
-const CLASSE_DO_STATUS: Record<HistoryDay['status'], string> = {
-  ok: 'bg-emerald-50 text-emerald-600',
-  atraso: 'bg-amber-50 text-amber-600',
-  incompleto: 'bg-amber-50 text-amber-600',
-  falta: 'bg-rose-50 text-rose-600',
-  justificado: 'bg-indigo-50 text-indigo-600',
-  fim_de_semana: 'bg-slate-100 text-slate-400',
+const TOM_DO_STATUS: Record<HistoryDay['status'], BadgeTone> = {
+  ok: 'success',
+  atraso: 'warning',
+  incompleto: 'warning',
+  falta: 'danger',
+  justificado: 'brand',
+  fim_de_semana: 'neutral',
 };
 
-const CLASSE_DA_JUSTIFICATIVA = {
-  pendente: 'bg-amber-50 text-amber-600',
-  aprovada: 'bg-emerald-50 text-emerald-600',
-  recusada: 'bg-rose-50 text-rose-600',
+const TOM_DA_JUSTIFICATIVA: Record<NonNullable<HistoryDay['noteStatus']>, BadgeTone> = {
+  pendente: 'warning',
+  aprovada: 'success',
+  recusada: 'danger',
 };
 
 // ==========================================
@@ -34,86 +41,52 @@ interface NoteModalProps {
 // O que o colaborador precisa saber sobre o destino da justificativa neste dia.
 const avisoDoModal = (day: HistoryDay): { texto: string; classe: string } => {
   if (day.noteStatus === 'aprovada') {
-    return { texto: 'O RH aprovou esta justificativa. O dia está abonado e o texto não pode mais ser alterado.', classe: 'bg-emerald-50 border-emerald-100 text-emerald-800' };
+    return { texto: 'O RH aprovou esta justificativa. O dia está abonado e o texto não pode mais ser alterado.', classe: 'border-success-line bg-success-soft text-success' };
   }
   if (day.noteStatus === 'recusada') {
-    return { texto: `O RH recusou esta justificativa${day.noteReply ? `: ${day.noteReply}` : '.'} Você pode corrigir o texto e reenviar para uma nova análise.`, classe: 'bg-rose-50 border-rose-100 text-rose-800' };
+    return { texto: `O RH recusou esta justificativa${day.noteReply ? `: ${day.noteReply}` : '.'} Você pode corrigir o texto e reenviar para uma nova análise.`, classe: 'border-danger-line bg-danger-soft text-danger' };
   }
   if (day.noteStatus === 'pendente') {
-    return { texto: 'Aguardando a análise do RH. Enquanto isso você pode corrigir o texto.', classe: 'bg-amber-50 border-amber-100 text-amber-800' };
+    return { texto: 'Aguardando a análise do RH. Enquanto isso você pode corrigir o texto.', classe: 'border-warning-line bg-warning-soft text-warning' };
   }
-  return { texto: 'Sua justificativa será enviada ao RH, que vai aprová-la ou recusá-la. Você acompanha a resposta neste espelho.', classe: 'bg-amber-50 border-amber-100 text-amber-800' };
+  return { texto: 'Sua justificativa será enviada ao RH, que vai aprová-la ou recusá-la. Você acompanha a resposta neste espelho.', classe: 'border-warning-line bg-warning-soft text-warning' };
 };
 
 const TimeNoteModal: React.FC<NoteModalProps> = ({ day, noteText, setNoteText, isSaving, error, onClose, onSave }) => {
   const aviso = avisoDoModal(day);
   const somenteLeitura = day.noteStatus === 'aprovada';
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby="titulo-justificativa" className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative z-10 p-8 animate-in zoom-in-95 duration-300">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 id="titulo-justificativa" className="text-xl font-black text-slate-900">{day.noteStatus ? 'Justificativa' : 'Adicionar Justificativa'}</h3>
-            <p className="text-sm font-bold text-slate-500 mt-1">Ref: {formatarDataIso(day.date)}</p>
-          </div>
-          <button onClick={onClose} aria-label="Fechar" className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
-        </div>
-        <div className="space-y-4">
-          <div className={`p-4 border rounded-xl ${aviso.classe}`}>
-            <p className="text-xs font-bold flex gap-2">
-              <AlertCircle size={16} className="shrink-0" />
-              {aviso.texto}
-            </p>
-          </div>
-          <textarea 
-            value={noteText} onChange={(e) => setNoteText(e.target.value)} disabled={isSaving || somenteLeitura} maxLength={1000}
-            aria-label="Texto da justificativa"
+    <Modal
+      title={day.noteStatus ? 'Justificativa' : 'Adicionar Justificativa'}
+      description={`Ref: ${formatarDataIso(day.date)}`}
+      size="sm"
+      onClose={() => { if (!isSaving) onClose(); }}
+      form={{ onSubmit: (evento) => { evento.preventDefault(); if (!somenteLeitura) onSave(); } }}
+      footer={somenteLeitura ? undefined : (
+        <Button type="submit" fullWidth size="lg" loading={isSaving} disabled={!noteText.trim()}>
+          {isSaving ? 'Enviando...' : day.noteStatus === 'recusada' ? 'Reenviar Justificativa' : 'Enviar Justificativa'}
+        </Button>
+      )}
+    >
+      <div className="space-y-4">
+        <p className={`flex gap-2 rounded-control border p-4 text-xs font-semibold ${aviso.classe}`}>
+          <AlertCircle size={16} aria-hidden="true" className="shrink-0" />
+          {aviso.texto}
+        </p>
+        <Field label="Texto da justificativa" name="justificativa">
+          <Textarea
+            data-autofocus
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            disabled={isSaving || somenteLeitura}
+            maxLength={1000}
+            rows={5}
             placeholder="Ex: Fui ao médico e tenho atestado..."
-            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-primary resize-none h-32 text-sm font-medium text-slate-700"
           />
-          {error && (
-            <p role="alert" className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3">{error}</p>
-          )}
-          {!somenteLeitura && (
-            <button onClick={onSave} disabled={isSaving || !noteText.trim()} className="w-full py-4 bg-slate-900 hover:bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-xl transition-all active:scale-95">
-              {isSaving ? 'Enviando...' : day.noteStatus === 'recusada' ? 'Reenviar Justificativa' : 'Enviar Justificativa'}
-            </button>
-          )}
-        </div>
+        </Field>
+        {error && <ErrorAlert message={error} />}
       </div>
-    </div>
-  );
-};
-
-// ==========================================
-// SUBCOMPONENTES DO DIA (tabela e cartões compartilham)
-// ==========================================
-const StatusDoDia: React.FC<{ day: HistoryDay }> = ({ day }) => (
-  <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider leading-tight ${day.open && day.status === 'ok' ? 'text-slate-300' : CLASSE_DO_STATUS[day.status]}`}>{rotuloDoDia(day)}</span>
-);
-
-// A nota do dia: o botão que abre a justificativa já enviada, ou o que abre uma nova em qualquer dia útil.
-const AcaoDaNota: React.FC<{ day: HistoryDay; hoje: string; onOpen: (day: HistoryDay) => void }> = ({ day, hoje, onOpen }) => {
-  const data = formatarDataIso(day.date);
-  if (day.note) {
-    return (
-      <button onClick={() => onOpen(day)} aria-label={`Justificativa de ${data}, ${ROTULO_DA_JUSTIFICATIVA[day.noteStatus ?? 'pendente']}`} title={day.note} className="inline-flex flex-col items-start gap-1 max-w-[130px] px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-600 hover:text-primary transition-colors text-left">
-        {day.noteStatus && (
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${CLASSE_DA_JUSTIFICATIVA[day.noteStatus]}`}>{ROTULO_DA_JUSTIFICATIVA[day.noteStatus]}</span>
-        )}
-        <span className="flex items-center gap-1.5 max-w-full">
-          <MessageSquare size={14} className="shrink-0" />
-          <span className="truncate">{day.note}</span>
-        </span>
-      </button>
-    );
-  }
-  if (!podeJustificar(day, hoje)) return null;
-  return (
-    <button onClick={() => onOpen(day)} aria-label={`Adicionar nota em ${data}`} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-500 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors">
-      <PlusCircle size={14} /> Adicionar Nota
-    </button>
+    </Modal>
   );
 };
 
@@ -162,182 +135,118 @@ const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, mo
     }
   };
 
+  const ajuste = (valor: string, tom: string) => <span className={`font-semibold ${valor !== '00:00' ? tom : 'text-ink-muted'}`}>{valor}</span>;
+
+  // A nota do dia: o botão que abre a justificativa já enviada, ou o que abre uma nova em qualquer dia útil.
+  // O nome acessível contém o texto visível (WCAG 2.5.3) e acrescenta a data, para distinguir um dia do outro.
+  const acaoDaNota = (day: HistoryDay) => {
+    const data = formatarDataIso(day.date);
+    if (day.note) {
+      return (
+        <Button variant="secondary" size="sm" onClick={() => handleOpenNote(day)} className="h-auto max-w-[9rem] justify-start py-1.5 text-left" icon={<MessageSquare size={14} aria-hidden="true" className="shrink-0" />}>
+          <span className="sr-only">Justificativa de {data}: </span>
+          <span className="flex min-w-0 flex-col items-start gap-1">
+            {day.noteStatus && <Badge tone={TOM_DA_JUSTIFICATIVA[day.noteStatus]}>{ROTULO_DA_JUSTIFICATIVA[day.noteStatus]}</Badge>}
+            <span className="max-w-full truncate font-normal" title={day.note}>{day.note}</span>
+          </span>
+        </Button>
+      );
+    }
+    if (!podeJustificar(day, hoje)) return null;
+    return (
+      <Button variant="ghost" size="sm" onClick={() => handleOpenNote(day)} className="h-auto max-w-[7rem] py-1.5 text-left" icon={<PlusCircle size={14} aria-hidden="true" className="shrink-0" />}>
+        Adicionar nota<span className="sr-only"> em {data}</span>
+      </Button>
+    );
+  };
+
+  const dayColumns: Column<HistoryDay>[] = [
+    {
+      key: 'date',
+      header: 'Data',
+      cell: (day) => (
+        <span className="whitespace-nowrap font-semibold text-ink">
+          {formatarDataIso(day.date)}
+          <span className="ml-2 text-xs font-semibold uppercase text-ink-muted xl:ml-0 xl:block">{diaDaSemana(day.date)}</span>
+        </span>
+      ),
+    },
+    { key: 'entry', header: 'Entrada', align: 'center', cell: (day) => day.entry },
+    { key: 'lunchOut', header: 'Pausa', align: 'center', cell: (day) => day.lunchOut },
+    { key: 'lunchIn', header: 'Retorno', align: 'center', cell: (day) => day.lunchIn },
+    { key: 'exit', header: 'Saída', align: 'center', cell: (day) => day.exit },
+    { key: 'totalHours', header: 'Horas', align: 'center', cell: (day) => <span className="font-semibold text-ink">{day.totalHours}</span> },
+    { key: 'delay', header: 'Atraso', align: 'center', cell: (day) => ajuste(day.delay, 'text-warning') },
+    { key: 'negativeAdjust', header: 'Ajuste negativo', align: 'center', cell: (day) => ajuste(day.negativeAdjust, 'text-danger') },
+    { key: 'positiveAdjust', header: 'Ajuste positivo', align: 'center', cell: (day) => ajuste(day.positiveAdjust, 'text-info') },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      cell: (day) => <Badge tone={day.open && day.status === 'ok' ? 'neutral' : TOM_DO_STATUS[day.status]}>{rotuloDoDia(day)}</Badge>,
+    },
+    { key: 'note', header: 'Justificativa', align: 'right', semRotuloNoCartao: true, cell: acaoDaNota },
+  ];
+
+  const resumo: PeriodTotals | undefined = monthTotals?.monthlySummary;
+  const tomDoValor = (valor: string, tom: string) => <span className={valor !== '00:00' ? `font-semibold ${tom}` : undefined}>{valor}</span>;
+  const weekColumns: Column<WeeklyTotal>[] = [
+    { key: 'week', header: 'Semana', cell: (week) => <span className="font-semibold text-ink">{week.weekLabel}</span>, footer: 'Total Mensal' },
+    { key: 'limit', header: 'Carga prevista', align: 'center', cell: (week) => week.workloadLimit, footer: resumo?.workloadLimit },
+    { key: 'done', header: 'Horas trabalhadas', align: 'center', cell: (week) => <span className="font-semibold text-ink">{week.workloadDone}</span>, footer: resumo?.workloadDone },
+    { key: 'pending', header: 'Pendente', align: 'center', cell: (week) => tomDoValor(week.pendingTime, 'text-danger'), footer: resumo?.pendingTime },
+    { key: 'excess', header: 'Excedente', align: 'center', cell: (week) => tomDoValor(week.excessTime, 'text-info'), footer: <span className="text-success">{resumo?.excessTime}</span> },
+    { key: 'delay', header: 'Atrasos', align: 'center', cell: (week) => tomDoValor(week.delayTime, 'text-warning'), footer: resumo?.delayTime },
+    { key: 'absences', header: 'Faltas', align: 'center', cell: (week) => <span className={week.absences > 0 ? 'font-semibold text-danger' : undefined}>{week.absences}</span>, footer: resumo?.absences },
+    { key: 'incomplete', header: 'Incompletos', align: 'center', cell: (week) => week.incompleteDays, footer: resumo?.incompleteDays },
+  ];
+
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      
-      {/* 1. TABELA DE HISTÓRICO DIÁRIO */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden mt-10">
-        <div className="px-8 py-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <Card as="section" padding="none" className="overflow-hidden" aria-labelledby="espelho-diario">
+        <div className="flex flex-col items-start justify-between gap-4 border-b border-line bg-surface-muted px-5 py-4 sm:flex-row sm:items-center sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 text-primary rounded-xl"><Calendar size={20} /></div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Espelho de Ponto Diário</h2>
+            <span aria-hidden="true" className="rounded-control bg-brand-soft p-2 text-brand"><Calendar size={20} /></span>
+            <h2 id="espelho-diario" className="text-lg font-bold tracking-tight text-ink">Espelho de Ponto Diário</h2>
           </div>
-          <input type="month" aria-label="Mês do espelho de ponto" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="bg-white border border-slate-200 text-slate-700 text-sm font-bold py-3 px-5 rounded-xl outline-none focus:border-primary cursor-pointer shadow-sm" />
+          <Field label="Mês do espelho de ponto" name="mes" hideLabel className="w-full sm:w-52">
+            <Input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} className="cursor-pointer font-semibold" />
+          </Field>
         </div>
 
         {mesSemMarcacoes && (
-          <p role="status" className="px-8 py-4 text-sm font-bold text-slate-500 bg-slate-50 border-b border-slate-100">
-            Nenhuma marcação registrada neste mês. Se você trabalhou em algum dia, use "Adicionar Nota" na linha do dia para avisar o RH.
+          <p role="status" className="border-b border-line bg-surface-muted px-5 py-4 text-sm font-semibold text-ink-muted sm:px-6">
+            Nenhuma marcação registrada neste mês. Se você trabalhou em algum dia, use "Adicionar nota" na linha do dia para avisar o RH.
           </p>
         )}
 
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[860px]">
-            <thead>
-              <tr className="bg-slate-100/50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-black">
-                <th className="px-4 py-3 text-left border-r border-slate-100" rowSpan={2}>Data</th>
-                <th className="px-2 py-3 text-center border-r border-slate-100" colSpan={4}>Registros do Dia</th>
-                <th className="px-2 py-3 text-center border-r border-slate-100" rowSpan={2}>Horas</th>
-                <th className="px-2 py-3 text-center border-r border-slate-100" rowSpan={2}>Atraso</th>
-                <th className="px-2 py-3 text-center border-r border-slate-100 bg-blue-50/30" colSpan={2}>Ajuste Diário</th>
-                <th className="px-2 py-3 text-center" rowSpan={2}>Status</th>
-                <th className="px-4 py-3 text-right" rowSpan={2}>Justificativa</th>
-              </tr>
-              <tr className="bg-slate-50 border-b border-slate-100 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                <th className="py-2 px-2 text-center">Entrada</th>
-                <th className="py-2 px-2 text-center">Pausa</th>
-                <th className="py-2 px-2 text-center">Retorno</th>
-                <th className="py-2 px-2 text-center border-r border-slate-100">Saída</th>
-                <th className="py-2 px-2 text-center text-rose-500 bg-rose-50/30 border-r border-slate-100">Negativo</th>
-                <th className="py-2 px-2 text-center text-blue-500 bg-blue-50/30 border-r border-slate-100">Positivo</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm font-medium">
-              {historyData.map((day) => (
-                <tr key={day.id} className={`hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 ${day.status === 'fim_de_semana' ? 'bg-slate-50/60 text-slate-400' : ''}`}>
-                  <td className="px-4 py-3 font-bold text-slate-900 border-r border-slate-100 whitespace-nowrap">
-                    {formatarDataIso(day.date)}
-                    <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">{diaDaSemana(day.date)}</span>
-                  </td>
-                  <td className="px-2 py-3 text-center text-slate-600">{day.entry}</td>
-                  <td className="px-2 py-3 text-center text-slate-600">{day.lunchOut}</td>
-                  <td className="px-2 py-3 text-center text-slate-600">{day.lunchIn}</td>
-                  <td className="px-2 py-3 text-center text-slate-600 border-r border-slate-100">{day.exit}</td>
-                  <td className="px-2 py-3 text-center font-bold text-slate-900 border-r border-slate-100 bg-slate-50/50">{day.totalHours}</td>
-                  <td className={`px-2 py-3 text-center font-bold border-r border-slate-100 ${day.delay !== '00:00' ? 'text-amber-600' : 'text-slate-400'}`}>{day.delay}</td>
-                  <td className={`px-2 py-3 text-center font-bold border-r border-slate-100 ${day.negativeAdjust !== '00:00' ? 'text-rose-500' : 'text-slate-400'}`}>{day.negativeAdjust}</td>
-                  <td className={`px-2 py-3 text-center font-bold border-r border-slate-100 ${day.positiveAdjust !== '00:00' ? 'text-blue-500' : 'text-slate-400'}`}>{day.positiveAdjust}</td>
-                  <td className="px-2 py-3 text-center"><StatusDoDia day={day} /></td>
-                  <td className="px-4 py-3 text-right"><AcaoDaNota day={day} hoje={hoje} onOpen={handleOpenNote} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-3 xl:p-0">
+          <DataTable caption={`Espelho de ponto diário de ${month}`} columns={dayColumns} rows={historyData} rowKey={(day) => day.id} stackBelow="xl" compact empty={<p className="px-6 py-10 text-center text-sm text-ink-muted">Nenhum dia neste mês.</p>} />
         </div>
+      </Card>
 
-        <ul className="md:hidden divide-y divide-slate-100">
-          {historyData.map((day) => (
-            <li key={day.id} className={`p-4 space-y-3 ${day.status === 'fim_de_semana' ? 'bg-slate-50/60' : ''}`}>
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-bold text-slate-900">
-                  {formatarDataIso(day.date)} <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{diaDaSemana(day.date)}</span>
-                </p>
-                <StatusDoDia day={day} />
-              </div>
-              <dl className="grid grid-cols-4 gap-2 text-center text-sm font-medium text-slate-600">
-                {([['Entrada', day.entry], ['Pausa', day.lunchOut], ['Retorno', day.lunchIn], ['Saída', day.exit]] as const).map(([rotulo, horario]) => (
-                  <div key={rotulo}>
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{rotulo}</dt>
-                    <dd>{horario}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-500">
-                <span>Horas <span className="text-slate-900">{day.totalHours}</span></span>
-                {day.delay !== '00:00' && <span className="text-amber-600">Atraso {day.delay}</span>}
-                {day.negativeAdjust !== '00:00' && <span className="text-rose-500">Negativo {day.negativeAdjust}</span>}
-                {day.positiveAdjust !== '00:00' && <span className="text-blue-500">Positivo {day.positiveAdjust}</span>}
-              </p>
-              <div className="flex justify-end"><AcaoDaNota day={day} hoje={hoje} onOpen={handleOpenNote} /></div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* 2. TOTAIS SEMANAIS E DO MÊS */}
       {monthTotals && monthTotals.totals.length > 0 && (
-        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden mt-10">
-          <div className="px-8 py-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-50 text-primary rounded-xl">
-                <Layers size={20} />
-              </div>
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">Totais Semanais</h2>
-            </div>
-            <p className="text-xs font-bold text-slate-500">
-              Jornada: {monthTotals.workSchedule.entry} às {monthTotals.workSchedule.exit}, {monthTotals.workSchedule.weeklyHours}h semanais, tolerância de {monthTotals.workSchedule.toleranceMinutes} min
-            </p>
+        <Card as="section" padding="none" className="overflow-hidden">
+          <CardHeader
+            title="Totais Semanais"
+            icon={<Layers size={20} />}
+            actions={(
+              <p className="text-xs font-semibold text-ink-muted">
+                Jornada: {monthTotals.workSchedule.entry} às {monthTotals.workSchedule.exit}, {monthTotals.workSchedule.weeklyHours}h semanais, tolerância de {monthTotals.workSchedule.toleranceMinutes} min
+              </p>
+            )}
+          />
+          <div className="p-3 xl:p-0">
+            <DataTable caption={`Totais semanais de ${month}`} columns={weekColumns} rows={monthTotals.totals} rowKey={(week) => week.id} stackBelow="xl" compact />
           </div>
-
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-500 font-black">
-                  <th className="p-6 font-black text-slate-900">Semana</th>
-                  <th className="p-5 text-center">Carga Prevista</th>
-                  <th className="p-5 text-center">Horas Trabalhadas</th>
-                  <th className="p-5 text-center">Pendente</th>
-                  <th className="p-5 text-center">Excedente</th>
-                  <th className="p-5 text-center">Atrasos</th>
-                  <th className="p-5 text-center">Faltas</th>
-                  <th className="p-5 text-center">Incompletos</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm font-medium text-slate-600">
-                {monthTotals.totals.map((week) => (
-                  <tr key={week.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    <td className="p-6 font-bold text-slate-900">{week.weekLabel}</td>
-                    <td className="p-5 text-center">{week.workloadLimit}</td>
-                    <td className="p-5 text-center font-bold text-slate-900">{week.workloadDone}</td>
-                    <td className={`p-5 text-center ${week.pendingTime !== '00:00' ? 'font-bold text-rose-500' : ''}`}>{week.pendingTime}</td>
-                    <td className={`p-5 text-center ${week.excessTime !== '00:00' ? 'font-bold text-blue-500' : ''}`}>{week.excessTime}</td>
-                    <td className={`p-5 text-center ${week.delayTime !== '00:00' ? 'font-bold text-amber-600' : ''}`}>{week.delayTime}</td>
-                    <td className={`p-5 text-center ${week.absences > 0 ? 'font-bold text-rose-500' : ''}`}>{week.absences}</td>
-                    <td className="p-5 text-center">{week.incompleteDays}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-100/40 border-t-2 border-slate-200 text-sm">
-                  <td className="p-6 font-black text-slate-900 uppercase tracking-wider">Total Mensal</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthTotals.monthlySummary.workloadLimit}</td>
-                  <td className="p-6 text-center font-black text-slate-900">{monthTotals.monthlySummary.workloadDone}</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthTotals.monthlySummary.pendingTime}</td>
-                  <td className="p-6 text-center font-bold text-emerald-600">{monthTotals.monthlySummary.excessTime}</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthTotals.monthlySummary.delayTime}</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthTotals.monthlySummary.absences}</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthTotals.monthlySummary.incompleteDays}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          <ul className="md:hidden divide-y divide-slate-100">
-            {[...monthTotals.totals.map((week) => ({ chave: week.id, rotulo: week.weekLabel, totais: week as PeriodTotals, destaque: false })), { chave: 'mes', rotulo: 'Total mensal', totais: monthTotals.monthlySummary, destaque: true }].map(({ chave, rotulo, totais, destaque }) => (
-              <li key={chave} className={`p-4 space-y-2 ${destaque ? 'bg-slate-100/40' : ''}`}>
-                <p className={`font-black ${destaque ? 'uppercase tracking-wider text-slate-900' : 'text-slate-900'}`}>{rotulo}</p>
-                <p className="text-sm font-medium text-slate-600">
-                  <span className="font-bold text-slate-900">{totais.workloadDone}</span> trabalhadas de {totais.workloadLimit} previstas
-                </p>
-                <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-slate-500">
-                  {totais.pendingTime !== '00:00' && <span className="text-rose-500">Pendente {totais.pendingTime}</span>}
-                  {totais.excessTime !== '00:00' && <span className="text-blue-500">Excedente {totais.excessTime}</span>}
-                  {totais.delayTime !== '00:00' && <span className="text-amber-600">Atrasos {totais.delayTime}</span>}
-                  {totais.absences > 0 && <span className="text-rose-500">Faltas {totais.absences}</span>}
-                  {totais.incompleteDays > 0 && <span>Incompletos {totais.incompleteDays}</span>}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
+        </Card>
       )}
 
-      {/* 3. MODAL */}
       {selectedDay && (
-        <TimeNoteModal 
+        <TimeNoteModal
           day={selectedDay}
-          noteText={noteText} setNoteText={setNoteText} 
-          isSaving={isSaving} error={saveError} onClose={handleClose} onSave={handleSave} 
+          noteText={noteText} setNoteText={setNoteText}
+          isSaving={isSaving} error={saveError} onClose={handleClose} onSave={handleSave}
         />
       )}
     </div>

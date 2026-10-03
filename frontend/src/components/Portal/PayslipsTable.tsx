@@ -2,82 +2,56 @@ import React from 'react';
 import { FileText, Eye, Calendar } from 'lucide-react';
 import { Payslip } from '../../services/payrollService';
 import { rotuloDaCompetencia } from '../../utils/competencia';
+import Button from '../ui/Button';
+import Card, { CardHeader } from '../ui/Card';
+import DataTable, { type Column } from '../ui/DataTable';
 
 interface Props {
   payslips: Payslip[];
   onOpenPayslip: (payslip: Payslip) => void;
 }
 
+const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+interface Linha { payroll: Payslip; monthLabel: string; }
+
 const PayslipsTable: React.FC<Props> = ({ payslips, onOpenPayslip }) => {
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const linhas: Linha[] = payslips.map((payroll) => ({ payroll, monthLabel: rotuloDaCompetencia(payroll.competencia) }));
+
+  const columns: Column<Linha>[] = [
+    {
+      key: 'month',
+      header: 'Mês de referência',
+      cell: ({ monthLabel }) => (
+        <span className="flex items-center gap-3">
+          <span aria-hidden="true" className="rounded-control bg-brand-soft p-2 text-brand"><FileText size={16} /></span>
+          <span className="font-semibold text-ink">{monthLabel}</span>
+        </span>
+      ),
+    },
+    { key: 'gross', header: 'Salário bruto', align: 'center', cell: ({ payroll }) => <span className="text-ink-muted">{formatCurrency(payroll.totalGross)}</span> },
+    { key: 'deductions', header: 'Descontos', align: 'center', cell: ({ payroll }) => <span className="text-danger">- {formatCurrency(payroll.totalDeductions)}</span> },
+    { key: 'net', header: 'Valor líquido', align: 'center', cell: ({ payroll }) => <span className="font-bold text-ink">{formatCurrency(payroll.netSalary)}</span> },
+    {
+      key: 'action',
+      header: 'Ação',
+      align: 'right',
+      semRotuloNoCartao: true,
+      cell: ({ payroll, monthLabel }) => (
+        <Button size="sm" aria-label={`Visualizar holerite de ${monthLabel}`} onClick={() => onOpenPayslip(payroll)} icon={<Eye size={14} aria-hidden="true" />}>
+          Visualizar
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
-      
-      {/* Cabeçalho da Tabela */}
-      <div className="px-8 py-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-        <div className="p-2.5 bg-indigo-50 text-primary rounded-xl">
-          <Calendar size={20} />
-        </div>
-        <h2 className="text-xl font-black text-slate-900 tracking-tight">Holerites das folhas fechadas</h2>
+    <Card as="section" padding="none" className="overflow-hidden">
+      <CardHeader title="Holerites das folhas fechadas" icon={<Calendar size={20} />} />
+      <div className="p-3 md:p-0">
+        <DataTable caption="Holerites disponíveis" columns={columns} rows={linhas} rowKey={({ payroll }) => payroll.competencia} />
       </div>
-
-      {/* Corpo da Tabela */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[600px]">
-          <thead>
-            <tr className="bg-white text-[10px] uppercase tracking-widest text-slate-400 font-black border-b border-slate-100">
-              <th className="p-6">Mês de Referência</th>
-              <th className="p-6 text-center">Salário Bruto</th>
-              <th className="p-6 text-center">Descontos</th>
-              <th className="p-6 text-center">Valor Líquido</th>
-              <th className="p-6 text-right">Ação</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm font-medium">
-            {payslips.map((payroll) => {
-              const monthLabel = rotuloDaCompetencia(payroll.competencia);
-              return (
-                <tr key={payroll.competencia} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
-                  
-                  <td className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-indigo-50 text-primary rounded-lg">
-                        <FileText size={16} />
-                      </div>
-                      <span className="font-bold text-slate-900">{monthLabel}</span>
-                    </div>
-                  </td>
-                  
-                  <td className="p-6 text-center text-slate-600">
-                    {formatCurrency(payroll.totalGross)}
-                  </td>
-                  
-                  <td className="p-6 text-center text-rose-500">
-                    - {formatCurrency(payroll.totalDeductions)}
-                  </td>
-                  
-                  <td className="p-6 text-center font-black text-slate-900">
-                    {formatCurrency(payroll.netSalary)}
-                  </td>
-                  
-                  <td className="p-6 text-right">
-                    <button
-                      onClick={() => onOpenPayslip(payroll)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-primary text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95"
-                    >
-                      <Eye size={14} /> Visualizar
-                    </button>
-                  </td>
-
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    </Card>
   );
 };
 

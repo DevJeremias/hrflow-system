@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, User, Briefcase, CreditCard } from 'lucide-react';
+import { User, Briefcase, CreditCard } from 'lucide-react';
 import { Employee, EmployeeForm } from '../../services/employeeService';
 import { useCargos, useDepartamentos } from '../../queries/estrutura';
 import { HttpError } from '../../services/httpClient';
 import { PersonalTab, WorkTab, FinancialTab } from './EmployeeModalTabs';
 import ErrorAlert from '../ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import Modal from '../ui/Modal';
+import Button from '../ui/Button';
+import Tabs, { TabPanel, type TabItem } from '../ui/Tabs';
+import { useConfirm } from '../ui/confirmContext';
 
 interface Props {
   isOpen: boolean;
@@ -62,46 +66,44 @@ const campoComErro = (error: unknown) => {
 
 const CONFIRMACAO_DESCARTE = 'Há dados digitados que ainda não foram salvos. Deseja descartá-los?';
 
-const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdit }) => {
+const ABAS: readonly TabItem<Tab>[] = [
+  { id: 'personal', label: 'Pessoal', icon: <User size={18} /> },
+  { id: 'work', label: 'Contrato', icon: <Briefcase size={18} /> },
+  { id: 'financial', label: 'Financeiro', icon: <CreditCard size={18} /> },
+];
+
+const ID_DAS_ABAS = 'colaborador';
+
+type ContentProps = Omit<Props, 'isOpen'>;
+
+// Monta junto com o modal: cada abertura começa com estado novo, sem efeito que o reinicie.
+const EmployeeModalContent: React.FC<ContentProps> = ({ onClose, onSave, employeeToEdit }) => {
+  const confirmar = useConfirm();
+  const [initialForm] = useState<EmployeeForm>(() => (employeeToEdit ? formFrom(employeeToEdit) : initialState));
   const [activeTab, setActiveTab] = useState<Tab>('personal');
-  const [formData, setFormData] = useState<EmployeeForm>(initialState);
+  const [formData, setFormData] = useState<EmployeeForm>(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errorTarget, setErrorTarget] = useState<{ field: string } | null>(null);
   // O estado só muda no próximo render: o ref fecha a janela entre dois cliques seguidos.
   const submittingRef = useRef(false);
-  const formRef = useRef<HTMLFormElement>(null);
-  const [initialForm, setInitialForm] = useState<EmployeeForm>(initialState);
+  const corpoRef = useRef<HTMLDivElement>(null);
   // Campos que vieram do cargo e não foram digitados: só esses podem ser trocados por outro cargo.
   const filledByRole = useRef(new Set<string>());
 
   // Cargos e departamentos vêm do cache compartilhado com a tela de estrutura: abrir o modal de
   // novo não os busca outra vez.
-  const cargos = useCargos({ enabled: isOpen });
-  const departamentos = useDepartamentos({ enabled: isOpen });
+  const cargos = useCargos();
+  const departamentos = useDepartamentos();
   const cargosList = cargos.data ?? [];
   const departamentosList = departamentos.data ?? [];
   const listaComErro = cargos.error ?? departamentos.error;
   const listError = listaComErro ? mensagemDeErro(listaComErro, 'Erro ao carregar cargos e departamentos') : null;
 
-  useEffect(() => {
-    const initial = employeeToEdit ? formFrom(employeeToEdit) : initialState;
-    setInitialForm(initial);
-    filledByRole.current.clear();
-    submittingRef.current = false;
-    setFormData(initial);
-    setActiveTab('personal');
-    setSubmitting(false);
-    setSubmitError(null);
-    setErrorTarget(null);
-  }, [employeeToEdit, isOpen]);
-
   // Com o erro na tela, o foco vai ao campo a corrigir (a aba dele já foi aberta no mesmo render).
   useEffect(() => {
-    if (errorTarget) formRef.current?.querySelector<HTMLElement>(`[name="${errorTarget.field}"]`)?.focus();
+    if (errorTarget) corpoRef.current?.querySelector<HTMLElement>(`[name="${errorTarget.field}"]`)?.focus();
   }, [errorTarget]);
-
-  if (!isOpen) return null;
 
   const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialForm);
 
@@ -153,76 +155,53 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
     }
   };
 
-  // Clicar fora é um gesto acidental fácil: com dados digitados, pede confirmação antes de descartá-los.
-  const handleBackdropClick = () => {
+  // Esc, clique fora, X e Cancelar são gestos fáceis de acionar sem querer: com dados digitados, pede confirmação.
+  const requestClose = async () => {
     if (submittingRef.current) return;
-    if (hasUnsavedChanges && !window.confirm(CONFIRMACAO_DESCARTE)) return;
+    if (hasUnsavedChanges) {
+      const descartar = await confirmar({
+        title: 'Descartar alterações?',
+        description: CONFIRMACAO_DESCARTE,
+        confirmLabel: 'Descartar',
+        cancelLabel: 'Continuar editando',
+        tone: 'danger',
+      });
+      if (!descartar) return;
+    }
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div data-testid="employee-modal-backdrop" className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={handleBackdropClick} />
-      
-      <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-        
-        <div className="px-6 sm:px-10 py-6 sm:py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              {employeeToEdit ? 'Editar Perfil' : 'Novo Colaborador'}
-            </h2>
-            <p className="text-slate-500 font-medium mt-1">Gestão de dados e contrato de trabalho.</p>
+    <Modal
+      title={employeeToEdit ? 'Editar Perfil' : 'Novo Colaborador'}
+      description="Gestão de dados e contrato de trabalho."
+      onClose={requestClose}
+      form={{ onSubmit: handleSubmit }}
+      footer={(
+        <div className="space-y-4">
+          {submitError && <ErrorAlert message={submitError} />}
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={requestClose} disabled={submitting}>Cancelar</Button>
+            <Button type="submit" loading={submitting}>
+              {submitting ? 'Salvando...' : employeeToEdit ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+            </Button>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-2xl transition-all">
-            <X size={24} />
-          </button>
         </div>
-
-        <div className="flex px-6 sm:px-10 gap-5 sm:gap-8 border-b border-slate-100 overflow-x-auto">
-          {[
-            { id: 'personal', label: 'Pessoal', icon: <User size={18}/> },
-            { id: 'work', label: 'Contrato', icon: <Briefcase size={18}/> },
-            { id: 'financial', label: 'Financeiro', icon: <CreditCard size={18}/> }
-          ].map(tab => (
-            <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as Tab)}
-              className={`flex shrink-0 items-center gap-2 py-5 border-b-4 font-black text-xs uppercase tracking-widest transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <form ref={formRef} onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar">
-            {listError && <div className="mb-6"><ErrorAlert message={listError} /></div>}
-            {activeTab === 'personal' && <PersonalTab formData={formData} handleChange={handleChange} />}
-          
-            {activeTab === 'work' && (
-              <WorkTab 
-                formData={formData} 
-                handleChange={handleChange} 
-                cargos={cargosList} 
-                departamentos={departamentosList} 
-              />
-            )}
-          
-            {activeTab === 'financial' && <FinancialTab formData={formData} handleChange={handleChange} />}
-          </div>
-
-          <div className="px-6 sm:px-10 py-5 border-t border-slate-100 space-y-4">
-            {submitError && <ErrorAlert message={submitError} />}
-            <div className="flex gap-4">
-              <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50">
-                Cancelar
-              </button>
-              <button type="submit" disabled={submitting} className="flex-[2] py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
-                {submitting ? 'Salvando...' : employeeToEdit ? 'Guardar Alterações' : 'Confirmar Cadastro'}
-              </button>
-            </div>
-          </div>
-        </form>
+      )}
+    >
+      <div ref={corpoRef} className="space-y-6">
+        <Tabs tabs={ABAS} value={activeTab} onChange={setActiveTab} label="Seções do cadastro" idPrefix={ID_DAS_ABAS} />
+        {listError && <ErrorAlert message={listError} />}
+        <TabPanel idPrefix={ID_DAS_ABAS} id={activeTab}>
+          {activeTab === 'personal' && <PersonalTab formData={formData} handleChange={handleChange} />}
+          {activeTab === 'work' && <WorkTab formData={formData} handleChange={handleChange} cargos={cargosList} departamentos={departamentosList} />}
+          {activeTab === 'financial' && <FinancialTab formData={formData} handleChange={handleChange} />}
+        </TabPanel>
       </div>
-    </div>
+    </Modal>
   );
 };
+
+const EmployeeModal: React.FC<Props> = ({ isOpen, ...resto }) => (isOpen ? <EmployeeModalContent {...resto} /> : null);
 
 export default EmployeeModal;

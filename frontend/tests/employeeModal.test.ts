@@ -19,15 +19,14 @@ type Props = { isOpen: boolean; onClose: () => void; onSave: (dados: Record<stri
 
 let server: ViteDevServer;
 let EmployeeModal: ComponentType<Props>;
+let UiProviders: ComponentType<{ children: unknown }>;
 let restaurarApi: () => void;
 let fechamentos: number;
-let confirmacoes: string[];
-let respostaDaConfirmacao: boolean;
 
 before(async () => {
   server = await abrirVite();
   ({ default: EmployeeModal } = await server.ssrLoadModule('/src/components/Admin/EmployeeModal.tsx'));
-  dom.window.confirm = (mensagem?: string) => { confirmacoes.push(String(mensagem)); return respostaDaConfirmacao; };
+  ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
 });
 
 after(async () => {
@@ -37,8 +36,6 @@ after(async () => {
 
 beforeEach(() => {
   fechamentos = 0;
-  confirmacoes = [];
-  respostaDaConfirmacao = true;
   ({ restaurar: restaurarApi } = simularApi(({ caminho }) => {
     if (caminho.startsWith('/estrutura/cargos')) return { corpo: CARGOS };
     if (caminho.startsWith('/estrutura/departamentos')) return { corpo: DEPARTAMENTOS };
@@ -53,7 +50,7 @@ afterEach(() => {
 
 const abrir = async (props: Partial<Props> = {}) => {
   const onSave = props.onSave ?? (async () => {});
-  render(comConsulta(createElement(EmployeeModal, { isOpen: true, onClose: () => { fechamentos += 1; }, onSave, ...props })));
+  render(comConsulta(createElement(UiProviders, null, createElement(EmployeeModal, { isOpen: true, onClose: () => { fechamentos += 1; }, onSave, ...props }))));
   // Os cargos e departamentos chegam de forma assíncrona: a aba Contrato os usa.
   await waitFor(() => assert.ok(globalThis.fetch));
 };
@@ -64,7 +61,7 @@ const campo = <T extends HTMLElement = HTMLInputElement>(nome: string) => {
   return elemento;
 };
 
-const aba = (nome: RegExp) => screen.getByRole('button', { name: nome });
+const aba = (nome: RegExp) => screen.getByRole('tab', { name: nome });
 
 const preencherPessoal = async (usuario: ReturnType<typeof userEvent.setup>) => {
   await usuario.type(campo('nomeCompleto'), 'Ana Ficticia');
@@ -74,7 +71,7 @@ const preencherPessoal = async (usuario: ReturnType<typeof userEvent.setup>) => 
 
 test('fechado, não renderiza nada', async () => {
   await abrir({ isOpen: false });
-  assert.equal(document.body.textContent, '');
+  assert.equal(document.body.textContent?.replace(/\s+/g, ''), '');
 });
 
 test('cadastro novo: mostra as três abas e pede a senha de acesso', async () => {
@@ -172,28 +169,32 @@ test('editar abre com os dados do colaborador e sem o campo de senha', async () 
   assert.ok(screen.getByRole('heading', { name: 'Editar Perfil' }));
   assert.equal((campo('nomeCompleto') as HTMLInputElement).value, 'Bia Ficticia');
   assert.equal(document.querySelector('[name="senhaAcesso"]'), null);
-  assert.ok(screen.getByRole('button', { name: 'Guardar Alterações' }));
+  assert.ok(screen.getByRole('button', { name: 'Salvar Alterações' }));
 });
 
-test('Cancelar fecha; clicar no fundo com dados digitados pede confirmação antes de descartar', async () => {
+test('Cancelar fecha; Esc e o fundo com dados digitados pedem confirmação antes de descartar', async () => {
   const usuario = userEvent.setup();
   await abrir();
   await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
   assert.equal(fechamentos, 1);
 
-  await usuario.click(screen.getByTestId('employee-modal-backdrop'));
+  const fundo = () => document.querySelector('[data-modal-backdrop]')!;
+  await usuario.click(fundo());
   assert.equal(fechamentos, 2, 'sem dados digitados, o fundo fecha sem perguntar');
-  assert.deepEqual(confirmacoes, []);
+  assert.equal(screen.queryAllByRole('dialog').length, 1, 'nenhuma pergunta apareceu');
 
   await usuario.type(campo('nomeCompleto'), 'Ana');
-  respostaDaConfirmacao = false;
-  await usuario.click(screen.getByTestId('employee-modal-backdrop'));
-  assert.equal(confirmacoes.length, 1);
+  await usuario.click(fundo());
+  const pergunta = await screen.findByRole('dialog', { name: 'Descartar alterações?' });
+  assert.equal(fechamentos, 2, 'a pergunta vem antes de fechar');
+  await usuario.click(screen.getByRole('button', { name: 'Continuar editando' }));
+  await waitFor(() => assert.equal(pergunta.isConnected, false));
   assert.equal(fechamentos, 2, 'recusar a confirmação mantém o modal aberto');
+  assert.equal(campo('nomeCompleto').value, 'Ana');
 
-  respostaDaConfirmacao = true;
-  await usuario.click(screen.getByTestId('employee-modal-backdrop'));
-  assert.equal(fechamentos, 3);
+  await usuario.keyboard('{Escape}');
+  await usuario.click(await screen.findByRole('button', { name: 'Descartar' }));
+  await waitFor(() => assert.equal(fechamentos, 3));
 });
 
 test('falha ao carregar cargos e departamentos aparece como alerta, não como lista vazia', async () => {

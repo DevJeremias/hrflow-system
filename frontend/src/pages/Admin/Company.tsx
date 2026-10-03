@@ -4,8 +4,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Company as CompanyData, REGIMES_TRIBUTARIOS } from '../../services/empresaService';
 import { useEmpresa, useSalvarEmpresa } from '../../queries/empresa';
 import ErrorAlert from '../../components/ErrorAlert';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Spinner from '../../components/ui/Spinner';
+import Field, { Input, Select } from '../../components/ui/Field';
 import { mensagemDeErro } from '../../utils/erros';
 import { mascararCnpj } from '../../utils/empresa';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 interface Formulario {
   razaoSocial: string;
@@ -19,11 +25,9 @@ const formularioDe = (empresa: CompanyData): Formulario => ({
   regime: empresa.regime_tributario ?? ''
 });
 
-const campo = 'w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-600 disabled:text-slate-500 disabled:cursor-not-allowed';
-const rotulo = 'block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2';
-
 // Os dados legais que o holerite imprime. O RH confere; só o Administrador altera.
 const Company: React.FC = () => {
+  usePageTitle('Dados da empresa');
   const { user } = useAuth();
   const podeEditar = user?.role === 'Administrador';
   const { data: empresa, error, isPending, refetch } = useEmpresa();
@@ -67,61 +71,60 @@ const Company: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-3xl">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dados da Empresa</h1>
-        <p className="text-slate-500 font-medium mt-1">Razão social e CNPJ aparecem no cabeçalho dos holerites. A folha só fecha com os dois preenchidos.</p>
-      </div>
+    <div className="max-w-3xl space-y-8 animate-in fade-in duration-300">
+      <PageHeader
+        title="Dados da Empresa"
+        description="Razão social e CNPJ aparecem no cabeçalho dos holerites. A folha só fecha com os dois preenchidos."
+      />
 
       {loading ? (
-        <div role="status" className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-          <p className="font-bold">Carregando os dados da empresa...</p>
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-ink-muted">
+          <Spinner size="lg" rotulo="Carregando os dados da empresa" />
+          <p className="font-semibold" aria-hidden="true">Carregando os dados da empresa...</p>
         </div>
       ) : loadError || !empresa ? (
         <ErrorAlert message={loadError ?? 'Dados da empresa indisponíveis.'} onRetry={retry} />
       ) : (
-        <form onSubmit={salvar} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 text-slate-900">
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500"><Landmark size={24} /></div>
-            <div>
-              <p className={`${rotulo} mb-0`}>Nome no sistema</p>
-              <p className="font-black text-lg">{empresa.nome}</p>
+        <Card as="section" padding="lg">
+          <form onSubmit={salvar} className="space-y-6">
+            <div className="flex items-center gap-3">
+              <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-control bg-surface-sunken text-ink-muted"><Landmark size={24} /></span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Nome no sistema</p>
+                <p className="text-lg font-bold text-ink">{empresa.nome}</p>
+              </div>
             </div>
-          </div>
 
-          {!podeEditar && (
-            <p className="p-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500">Somente o Administrador altera os dados da empresa.</p>
-          )}
+            {!podeEditar && (
+              <p className="rounded-control bg-surface-muted p-4 text-sm font-semibold text-ink-muted">Somente o Administrador altera os dados da empresa.</p>
+            )}
 
-          <div>
-            <label htmlFor="razao-social" className={rotulo}>Razão social</label>
-            <input id="razao-social" required maxLength={255} disabled={!podeEditar} value={form.razaoSocial} onChange={(e) => alterar({ razaoSocial: e.target.value })} className={campo} />
-          </div>
+            <Field label="Razão social" name="razaoSocial" required>
+              <Input autoComplete="off" maxLength={255} disabled={!podeEditar} value={form.razaoSocial} onChange={(e) => alterar({ razaoSocial: e.target.value })} />
+            </Field>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="cnpj" className={rotulo}>CNPJ</label>
-              <input id="cnpj" required inputMode="numeric" placeholder="00.000.000/0000-00" disabled={!podeEditar} value={form.cnpj} onChange={(e) => alterar({ cnpj: mascararCnpj(e.target.value) })} className={campo} />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <Field label="CNPJ" name="cnpj" required>
+                <Input autoComplete="off" inputMode="numeric" placeholder="00.000.000/0000-00" disabled={!podeEditar} value={form.cnpj} onChange={(e) => alterar({ cnpj: mascararCnpj(e.target.value) })} />
+              </Field>
+              <Field label="Regime tributário" name="regime">
+                <Select autoComplete="off" disabled={!podeEditar} value={form.regime} onChange={(e) => alterar({ regime: e.target.value })}>
+                  <option value="">Não informado</option>
+                  {REGIMES_TRIBUTARIOS.map((regime) => <option key={regime} value={regime}>{regime}</option>)}
+                </Select>
+              </Field>
             </div>
-            <div>
-              <label htmlFor="regime" className={rotulo}>Regime tributário</label>
-              <select id="regime" disabled={!podeEditar} value={form.regime} onChange={(e) => alterar({ regime: e.target.value })} className={campo}>
-                <option value="">Não informado</option>
-                {REGIMES_TRIBUTARIOS.map((regime) => <option key={regime} value={regime}>{regime}</option>)}
-              </select>
-            </div>
-          </div>
 
-          {saveError && <ErrorAlert message={saveError} />}
-          {saved && <p role="status" className="p-4 bg-emerald-50 text-emerald-700 rounded-2xl text-sm font-bold border border-emerald-100">Dados da empresa salvos.</p>}
+            {saveError && <ErrorAlert message={saveError} />}
+            {saved && <p role="status" className="rounded-control border border-success-line bg-success-soft p-4 text-sm font-semibold text-success">Dados da empresa salvos.</p>}
 
-          {podeEditar && (
-            <button type="submit" disabled={saving} className="px-8 py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 disabled:opacity-60">
-              {saving ? 'Salvando...' : 'Salvar dados'}
-            </button>
-          )}
-        </form>
+            {podeEditar && (
+              <Button type="submit" size="lg" loading={saving}>
+                {saving ? 'Salvando...' : 'Salvar dados'}
+              </Button>
+            )}
+          </form>
+        </Card>
       )}
     </div>
   );

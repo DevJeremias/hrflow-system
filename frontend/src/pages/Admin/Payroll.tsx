@@ -1,17 +1,27 @@
 import React, { useState, useMemo } from 'react';
-import { Filter, CalendarDays, Lock, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Lock, RefreshCw } from 'lucide-react';
 import { useAcaoDaFolha, useFolhaDaCompetencia } from '../../queries/folha';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
 import ErrorAlert from '../../components/ErrorAlert';
+import PageHeader from '../../components/ui/PageHeader';
+import Spinner from '../../components/ui/Spinner';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import EmptyState from '../../components/ui/EmptyState';
+import Field, { Input, Select } from '../../components/ui/Field';
+import { useConfirm } from '../../components/ui/confirmContext';
 import { mensagemDeErro } from '../../utils/erros';
 import { mesAtualEmBelem, rotuloDaCompetencia, formatarMomento } from '../../utils/competencia';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 const Payroll: React.FC = () => {
+  usePageTitle('Folha de pagamento');
+  const confirmar = useConfirm();
   const [competencia, setCompetencia] = useState(mesAtualEmBelem);
-  const [confirmandoFechamento, setConfirmandoFechamento] = useState(false);
   const [deptFilter, setDeptFilter] = useState('Todos');
 
+  // A folha de cada competência fica em cache: trocar de mês e voltar não refaz a chamada.
   const { data, error, isPending, refetch } = useFolhaDaCompetencia(competencia);
   const processar = useAcaoDaFolha(competencia, 'processar');
   const fechar = useAcaoDaFolha(competencia, 'fechar');
@@ -26,7 +36,6 @@ const Payroll: React.FC = () => {
     setCompetencia(nova);
     processar.reset();
     fechar.reset();
-    setConfirmandoFechamento(false);
     setDeptFilter('Todos');
   };
 
@@ -37,7 +46,6 @@ const Payroll: React.FC = () => {
     fechar.reset();
     try {
       await (qual === 'processar' ? processar : fechar).mutateAsync();
-      setConfirmandoFechamento(false);
     } catch {
       // O erro aparece na tela por actionError.
     }
@@ -62,60 +70,71 @@ const Payroll: React.FC = () => {
   const rotulo = rotuloDaCompetencia(competencia);
   const fechada = folha?.status === 'fechada';
 
+  const fecharMes = async () => {
+    if (!folha) return;
+    const semSalario = folha.pendencias.length > 0 ? ` ${folha.pendencias.length} colaborador(es) sem salário ficarão sem holerite neste mês.` : '';
+    const confirmado = await confirmar({
+      title: `Fechar a folha de ${rotulo}?`,
+      description: `Depois de fechada, a folha não pode ser processada de novo: salários e dados da empresa passam a valer como estão.${semSalario}`,
+      confirmLabel: 'Confirmar fechamento',
+    });
+    if (confirmado) await executar('fechar');
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-
-      {/* Cabeçalho com a competência e os filtros */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Folha</h1>
-          <p className="text-slate-500 font-medium mt-1">{fechada ? `Folha de ${rotulo}, fechada.` : `Folha de ${rotulo}: confira os holerites e feche o mês.`}</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex w-full sm:w-auto items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
-            <CalendarDays size={16} className="shrink-0 text-slate-400" />
-            <span className="sr-only">Competência</span>
-            <input aria-label="Competência" type="month" value={competencia} max={mesAtualEmBelem()} onChange={(e) => e.target.value && trocarCompetencia(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent font-bold text-sm text-slate-700 outline-none cursor-pointer" />
-          </label>
-          {folha && (
-            <div className="flex w-full sm:w-auto items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
-              <Filter size={16} className="shrink-0 text-slate-400" />
-              <select aria-label="Setor" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="min-w-0 flex-1 bg-transparent font-bold text-sm text-slate-700 outline-none cursor-pointer">
-                <option value="Todos">Todos os Setores</option>
-                {departmentsList.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <PageHeader
+        title="Gestão de Folha"
+        description={fechada ? `Folha de ${rotulo}, fechada.` : `Folha de ${rotulo}: confira os holerites e feche o mês.`}
+        actions={(
+          <div className="flex flex-wrap items-end gap-4">
+            <Field label="Competência" name="competencia">
+              <Input type="month" autoComplete="off" value={competencia} max={mesAtualEmBelem()} onChange={(e) => e.target.value && trocarCompetencia(e.target.value)} />
+            </Field>
+            {folha && (
+              <Field label="Setor" name="setor">
+                <Select autoComplete="off" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+                  <option value="Todos">Todos os Setores</option>
+                  {departmentsList.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                </Select>
+              </Field>
+            )}
+          </div>
+        )}
+      />
 
       {loading ? (
-        <div role="status" className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-          <p className="font-bold">Carregando a folha...</p>
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-ink-muted">
+          <Spinner size="lg" rotulo="Carregando a folha" />
+          <p className="font-semibold" aria-hidden="true">Carregando a folha...</p>
         </div>
       ) : loadError ? (
         <ErrorAlert message={loadError} onRetry={retry} />
       ) : !folha ? (
-        <div className="py-16 text-center flex flex-col items-center gap-4 bg-white rounded-3xl border border-slate-100 shadow-sm">
-          <p className="text-slate-600 font-bold text-lg">A folha de {rotulo} ainda não foi processada.</p>
-          <p className="text-slate-400 font-medium text-sm max-w-md">Ao processar, o sistema calcula o holerite de cada colaborador com o cadastro de agora. Você confere antes de fechar o mês.</p>
-          <button type="button" onClick={() => executar('processar')} disabled={acao !== null}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-primary text-white text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60">
-            <RefreshCw size={16} /> {acao === 'processar' ? 'Processando...' : 'Processar folha'}
-          </button>
-          {actionError && <div className="w-full max-w-xl"><ErrorAlert message={actionError} /></div>}
-        </div>
+        <Card padding="none">
+          <EmptyState
+            title={`A folha de ${rotulo} ainda não foi processada.`}
+            description="Ao processar, o sistema calcula o holerite de cada colaborador com o cadastro de agora. Você confere antes de fechar o mês."
+            action={(
+              <>
+                <Button icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar')} loading={acao === 'processar'} disabled={acao !== null}>
+                  {acao === 'processar' ? 'Processando...' : 'Processar folha'}
+                </Button>
+                {actionError && <div className="w-full max-w-xl"><ErrorAlert message={actionError} /></div>}
+              </>
+            )}
+          />
+        </Card>
       ) : (
         <>
-          <div className={`flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl border ${fechada ? 'bg-emerald-50/60 border-emerald-100' : 'bg-white border-slate-100 shadow-sm'}`}>
+          <Card className={`flex flex-wrap items-center justify-between gap-4 ${fechada ? 'border-success-line bg-success-soft' : ''}`}>
             <div className="flex items-center gap-3">
-              {fechada ? <Lock size={20} className="shrink-0 text-emerald-600" /> : <CheckCircle2 size={20} className="shrink-0 text-slate-400" />}
+              {fechada
+                ? <Lock size={20} aria-hidden="true" className="shrink-0 text-success" />
+                : <CheckCircle2 size={20} aria-hidden="true" className="shrink-0 text-ink-muted" />}
               <div>
-                <p className="font-black text-slate-900">{fechada ? 'Folha fechada' : 'Folha aberta'}</p>
-                <p className="text-sm font-medium text-slate-500">
+                <p className="font-bold text-ink">{fechada ? 'Folha fechada' : 'Folha aberta'}</p>
+                <p className="text-sm text-ink-muted">
                   {fechada && folha.fechadaEm
                     ? `Fechada em ${formatarMomento(folha.fechadaEm)}. Os colaboradores já veem o holerite e nada mais muda nesta competência.`
                     : `Processada em ${formatarMomento(folha.processadaEm)}. Alterações no cadastro só entram ao processar de novo.`}
@@ -124,58 +143,36 @@ const Payroll: React.FC = () => {
             </div>
             {!fechada && (
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => executar('processar')} disabled={acao !== null}
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60">
-                  <RefreshCw size={16} /> {acao === 'processar' ? 'Processando...' : 'Processar novamente'}
-                </button>
-                <button type="button" onClick={() => setConfirmandoFechamento(true)} disabled={acao !== null || confirmandoFechamento}
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-primary text-white text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60">
-                  <Lock size={16} /> Fechar mês
-                </button>
+                <Button variant="secondary" icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar')} loading={acao === 'processar'} disabled={acao !== null}>
+                  {acao === 'processar' ? 'Processando...' : 'Processar novamente'}
+                </Button>
+                <Button icon={<Lock size={16} aria-hidden="true" />} onClick={fecharMes} loading={acao === 'fechar'} disabled={acao !== null}>
+                  {acao === 'fechar' ? 'Fechando...' : 'Fechar mês'}
+                </Button>
               </div>
             )}
-          </div>
-
-          {confirmandoFechamento && !fechada && (
-            <div role="alertdialog" aria-labelledby="fechar-titulo" className="p-6 rounded-2xl bg-amber-50 border border-amber-200 space-y-4">
-              <p id="fechar-titulo" className="font-black text-amber-900">Fechar a folha de {rotulo}?</p>
-              <p className="text-sm font-medium text-amber-800">
-                Depois de fechada, a folha não pode ser processada de novo: salários e dados da empresa passam a valer como estão.
-                {folha.pendencias.length > 0 && ` ${folha.pendencias.length} colaborador(es) sem salário ficarão sem holerite neste mês.`}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => executar('fechar')} disabled={acao !== null}
-                  className="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-60">
-                  {acao === 'fechar' ? 'Fechando...' : 'Confirmar fechamento'}
-                </button>
-                <button type="button" onClick={() => setConfirmandoFechamento(false)} disabled={acao !== null}
-                  className="px-5 py-3 bg-white border border-amber-200 text-amber-800 text-sm font-bold rounded-xl transition-all disabled:opacity-60">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          )}
+          </Card>
 
           {actionError && <ErrorAlert message={actionError} />}
 
           {folha.pendencias.length > 0 && (
-            <div className="p-6 rounded-2xl bg-amber-50/60 border border-amber-100">
-              <div className="flex items-center gap-2 mb-3 text-amber-800">
-                <AlertTriangle size={18} />
-                <h2 className="font-black">Pendências ({folha.pendencias.length})</h2>
+            <Card className="border-warning-line bg-warning-soft">
+              <div className="mb-3 flex items-center gap-2 text-warning">
+                <AlertTriangle size={18} aria-hidden="true" />
+                <h2 className="font-bold">Pendências ({folha.pendencias.length})</h2>
               </div>
-              <p className="text-sm font-medium text-amber-800 mb-3">
+              <p className="mb-3 text-sm text-warning">
                 {fechada ? 'Estes colaboradores ficaram de fora desta folha e não têm holerite nesta competência.' : 'Estes colaboradores não entraram na folha. Corrija o cadastro e processe de novo.'}
               </p>
-              <ul className="divide-y divide-amber-100 text-sm font-medium text-slate-700">
+              <ul className="divide-y divide-warning-line text-sm text-ink">
                 {folha.pendencias.map((pendencia) => (
                   <li key={pendencia.funcionarioId} className="flex flex-wrap justify-between gap-2 py-2">
-                    <span className="font-bold text-slate-900">{pendencia.nome}</span>
+                    <span className="font-semibold">{pendencia.nome}</span>
                     <span>{pendencia.motivo}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </Card>
           )}
 
           <PayrollSummaryCards metrics={dynamicMetrics} />

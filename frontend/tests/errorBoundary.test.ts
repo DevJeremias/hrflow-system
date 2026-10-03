@@ -5,7 +5,8 @@ import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
 import { createServer, type ViteDevServer } from 'vite';
 
 // O AuthProvider limpa chaves legadas do localStorage ao montar.
@@ -23,21 +24,23 @@ const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo
 before(async () => {
   // O cookie de CSRF é o que diz ao AuthProvider que há uma sessão a confirmar.
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
-  const [{ default: Employees }, { default: Layout }, { AuthProvider }] = await Promise.all([
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
+  const [{ default: Employees }, { default: Layout }, { AuthProvider }, { default: UiProviders }] = await Promise.all([
     server.ssrLoadModule('/src/pages/Admin/Employees.tsx'),
     server.ssrLoadModule('/src/layouts/Layout.tsx'),
     server.ssrLoadModule('/src/contexts/AuthContext.tsx'),
+    server.ssrLoadModule('/src/components/ui/UiProviders.tsx'),
   ]);
   const page = (path: string | undefined, element: unknown, index = false) =>
     createElement(Route, { path, index, element: element as never });
-  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+  Harness = ({ initialPath }) => createElement(QueryClientProvider, { client: novoQueryClient() },
     createElement(MemoryRouter, { initialEntries: [initialPath] },
       createElement(AuthProvider, null,
-        createElement(Routes, null,
-          createElement(Route, { path: '/admin', element: createElement(Layout) },
-            page(undefined, createElement('p', null, 'Tela inicial'), true),
-            page('colaboradores', createElement(Employees)))))));
+        createElement(UiProviders, null,
+          createElement(Routes, null,
+            createElement(Route, { path: '/admin', element: createElement(Layout) },
+              page(undefined, createElement('p', null, 'Tela inicial'), true),
+              page('colaboradores', createElement(Employees))))))));
 });
 
 after(async () => {

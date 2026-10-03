@@ -1,7 +1,8 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
-import { X, Printer, Building } from 'lucide-react';
+import { Printer, Building } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
+import Modal from '../ui/Modal';
+import { IconButton } from '../ui/Button';
 import { mascararCnpj } from '../../utils/empresa';
 
 interface Props {
@@ -16,10 +17,12 @@ interface Props {
 
 interface Linha { descricao: string; referencia: string; tipo: 'vencimento' | 'desconto'; valor: number; }
 
+const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+const ROTULO = 'text-xs font-semibold uppercase tracking-wider text-ink-muted';
+
 const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName, cnpj }) => {
   if (!isOpen || !employee) return null;
-
-  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   // Abaixo de sm as linhas viram uma lista empilhada; a tabela de quatro colunas só cabe a partir daí.
   const linhas: Linha[] = [
@@ -28,118 +31,111 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
     ...employee.deductionsList.map((item): Linha => ({ descricao: item.description, referencia: '---', tipo: 'desconto', valor: item.value })),
   ];
 
-  // Portal em <body>: o @media print esconde o resto da aplicação sem deixar páginas em branco.
-  return createPortal(
-    <div className="holerite-impressao fixed inset-0 z-50 flex items-center justify-center p-4 print:static print:block print:p-0" role="dialog" aria-modal="true" aria-labelledby="holerite-titulo">
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300 print:hidden" onClick={onClose} />
-      
-      <div className="bg-white w-full max-w-3xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[95vh] print:max-h-none print:max-w-none print:shadow-none print:rounded-none animate-in zoom-in-95 duration-300">
-        <div className="px-4 py-4 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 print:hidden">
-          <h2 id="holerite-titulo" className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Detalhes do Holerite</h2>
-          <div className="flex gap-2">
-            <button onClick={() => window.print()} className="p-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 rounded-2xl transition-all shadow-sm" title="Imprimir Holerite">
-              <Printer size={20} />
-            </button>
-            <button onClick={onClose} className="p-3 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-2xl transition-all">
-              <X size={24} />
-            </button>
+  // O contêiner do modal fica no <body>: o @media print esconde o resto da aplicação sem deixar páginas em branco.
+  return (
+    <Modal
+      title="Detalhes do Holerite"
+      size="lg"
+      onClose={onClose}
+      portalClassName="holerite-impressao"
+      bodyClassName="bg-surface-muted p-4 sm:p-8 print:bg-white print:p-0"
+      headerActions={(
+        <IconButton label="Imprimir Holerite" variant="secondary" onClick={() => window.print()}>
+          <Printer size={20} aria-hidden="true" />
+        </IconButton>
+      )}
+    >
+      <div className="overflow-hidden rounded-card border-2 border-line bg-surface print:rounded-none print:border-2 print:border-ink">
+        <div className="flex flex-col items-start gap-4 border-b-2 border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6 print:border-ink">
+          <div className="flex min-w-0 items-center gap-4">
+            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-ink text-white print:border print:border-ink print:bg-white print:text-ink">
+              <Building size={24} />
+            </span>
+            <div className="min-w-0">
+              {companyName && <p className="break-words text-lg font-bold uppercase tracking-tight text-ink">{companyName}</p>}
+              {cnpj && <p className="text-sm font-semibold text-ink-muted">CNPJ: {mascararCnpj(cnpj)}</p>}
+            </div>
+          </div>
+          <div className="sm:text-right">
+            <h3 className="text-xl font-bold uppercase text-ink">Recibo de Pagamento</h3>
+            <p className="text-sm font-semibold text-ink-muted">Referência: {month}</p>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 md:p-12 print:p-0 print:overflow-visible custom-scrollbar bg-slate-50 print:bg-white">
-          <div className="bg-white border-2 border-slate-200 print:border-slate-900 rounded-2xl print:rounded-none overflow-hidden print:border-2">
-            
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6 border-b-2 border-slate-200 print:border-slate-900">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 shrink-0 bg-slate-900 text-white rounded-xl flex items-center justify-center print:border print:border-slate-900 print:bg-white print:text-slate-900">
-                  <Building size={24} />
-                </div>
-                <div className="min-w-0">
-                  {companyName && <h1 className="font-black text-lg text-slate-900 uppercase tracking-tight break-words min-w-0">{companyName}</h1>}
-                  {cnpj && <p className="text-sm font-bold text-slate-500">CNPJ: {mascararCnpj(cnpj)}</p>}
-                </div>
-              </div>
-              <div className="sm:text-right">
-                <h2 className="font-black text-xl text-slate-900 uppercase">Recibo de Pagamento</h2>
-                <p className="text-sm font-bold text-slate-500">Referência: {month}</p>
-              </div>
-            </div>
+        <div className="grid grid-cols-2 gap-4 border-b-2 border-line bg-surface-muted p-4 sm:grid-cols-4 sm:p-6 print:border-ink print:bg-white">
+          <div className="col-span-2">
+            <p className={`${ROTULO} mb-1`}>Código / Nome do Funcionário</p>
+            <p className="break-words font-semibold text-ink">{employee.id.padStart(4, '0')} - {employee.name}</p>
+          </div>
+          <div>
+            <p className={`${ROTULO} mb-1`}>Setor</p>
+            <p className="break-words font-semibold text-ink">{employee.department}</p>
+          </div>
+          <div>
+            <p className={`${ROTULO} mb-1`}>Cargo</p>
+            <p className="break-words font-semibold text-ink">{employee.role}</p>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 sm:p-6 border-b-2 border-slate-200 print:border-slate-900 bg-slate-50/50 print:bg-white">
-              <div className="col-span-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Código / Nome do Funcionário</p>
-                <p className="font-bold text-slate-900 break-words">{employee.id.padStart(4, '0')} - {employee.name}</p>
+        <ul className="divide-y divide-dashed divide-line-strong px-4 sm:hidden print:hidden">
+          {linhas.map((linha, idx) => (
+            <li key={idx} className="flex items-start justify-between gap-3 py-3 text-sm">
+              <div className="min-w-0">
+                <p className="break-words font-medium text-ink">{linha.descricao}</p>
+                {linha.referencia !== '---' && <p className="text-xs text-ink-muted">{linha.referencia}</p>}
               </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Setor</p>
-                <p className="font-bold text-slate-900 break-words">{employee.department}</p>
+              <div className="shrink-0 text-right">
+                <p className={ROTULO}>{linha.tipo === 'vencimento' ? 'Vencimento' : 'Desconto'}</p>
+                <p className={`font-semibold ${linha.tipo === 'vencimento' ? 'text-success' : 'text-danger'}`}>{formatCurrency(linha.valor)}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cargo</p>
-                <p className="font-bold text-slate-900 break-words">{employee.role}</p>
-              </div>
-            </div>
+            </li>
+          ))}
+        </ul>
 
-            <ul className="sm:hidden print:hidden divide-y divide-dashed divide-slate-200 px-4">
+        <div className="hidden sm:block print:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Vencimentos e descontos do holerite</caption>
+            <thead>
+              <tr className="border-b-2 border-line bg-surface-muted text-xs uppercase tracking-wider print:border-ink print:bg-white">
+                <th scope="col" className="w-1/2 p-4 text-left font-semibold text-ink-muted">Descrição</th>
+                <th scope="col" className="p-4 text-center font-semibold text-ink-muted">Referência</th>
+                <th scope="col" className="p-4 text-right font-semibold text-success">Vencimentos</th>
+                <th scope="col" className="p-4 text-right font-semibold text-danger">Descontos</th>
+              </tr>
+            </thead>
+            <tbody className="align-top font-medium text-ink">
               {linhas.map((linha, idx) => (
-                <li key={idx} className="flex items-start justify-between gap-3 py-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-700 break-words">{linha.descricao}</p>
-                    {linha.referencia !== '---' && <p className="text-xs text-slate-400">{linha.referencia}</p>}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{linha.tipo === 'vencimento' ? 'Vencimento' : 'Desconto'}</p>
-                    <p className={`font-bold ${linha.tipo === 'vencimento' ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(linha.valor)}</p>
-                  </div>
-                </li>
+                <tr key={idx} className="border-b border-dashed border-line">
+                  <td className="p-4">{linha.descricao}</td>
+                  <td className="p-4 text-center">{linha.referencia}</td>
+                  <td className="p-4 text-right font-semibold">{linha.tipo === 'vencimento' && formatCurrency(linha.valor)}</td>
+                  <td className="p-4 text-right font-semibold">{linha.tipo === 'desconto' && formatCurrency(linha.valor)}</td>
+                </tr>
               ))}
-            </ul>
+              <tr><td colSpan={4} className="h-32 print:h-16"></td></tr>
+            </tbody>
+          </table>
+        </div>
 
-            <div className="hidden sm:block print:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b-2 border-slate-200 print:border-slate-900 bg-slate-50/50 print:bg-white text-[10px] uppercase tracking-widest text-slate-500 font-black">
-                    <th className="text-left p-4 w-1/2">Descrição</th>
-                    <th className="text-center p-4">Referência</th>
-                    <th className="text-right p-4 text-emerald-600">Vencimentos</th>
-                    <th className="text-right p-4 text-rose-600">Descontos</th>
-                  </tr>
-                </thead>
-                <tbody className="font-medium text-slate-700 align-top">
-                  {linhas.map((linha, idx) => (
-                    <tr key={idx} className="border-b border-slate-100 border-dashed">
-                      <td className="p-4">{linha.descricao}</td>
-                      <td className="p-4 text-center">{linha.referencia}</td>
-                      <td className="p-4 text-right font-bold text-slate-900">{linha.tipo === 'vencimento' && formatCurrency(linha.valor)}</td>
-                      <td className="p-4 text-right font-bold text-slate-900">{linha.tipo === 'desconto' && formatCurrency(linha.valor)}</td>
-                    </tr>
-                  ))}
-                  <tr><td colSpan={4} className="h-32 print:h-16"></td></tr>
-                </tbody>
-              </table>
+        <div className="grid grid-cols-1 border-t-2 border-line sm:grid-cols-2 print:grid-cols-2 print:border-ink">
+          <div className="order-2 flex flex-col justify-end border-t-2 border-line p-4 sm:order-1 sm:border-r-2 sm:border-t-0 sm:p-6 print:order-1 print:border-r-2 print:border-t-0 print:border-ink">
+            <p className="mb-6 text-xs text-ink-muted">Declaro ter recebido a importância líquida discriminada neste recibo.</p>
+            <div className="mt-8 border-t border-ink-subtle pt-2 text-center text-xs font-semibold uppercase tracking-wider text-ink-muted">
+              Assinatura do Funcionário
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 border-t-2 border-slate-200 print:border-slate-900">
-              <div className="order-2 sm:order-1 print:order-1 p-4 sm:p-6 border-t-2 sm:border-t-0 sm:border-r-2 print:border-t-0 print:border-r-2 border-slate-200 print:border-slate-900 flex flex-col justify-end">
-                <p className="text-xs font-medium text-slate-500 mb-6">Declaro ter recebido a importância líquida discriminada neste recibo.</p>
-                <div className="border-t border-slate-400 pt-2 text-center text-xs font-bold text-slate-600 uppercase tracking-widest mt-8">
-                  Assinatura do Funcionário
-                </div>
-              </div>
-              <div className="order-1 sm:order-2 print:order-2 bg-slate-50/50 print:bg-white">
-                <div className="flex justify-between gap-3 p-4 border-b border-slate-200">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total de Vencimentos</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(employee.totalGross)}</span>
-                </div>
-                <div className="flex justify-between gap-3 p-4 border-b border-slate-200">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total de Descontos</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(employee.totalDeductions)}</span>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-6 bg-slate-900 print:bg-white text-white print:text-slate-900">
-                  <span className="text-xs font-black uppercase tracking-widest">Valor Líquido →</span>
-                  <span className="text-xl sm:text-2xl font-black">{formatCurrency(employee.netSalary)}</span>
-                </div>
-              </div>
+          </div>
+          <div className="order-1 bg-surface-muted sm:order-2 print:order-2 print:bg-white">
+            <div className="flex justify-between gap-3 border-b border-line p-4">
+              <span className={ROTULO}>Total de Vencimentos</span>
+              <span className="font-semibold text-ink">{formatCurrency(employee.totalGross)}</span>
+            </div>
+            <div className="flex justify-between gap-3 border-b border-line p-4">
+              <span className={ROTULO}>Total de Descontos</span>
+              <span className="font-semibold text-ink">{formatCurrency(employee.totalDeductions)}</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-ink p-4 text-white sm:p-6 print:bg-white print:text-ink">
+              <span className="text-xs font-semibold uppercase tracking-wider">Valor Líquido →</span>
+              <span className="text-xl font-bold sm:text-2xl">{formatCurrency(employee.netSalary)}</span>
             </div>
           </div>
         </div>
@@ -151,8 +147,7 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
           .holerite-impressao { position: static; inset: auto; display: block; padding: 0; background: transparent; }
         }
       `}</style>
-    </div>,
-    document.body
+    </Modal>
   );
 };
 

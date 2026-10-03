@@ -19,13 +19,15 @@ interface PropsDoEspelho {
 let Espelho: ComponentType<PropsDoEspelho>;
 let JustificativasPonto: ComponentType<{ mes: string }>;
 let TimeTracking: ComponentType;
+let UiProviders: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
   ({ default: Espelho } = await server.ssrLoadModule('/src/components/Portal/DashboardTimeMirror.tsx'));
   ({ default: JustificativasPonto } = await server.ssrLoadModule('/src/components/Admin/JustificativasPonto.tsx'));
   ({ default: TimeTracking } = await server.ssrLoadModule('/src/pages/Admin/TimeTracking.tsx'));
+  ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
 });
 
 after(async () => {
@@ -50,11 +52,13 @@ const renderizar = async (elemento: ReturnType<typeof createElement>) => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => { root.render(elemento); });
+  await act(async () => { root.render(createElement(UiProviders, null, elemento)); });
   return { host, root, desmontar: async () => { await act(async () => root.unmount()); host.remove(); } };
 };
 
-const botao = (host: HTMLElement, texto: RegExp | string) => [...host.querySelectorAll('button')].find((b) => (typeof texto === 'string' ? b.textContent === texto : texto.test(`${b.textContent} ${b.getAttribute('aria-label')}`)));
+// O modal vive em um contêiner no <body>, fora do host: os botões e campos são procurados no documento inteiro.
+const botao = (_host: HTMLElement, texto: RegExp | string) => [...document.querySelectorAll('button')].find((b) => (typeof texto === 'string' ? b.textContent === texto || b.getAttribute('aria-label') === texto : texto.test(`${b.textContent} ${b.getAttribute('aria-label')}`)));
+const alertas = (host: HTMLElement) => [...host.querySelectorAll('[role="alert"]')].map((el) => el.textContent).join(' ');
 
 const espelho = (dias: HistoryDay[], onSaveNote: (id: string, note: string) => Promise<void> = async () => {}, setMonth: (mes: string) => void = () => {}) => createElement(Espelho, {
   month: '2026-09', setMonth, historyData: dias, monthTotals: totais, onSaveNote,
@@ -96,7 +100,7 @@ test('mês sem marcações mostra a mensagem de estado vazio, mas mantém os dia
 test('o modal descreve o fluxo real: vai ao RH, que aprova ou recusa', async () => {
   const { host, desmontar } = await renderizar(espelho([dia('2026-09-07', { entry: '08:00', exit: '17:00', status: 'ok' })]));
   await act(async () => { botao(host, /Adicionar nota em 07\/09\/2026/)?.click(); });
-  const texto = document.body.textContent ?? host.textContent ?? '';
+  const texto = document.body.textContent ?? '';
   assert.match(texto, /enviada ao RH, que vai aprová-la ou recusá-la/);
   assert.doesNotMatch(texto, /gestor/);
   await desmontar();
@@ -106,7 +110,7 @@ test('justificar um dia sem marcação chama a gravação com o dia e o texto', 
   const chamadas: Array<[string, string]> = [];
   const { host, desmontar } = await renderizar(espelho([dia('2026-09-07')], async (id, nota) => { chamadas.push([id, nota]); }));
   await act(async () => { botao(host, /Adicionar nota em 07\/09\/2026/)?.click(); });
-  const campo = host.querySelector('textarea') as HTMLTextAreaElement;
+  const campo = document.querySelector('textarea') as HTMLTextAreaElement;
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype, 'value')!.set!;
     setter.call(campo, 'Consulta médica.');
@@ -114,7 +118,7 @@ test('justificar um dia sem marcação chama a gravação com o dia e o texto', 
   });
   await act(async () => { botao(host, 'Enviar Justificativa')?.click(); });
   assert.deepEqual(chamadas, [['2026-09-07', 'Consulta médica.']]);
-  assert.equal(host.querySelector('[role="dialog"]'), null, 'o modal fecha depois da confirmação');
+  assert.equal(document.querySelector('[role="dialog"]'), null, 'o modal fecha depois da confirmação');
   await desmontar();
 });
 
@@ -126,15 +130,15 @@ test('justificativa recusada mostra o motivo e permite reenviar; aprovada fica s
   assert.match(host.textContent ?? '', /Aprovada/);
 
   await act(async () => { botao(host, /Justificativa de 07\/09\/2026/)?.click(); });
-  assert.match(host.textContent ?? '', /O RH recusou esta justificativa: Sem comprovante\./);
+  assert.match(document.body.textContent ?? '', /O RH recusou esta justificativa: Sem comprovante\./);
   assert.ok(botao(host, 'Reenviar Justificativa'));
   await act(async () => { botao(host, 'Fechar')?.click(); });
 
   await act(async () => { botao(host, /Justificativa de 08\/09\/2026/)?.click(); });
-  assert.match(host.textContent ?? '', /O RH aprovou esta justificativa/);
+  assert.match(document.body.textContent ?? '', /O RH aprovou esta justificativa/);
   assert.equal(botao(host, 'Enviar Justificativa'), undefined);
   assert.equal(botao(host, 'Reenviar Justificativa'), undefined);
-  assert.equal((host.querySelector('textarea') as HTMLTextAreaElement).disabled, true);
+  assert.equal((document.querySelector('textarea') as HTMLTextAreaElement).disabled, true);
   await desmontar();
 });
 
@@ -193,7 +197,7 @@ test('recusar pede o motivo e só envia com ele', async () => {
   await act(async () => { botao(host, /Recusar justificativa de Ana/)?.click(); });
   const confirmar = botao(host, 'Confirmar recusa') as HTMLButtonElement;
   assert.equal(confirmar.disabled, true, 'sem motivo não há como confirmar');
-  const campo = host.querySelector('textarea') as HTMLTextAreaElement;
+  const campo = document.querySelector('textarea') as HTMLTextAreaElement;
   await act(async () => {
     Object.getOwnPropertyDescriptor(dom.window.HTMLTextAreaElement.prototype, 'value')!.set!.call(campo, 'Sem atestado.');
     campo.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
@@ -209,7 +213,7 @@ test('a falha ao decidir aparece na linha e a justificativa continua na fila', a
   )) as typeof fetch;
   const { host, desmontar } = await renderizar(createElement(JustificativasPonto, { mes: '2026-10' }));
   await act(async () => { botao(host, /Aprovar justificativa de Ana/)?.click(); });
-  assert.match(host.querySelector('[role="alert"]')?.textContent ?? '', /próprio ponto/);
+  assert.match(alertas(host), /próprio ponto/);
   assert.match(host.textContent ?? '', /Consulta médica\./);
   await desmontar();
 });

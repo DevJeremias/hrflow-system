@@ -19,6 +19,7 @@ type Resposta = { status: number; corpo?: unknown };
 let server: ViteDevServer;
 let AuthProvider: ComponentType<{ children: unknown }>;
 let Employees: ComponentType;
+let UiProviders: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 
 let chamadas: Chamada[] = [];
@@ -42,10 +43,11 @@ const colaborador = (extra: Record<string, unknown> = {}) => ({
 });
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
   ({ default: Employees } = await server.ssrLoadModule('/src/pages/Admin/Employees.tsx'));
+  ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
   dom.window.confirm = (mensagem?: string) => { confirmacoes.push(String(mensagem)); return true; };
   globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const caminho = String(entrada).replace(/^\/api/, '');
@@ -91,10 +93,11 @@ const montar = async (Tela: ComponentType) => {
   montados.push({ host, root });
   await act(async () => {
     root.render(createElement(QueryClientProvider, { client: novoQueryClient() },
-      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));
+      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
   });
   await esperar();
-  return host;
+  // O modal vive em um contêiner no <body>, fora do host: as consultas partem do documento.
+  return document.body;
 };
 
 const campo = <T extends HTMLElement>(host: HTMLElement, nome: string) => {
@@ -129,9 +132,14 @@ const botao = (host: ParentNode, texto: RegExp) => {
   return encontrado;
 };
 
-const acao = (host: HTMLElement, titulo: string) => host.querySelector<HTMLButtonElement>(`button[title="${titulo}"]`);
+// Cada ação é um IconButton cujo nome acessível termina no nome do colaborador.
+const NOME_DA_ACAO: Record<string, string> = {
+  'Editar Colaborador': 'Editar colaborador', 'Redefinir Senha': 'Redefinir senha de', 'Inativar ou Desligar': 'Inativar ou desligar',
+  'Excluir Cadastro': 'Excluir cadastro de', 'Reativar Colaborador': 'Reativar colaborador',
+};
+const acao = (host: ParentNode, titulo: string) => host.querySelector<HTMLButtonElement>(`button[aria-label^="${NOME_DA_ACAO[titulo]}"]`);
 const gravacoes = () => chamadas.filter((chamada) => chamada.metodo !== 'GET');
-const dialogo = (host: HTMLElement) => host.querySelector<HTMLElement>('[role="dialog"]')!;
+const dialogo = (host: ParentNode) => host.querySelector<HTMLElement>('[role="dialog"]')!;
 const enviar = async (host: HTMLElement, selector = '[role="dialog"] form') => {
   await act(async () => { host.querySelector(selector)!.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); });
   await esperar();
@@ -142,10 +150,10 @@ test('cada linha oferece as ações do ciclo de vida e a lixeira só existe sem 
   const host = await montar(Employees);
   const [primeira, segunda] = [...host.querySelectorAll('tbody tr')];
   for (const titulo of ['Editar Colaborador', 'Redefinir Senha', 'Inativar ou Desligar', 'Excluir Cadastro']) {
-    assert.ok(primeira.querySelector(`button[title="${titulo}"]`), `${titulo} na linha sem movimento`);
+    assert.ok(acao(primeira, titulo), `${titulo} na linha sem movimento`);
   }
-  assert.equal(segunda.querySelector('button[title="Excluir Cadastro"]'), null, 'com ponto registrado não se exclui');
-  assert.ok(segunda.querySelector('button[title="Inativar ou Desligar"]'));
+  assert.equal(acao(segunda, 'Excluir Cadastro'), null, 'com ponto registrado não se exclui');
+  assert.ok(acao(segunda, 'Inativar ou Desligar'));
 });
 
 test('para o RH, a linha de outro RH ou Administrador e a dele mesmo não oferecem ação nenhuma', async () => {

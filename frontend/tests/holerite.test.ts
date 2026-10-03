@@ -67,7 +67,8 @@ test('o título traz a competência e o nome da empresa vem da sessão', async (
 
 test('com CNPJ, o cabeçalho mostra razão social e CNPJ formatado', async () => {
   const { fechar, modal } = await abrir({ month: 'outubro de 2026', companyName: 'Razao Social Ficticia Ltda', cnpj: '11222333000181' });
-  const cabecalho = modal.querySelector('h1')?.parentElement?.textContent ?? '';
+  // O nome da empresa não é um título (a página já tem o seu <h1>): o cabeçalho é o bloco que o contém.
+  const cabecalho = [...modal.querySelectorAll('p')].find((p) => /Razao Social/.test(p.textContent ?? ''))?.parentElement?.textContent ?? '';
   assert.match(cabecalho, /Razao Social Ficticia Ltda/);
   assert.match(cabecalho, /CNPJ: 11\.222\.333\/0001-81/);
   await fechar();
@@ -117,4 +118,14 @@ test('o código não traz mais empresa nem CNPJ de exemplo', () => {
     assert.doesNotMatch(conteudo, /00\.000\.000\/0001-00/, arquivo);
     assert.doesNotMatch(conteudo, /Abril de 2026/, arquivo);
   }
+});
+
+test('o holerite é um diálogo modal nomeado e o botão de imprimir tem nome acessível', async () => {
+  const { fechar } = await abrir({ month: 'outubro de 2026' });
+  const dialogo = document.querySelector('[role="dialog"]')!;
+  assert.equal(dialogo.getAttribute('aria-modal'), 'true');
+  assert.equal(document.getElementById(dialogo.getAttribute('aria-labelledby')!)?.textContent, 'Detalhes do Holerite');
+  assert.ok(dialogo.querySelector('button[aria-label="Imprimir Holerite"]'));
+  assert.ok(dialogo.closest('.holerite-impressao'), 'o contêiner do modal leva a classe que o CSS de impressão preserva');
+  await fechar();
 });

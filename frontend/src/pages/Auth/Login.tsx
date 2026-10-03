@@ -1,25 +1,29 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react'; 
-import { useAuth } from '../../contexts/AuthContext'; 
+import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { HttpError } from '../../services/httpClient';
 import { mensagemDeLimite } from '../../utils/espera';
 import { mensagemDeErro } from '../../utils/erros';
+import { usePageTitle } from '../../hooks/usePageTitle';
+import Button from '../../components/ui/Button';
+import Field, { Input } from '../../components/ui/Field';
 import logo from '../../assets/logo.png';
 import loginImagem from '../../assets/login_imagem2.webp';
 
 const Login: React.FC = () => {
+  usePageTitle('Entrar');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [erro, setErro] = useState(''); 
-  const [isSubmitting, setIsSubmitting] = useState(false); 
-  
+  const [erro, setErro] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { login, sessionNotice } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErro(''); 
-    setIsSubmitting(true); 
+    setErro('');
+    setIsSubmitting(true);
 
     try {
       await login(email, senha);
@@ -27,130 +31,101 @@ const Login: React.FC = () => {
       const mensagem = mensagemDeErro(error, 'Erro ao realizar login.');
       setErro(error instanceof HttpError && error.status === 429 ? mensagemDeLimite(error.data, mensagem) : mensagem);
     } finally {
-      setIsSubmitting(false); 
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen w-full font-sans bg-white overflow-hidden">
-      
-      <div className="hidden lg:flex flex-[1.4] relative bg-[#0a0f1d]">
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-25" 
+    <div className="flex min-h-screen w-full bg-surface">
+      <div data-escuro className="relative hidden flex-[1.4] bg-surface-inverse lg:flex">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-cover bg-center opacity-25"
           style={{ backgroundImage: `url(${loginImagem})` }}
         />
-        
-        <div className="relative z-10 flex flex-col justify-between w-full h-full pt-12 pb-12 pl-10 pr-12 xl:pt-16 xl:pb-16 xl:pl-20">
-          
+
+        <div className="relative z-10 flex h-full w-full flex-col justify-between py-12 pl-10 pr-12 xl:py-16 xl:pl-20">
           <div className="flex items-center gap-3">
-            <div className=" p-2.5 rounded-xl shadow-indigo-500/20">
-              <img 
-                src={logo} 
-                alt="Logo da Empresa" 
-                className="h-10 md:h-12 w-auto object-contain" 
-              />
-            </div>
-            <span className="text-2xl font-black text-white tracking-tight">
-                HR<span className="text-purple-500">flow</span>
-              </span>
+            <img src={logo} alt="" className="h-10 w-auto object-contain md:h-12" />
+            <span className="text-2xl font-extrabold tracking-tight text-white">
+              HR<span className="text-indigo-300">Flow</span>
+            </span>
           </div>
 
           <div className="max-w-xl">
-            <h2 className="text-3xl xl:text-5xl font-black text-white leading-[1.1] mb-6">
-              Sistema de Gestão de <br /> Recursos Humanos
-            </h2>
-            <p className="text-xl text-slate-300 font-medium leading-relaxed max-w-md">
+            <p className="mb-6 text-3xl font-extrabold leading-[1.1] text-white xl:text-5xl">
+              Sistema de Gestão de Recursos Humanos
+            </p>
+            <p className="max-w-md text-xl font-medium leading-relaxed text-slate-300">
               Gerencie colaboradores, ponto, férias e folha de pagamento em um só lugar.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex-2 flex flex-col justify-center px-10 lg:px-24 xl:px-32 bg-white">
-        <div className="max-w-md w-full mx-auto">
-          
+      <main className="flex flex-1 flex-col justify-center bg-surface px-6 py-12 sm:px-10 lg:px-24 xl:px-32">
+        <div className="mx-auto w-full max-w-md">
           <div className="mb-10">
-            <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Bem-vindo!</h2>
-            <p className="text-slate-500 font-medium text-lg">Introduza as suas credenciais para aceder.</p>
+            <h1 className="mb-2 text-4xl font-extrabold tracking-tight text-ink">Bem-vindo!</h1>
+            <p className="text-lg text-ink-muted">Informe suas credenciais para acessar.</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
-            
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">E-MAIL</label>
-              <div className="relative group">
-                <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
-                <input 
-                  type="email" 
-                  placeholder="exemplo@email.com"
-                  className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none transition-all font-semibold text-slate-700"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
+            <Field label="E-mail" name="email" required>
+              <Input
+                type="email"
+                autoComplete="username"
+                placeholder="exemplo@email.com"
+                icon={<Mail size={20} />}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">SENHA</label>
-              <div className="relative group">
-                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
-                <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary focus:bg-white outline-none transition-all font-semibold text-slate-700"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
+            <Field label="Senha" name="senha" required>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+                icon={<Lock size={20} />}
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+              />
+            </Field>
 
-            <p className="text-sm font-medium text-slate-500">
-              <span className="font-bold text-slate-700">Esqueceu a senha?</span> Procure o RH da sua empresa: ele redefine o seu acesso.
+            <p className="text-sm text-ink-muted">
+              <span className="font-semibold text-ink">Esqueceu a senha?</span> Procure o RH da sua empresa: ele redefine o seu acesso.
             </p>
 
             {sessionNotice && !erro && (
-              <div role="status" className="flex items-center gap-2 p-4 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold border border-amber-100">
-                <AlertCircle size={18} />
+              <div role="status" className="flex items-center gap-2 rounded-control border border-warning-line bg-warning-soft p-4 text-sm font-semibold text-warning">
+                <AlertCircle size={18} aria-hidden="true" className="shrink-0" />
                 <p>{sessionNotice}</p>
               </div>
             )}
 
             {erro && (
-              <div className="flex items-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-100">
-                <AlertCircle size={18} />
+              <div role="alert" className="flex items-center gap-2 rounded-control border border-danger-line bg-danger-soft p-4 text-sm font-semibold text-danger">
+                <AlertCircle size={18} aria-hidden="true" className="shrink-0" />
                 <p>{erro}</p>
               </div>
             )}
 
-            <button 
-              type="submit"
-              disabled={isSubmitting} 
-              className="w-full py-5 bg-primary hover:bg-indigo-300 disabled:bg-primary/70 text-white font-extrabold text-lg rounded-2xl shadow-xl shadow-indigo-100 hover:shadow-indigo-200 transition-all transform active:scale-[0.98] mt-2 flex justify-center items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  <span>ACESSANDO...</span>
-                </>
-              ) : (
-                'ACESSAR SISTEMA'
-              )}
-            </button>
+            <Button type="submit" size="lg" fullWidth loading={isSubmitting}>
+              {isSubmitting ? 'Acessando...' : 'Acessar sistema'}
+            </Button>
           </form>
 
-          <div className="mt-12 pt-8 border-t border-slate-300 text-center">
-            <p className="text-slate-500 font-semibold">
+          <div className="mt-12 border-t border-line pt-8 text-center">
+            <p className="font-medium text-ink-muted">
               Ainda não tem cadastro?{' '}
-              <Link to="/#contato" className="text-primary font-black hover:underline underline-offset-4 transition-all">
+              <Link to="/#contato" className="font-bold text-brand underline underline-offset-4 hover:text-brand-hover">
                 Cadastre sua empresa
               </Link>
             </p>
           </div>
-          
         </div>
-      </div>
+      </main>
     </div>
   );
 };

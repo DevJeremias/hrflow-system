@@ -15,14 +15,14 @@ export default function Footer() {
               <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg">
                 <Command size={24} />
               </div>
-              <span className="text-2xl font-black tracking-tighter">HR<span className="text-indigo-500">Flow</span></span>
+              <span className="text-2xl font-black tracking-tighter">HR<span className="text-indigo-300">Flow</span></span>
             </div>
             
             <p className="text-xl text-slate-400 font-medium max-w-sm">
               Transformando a gestão de pessoas em uma vantagem competitiva ímpar para empresas do futuro.
             </p>
             
-            <p className="text-sm font-bold text-slate-500 pt-4 border-t border-white/10 w-max">
+            <p className="text-sm font-bold text-slate-400 pt-4 border-t border-white/10 w-max">
               Projeto Acadêmico - Ciência da Computação
             </p>
 
@@ -41,7 +41,7 @@ export default function Footer() {
 
           {/* Coluna da Equipa (Da branch devi) */}
           <div className="space-y-8">
-            <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em]">Equipe de Engenharia</h4>
+            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-[0.2em]">Equipe de Engenharia</h2>
             <ul className="space-y-4 text-lg font-bold text-slate-400">
               <li>Henrique Jeremias</li>
               <li>Marcos</li>
@@ -55,7 +55,7 @@ export default function Footer() {
 
           {/* Coluna de Produto (Da branch main, padronizada com a cor indigo) */}
           <div className="space-y-8">
-            <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em]">Produto</h4>
+            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-[0.2em]">Produto</h2>
             <ul className="space-y-4 text-lg font-bold text-slate-400">
               <li><Link to="/#funcionalidades" className="hover:text-white transition-colors">Funcionalidades</Link></li>
               <li><Link to="/#beneficios" className="hover:text-white transition-colors">Benefícios</Link></li>
@@ -66,7 +66,7 @@ export default function Footer() {
         </div>
 
         {/* Rodapé (Combinando o copyright da devi com as políticas da main) */}
-        <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-500 font-bold text-sm">
+        <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-400 font-bold text-sm">
           <p>© {new Date().getFullYear()} HRFlow. Todos os direitos reservados.</p>
           <div className="flex gap-8">
             <Link to="/termos" className="hover:text-white transition-colors">Termos de Uso</Link>

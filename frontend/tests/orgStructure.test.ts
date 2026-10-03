@@ -17,11 +17,13 @@ Object.defineProperties(globalThis, {
 
 let server: ViteDevServer;
 let OrgStructure: ComponentType;
+let UiProviders: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   ({ default: OrgStructure } = await server.ssrLoadModule('/src/pages/Admin/OrgStructure.tsx'));
+  ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
 });
 
 afterEach(() => {
@@ -56,7 +58,7 @@ const renderScreen = async (handler: (url: string, method: string) => Response =
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => { root.render(comConsulta(createElement(OrgStructure))); });
+  await act(async () => { root.render(comConsulta(createElement(UiProviders, null, createElement(OrgStructure)))); });
   await assentar();
   return { host, root };
 };
@@ -75,11 +77,19 @@ const clicar = async (elemento: Element | null | undefined) => {
 const botaoComTexto = (host: HTMLElement, texto: string | RegExp) =>
   [...host.querySelectorAll('button')].find((b) => (typeof texto === 'string' ? b.textContent?.trim() === texto : texto.test(b.textContent ?? '')));
 
+// A pergunta de confirmação é um diálogo de verdade: o teste responde clicando nos botões dele.
+const responderConfirmacao = async (resposta: 'Excluir' | 'Cancelar') => {
+  const dialogo = document.querySelector('[role="dialog"]');
+  assert.ok(dialogo, 'a confirmação deve abrir um diálogo');
+  await clicar([...dialogo.querySelectorAll('button')].find((b) => b.textContent === resposta));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+};
+
 const linhasDaTabela = (host: HTMLElement) => [...host.querySelectorAll('tbody tr')].map((tr) => tr.textContent ?? '');
 
 test('cada departamento mostra o total de colaboradores e os ativos que a API devolveu', async () => {
   const tela = await renderScreen();
-  const cards = [...tela.host.querySelectorAll('h3')].map((h) => h.parentElement?.parentElement?.parentElement?.parentElement);
+  const cards = [...tela.host.querySelectorAll('article')];
   assert.equal(cards.length, 2);
   const [ti, rh] = cards.map((c) => c?.textContent ?? '');
   assert.match(ti, /Tecnologia da Informação \(TI\)/);
@@ -105,42 +115,43 @@ test('editar e excluir departamento ficam visíveis sem hover e têm nome acess�
 test('excluir departamento com cargos mostra a mensagem da API e mantém o card', async () => {
   const erro = 'Não é possível excluir um departamento que possui cargos associados.';
   const chamadas: string[] = [];
-  const alertas: string[] = [];
-  Object.assign(dom.window, { confirm: () => true });
-  Object.defineProperty(globalThis, 'alert', { configurable: true, value: (mensagem: string) => { alertas.push(mensagem); } });
   const tela = await renderScreen((url, method) => {
     chamadas.push(`${method} ${url}`);
     return json({ erro }, 400);
   });
 
   await clicar(tela.host.querySelector('button[aria-label="Excluir departamento Tecnologia da Informação (TI)"]'));
+  assert.deepEqual(chamadas, [], 'nada é chamado antes da confirmação');
+  await responderConfirmacao('Excluir');
 
   assert.deepEqual(chamadas, ['DELETE /api/estrutura/departamentos/1']);
-  assert.deepEqual(alertas, [erro]);
-  assert.equal(tela.host.querySelectorAll('h3').length, 2);
+  assert.equal(document.querySelector('[role="alert"]')?.textContent, erro, 'o erro da API vira um toast de erro');
+  assert.equal(tela.host.querySelectorAll('article').length, 2);
   await cleanup(tela);
 });
 
 test('excluir departamento sem cargos chama a API e recarrega a lista', async () => {
   const chamadas: string[] = [];
-  Object.assign(dom.window, { confirm: () => true });
   const tela = await renderScreen((url, method) => {
     chamadas.push(`${method} ${url}`);
     return json({ mensagem: 'Departamento removido com sucesso!' });
   });
 
   await clicar(tela.host.querySelector('button[aria-label="Excluir departamento Recursos Humanos (RH)"]'));
+  await responderConfirmacao('Excluir');
 
   assert.deepEqual(chamadas, ['DELETE /api/estrutura/departamentos/2']);
+  assert.match(document.querySelector('[role="status"]')?.textContent ?? '', /Departamento "Recursos Humanos \(RH\)" excluído\./);
   await cleanup(tela);
 });
 
 test('não exclui nada quando o usuário cancela a confirmação', async () => {
   const chamadas: string[] = [];
-  Object.assign(dom.window, { confirm: () => false });
   const tela = await renderScreen((url, method) => { chamadas.push(`${method} ${url}`); return json({}); });
 
   await clicar(tela.host.querySelector('button[aria-label="Excluir departamento Recursos Humanos (RH)"]'));
+  await responderConfirmacao('Cancelar');
+  assert.equal(document.querySelector('[role="dialog"]'), null);
 
   assert.deepEqual(chamadas, []);
   await cleanup(tela);

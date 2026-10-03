@@ -92,6 +92,6 @@ test('o X e o fundo escuro fecham o diálogo', async () => {
   await usuario.click(botoes[botoes.length - 1]);
   assert.equal(fechamentos, 1);
 
-  await usuario.click(dialogo.firstElementChild as Element);
+  await usuario.click(document.querySelector('[data-modal-backdrop]') as Element);
   assert.equal(fechamentos, 2);
 });

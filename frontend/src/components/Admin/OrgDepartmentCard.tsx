@@ -1,16 +1,8 @@
 import React from 'react';
 import { Building2, Pencil, Trash2 } from 'lucide-react';
-
-interface Department {
-  id: string;
-  name: string;
-  sigla: string;
-  description: string;
-  collaborators: number;
-  active: number;
-  manager: string;
-  rolesCount: number;
-}
+import type { Department } from '../../services/departmentsRolesService';
+import Card from '../ui/Card';
+import { IconButton } from '../ui/Button';
 
 interface Props {
   department: Department;
@@ -18,64 +10,54 @@ interface Props {
   onDelete: () => void;
 }
 
-const OrgDepartmentCard: React.FC<Props> = ({ department, onEdit, onDelete }) => {
-  
-  const getInitials = (name: string) => {
-    if (!name) return '--'; // Se não tiver gestor, mostra dois tracinhos
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  };
+const iniciais = (nome: string) => {
+  if (!nome) return '--';
+  return nome.split(' ').map((n) => n[0]).join('').toUpperCase().substring(0, 2);
+};
 
-  return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 p-6 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center shadow-inner">
-            <Building2 size={24} />
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 leading-tight">{department.name}</h3>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{department.sigla || 'S/S'}</span>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onEdit} aria-label={`Editar departamento ${department.name}`} className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-lg transition-colors">
-            <Pencil size={18} />
-          </button>
-          <button onClick={onDelete} aria-label={`Excluir departamento ${department.name}`} className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-50 rounded-lg transition-colors">
-            <Trash2 size={18} />
-          </button>
+const OrgDepartmentCard: React.FC<Props> = ({ department, onEdit, onDelete }) => (
+  <Card as="article" padding="md" className="flex h-full flex-col">
+    <div className="mb-5 flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-4">
+        <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand">
+          <Building2 size={24} />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold leading-tight text-ink">{department.name}</h2>
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{department.sigla || 'S/S'}</span>
         </div>
       </div>
-
-      <p className="text-sm font-medium text-slate-500 mb-6 line-clamp-2 h-10">
-        {department.description || 'Nenhuma descrição adicionada.'}
-      </p>
-
-      <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl mb-6">
-        <div className="text-center border-r border-slate-200">
-          <span className="block text-xl font-black text-slate-900">{department.collaborators || 0}</span>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Total</span>
-        </div>
-        <div className="text-center">
-          <span className="block text-xl font-black text-emerald-500">{department.active || 0}</span>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Ativos</span>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shadow-md">
-            {getInitials(department.manager)}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Gestor</span>
-            {/* Proteção para o nome do Gestor */}
-            <span className="text-xs font-bold text-slate-700">{department.manager || 'Não definido'}</span>
-          </div>
-        </div>
+      <div className="flex shrink-0 gap-1">
+        <IconButton label={`Editar departamento ${department.name}`} size="sm" onClick={onEdit}><Pencil size={18} aria-hidden="true" /></IconButton>
+        <IconButton label={`Excluir departamento ${department.name}`} size="sm" onClick={onDelete} className="hover:text-danger"><Trash2 size={18} aria-hidden="true" /></IconButton>
       </div>
     </div>
-  );
-};
+
+    <p className="mb-5 line-clamp-2 min-h-10 text-sm text-ink-muted">
+      {department.description || 'Nenhuma descrição adicionada.'}
+    </p>
+
+    <div className="mb-5 grid grid-cols-2 gap-4 rounded-control bg-surface-sunken p-4">
+      <div className="border-r border-line-strong text-center">
+        <span className="block text-xl font-bold text-ink">{department.collaborators || 0}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Total</span>
+      </div>
+      <div className="text-center">
+        <span className="block text-xl font-bold text-success">{department.active || 0}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Ativos</span>
+      </div>
+    </div>
+
+    <div className="mt-auto flex items-center gap-3 border-t border-line pt-4">
+      <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+        {iniciais(department.manager)}
+      </span>
+      <div className="flex flex-col">
+        <span className="text-xs font-semibold uppercase text-ink-muted">Gestor</span>
+        <span className="text-sm font-semibold text-ink">{department.manager || 'Não definido'}</span>
+      </div>
+    </div>
+  </Card>
+);
 
 export default OrgDepartmentCard;

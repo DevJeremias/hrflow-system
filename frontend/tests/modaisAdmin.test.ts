@@ -27,27 +27,26 @@ let server: ViteDevServer;
 let AuthProvider: ComponentType<{ children: unknown }>;
 let Employees: ComponentType;
 let OrgStructure: ComponentType;
+let UiProviders: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 
 let chamadas: Chamada[] = [];
 let funcionarios: unknown[] = [];
 // Resposta do POST/PUT que o teste quer simular; uma Promise deixa a requisição em voo.
 let respostaDaGravacao: () => Promise<Resposta> | Resposta;
-let confirmacoes: string[] = [];
-let respostaDaConfirmacao = true;
 let montados: { host: HTMLElement; root: Root }[] = [];
 
 const json = (status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) =>
   new Response(corpo === undefined ? null : JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json', ...cabecalhos } });
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   // A tela de colaboradores decide os botões pelo perfil de quem está logado: o Administrador alcança todos os cadastros.
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
   ({ default: Employees } = await server.ssrLoadModule('/src/pages/Admin/Employees.tsx'));
   ({ default: OrgStructure } = await server.ssrLoadModule('/src/pages/Admin/OrgStructure.tsx'));
-  dom.window.confirm = (mensagem?: string) => { confirmacoes.push(String(mensagem)); return respostaDaConfirmacao; };
+  ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
   globalThis.fetch = (async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const caminho = String(entrada).replace(/^\/api/, '');
     const metodo = (init?.method ?? 'GET').toUpperCase();
@@ -77,12 +76,11 @@ beforeEach(async () => {
   montados = [];
   chamadas = [];
   funcionarios = [];
-  confirmacoes = [];
-  respostaDaConfirmacao = true;
   respostaDaGravacao = () => ({ status: 201, corpo: { mensagem: 'ok' } });
 });
 
-const esperar = (ms = 0) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
+// O TanStack Query avisa os componentes em um timer: sem um instante, a tela não reflete a resposta.
+const esperar = (ms = 20) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
 
 const montar = async (Tela: ComponentType) => {
   const host = document.createElement('div');
@@ -91,10 +89,11 @@ const montar = async (Tela: ComponentType) => {
   montados.push({ host, root });
   await act(async () => {
     root.render(createElement(QueryClientProvider, { client: novoQueryClient() },
-      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));
+      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
   });
   await esperar();
-  return host;
+  // O modal vive num contêiner no <body>, fora do host: as consultas valem para o documento inteiro.
+  return document.body;
 };
 
 const campo = <T extends HTMLElement>(host: HTMLElement, nome: string) => {
@@ -274,7 +273,7 @@ test('a edição preserva cargo, setor, nível e salário já gravados e os envi
     departamento_nome: 'RH', nivel: 'Sênior', salario_base: '5000.00', status: 'Ativo', tipo_contrato: 'CLT',
   }];
   const host = await montar(Employees);
-  await clicar(host.querySelector('button[title="Editar Colaborador"]')!);
+  await clicar(host.querySelector('button[aria-label="Editar colaborador Bia Ficticia"]')!);
   await esperar();
   await abrirAba(host, 'Contrato');
   assert.equal(campo<HTMLSelectElement>(host, 'cargoId').value, '1');
@@ -295,26 +294,37 @@ test('a edição preserva cargo, setor, nível e salário já gravados e os envi
   );
 });
 
+// A pergunta de descarte é um diálogo de verdade: o teste responde clicando nos botões dele.
+const dialogos = () => document.querySelectorAll('[role="dialog"]');
+const responderDescarte = async (botaoDaResposta: RegExp) => {
+  const confirmacao = [...dialogos()].find((dialogo) => /Descartar alterações/.test(dialogo.textContent ?? ''));
+  assert.ok(confirmacao, 'a pergunta de descarte deve estar aberta');
+  await clicar(botao(confirmacao as HTMLElement, botaoDaResposta));
+  await esperar();
+};
+
 test('clicar fora com dados digitados pede confirmação; sem dados, fecha direto', async () => {
   const host = await montar(Employees);
-  const fora = () => host.querySelector('[data-testid="employee-modal-backdrop"]')!;
+  const fora = () => host.querySelector('[data-modal-backdrop]')!;
 
   await abrirNovoColaborador(host);
   await clicar(fora());
-  assert.deepEqual(confirmacoes, [], 'sem nada digitado não há o que perder');
-  assert.equal(host.querySelector('form'), null);
+  await esperar();
+  assert.equal(dialogos().length, 0, 'sem nada digitado não há o que perder: fecha direto, sem pergunta');
 
   await abrirNovoColaborador(host);
   await digitar(host, 'nomeCompleto', 'Ana Ficticia');
-  respostaDaConfirmacao = false;
   await clicar(fora());
-  assert.equal(confirmacoes.length, 1);
-  assert.ok(host.querySelector('form'), 'recusar a confirmação mantém o modal aberto');
+  await esperar();
+  assert.equal(dialogos().length, 2, 'com dados digitados a pergunta abre sobre o modal');
+  await responderDescarte(/Continuar editando/);
+  assert.equal(dialogos().length, 1, 'recusar a confirmação mantém o modal aberto');
   assert.equal(campo<HTMLInputElement>(host, 'nomeCompleto').value, 'Ana Ficticia');
 
-  respostaDaConfirmacao = true;
   await clicar(fora());
-  assert.equal(confirmacoes.length, 2);
+  await esperar();
+  await responderDescarte(/^Descartar$/);
+  assert.equal(dialogos().length, 0);
   assert.equal(host.querySelector('form'), null);
 });
 

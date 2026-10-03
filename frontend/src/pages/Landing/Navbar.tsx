@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Command, Menu, X } from 'lucide-react';
 
 const SECOES = [
@@ -9,7 +9,6 @@ const SECOES = [
 ];
 
 export default function Navbar() {
-  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
 
@@ -33,17 +32,19 @@ export default function Navbar() {
       <div className="max-w-[1440px] mx-auto px-6 flex items-center justify-between">
 
         {/* Logo e Marca */}
-        <div
-          className="flex items-center gap-3 cursor-pointer group"
-          onClick={() => { window.scrollTo(0, 0); navigate('/'); }}
+        <Link
+          to="/"
+          aria-label="HRFlow, página inicial"
+          className="flex items-center gap-3 group"
+          onClick={() => window.scrollTo(0, 0)}
         >
-          <div className="bg-slate-900 p-2 rounded-xl text-white group-hover:bg-indigo-600 transition-colors duration-500 shadow-md">
+          <span aria-hidden="true" className="bg-slate-900 p-2 rounded-xl text-white group-hover:bg-brand transition-colors duration-500 shadow-md">
             <Command size={20} />
-          </div>
-          <span className="text-2xl font-black text-slate-900 tracking-tight">
-            HR<span className="text-indigo-600">Flow</span>
           </span>
-        </div>
+          <span aria-hidden="true" className="text-2xl font-black text-ink tracking-tight">
+            HR<span className="text-brand">Flow</span>
+          </span>
+        </Link>
 
         {/* Navegação Central */}
         <nav aria-label="Seções da página" className="hidden lg:flex items-center gap-8">
@@ -51,7 +52,7 @@ export default function Navbar() {
             <Link
               key={destino}
               to={destino}
-              className="text-slate-600 hover:text-indigo-600 font-bold text-sm transition-colors"
+              className="text-ink-muted hover:text-brand font-bold text-sm transition-colors"
             >
               {rotulo}
             </Link>
@@ -62,14 +63,14 @@ export default function Navbar() {
         <div className="flex items-center gap-4 md:gap-6">
           <Link
             to="/login"
-            className="hidden md:block text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+            className="hidden md:block text-sm font-bold text-ink-muted hover:text-brand transition-colors"
           >
             Entrar
           </Link>
 
           <Link
             to="/#contato"
-            className="hidden md:block bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg hover:shadow-indigo-500/30 active:scale-95"
+            className="hidden md:block bg-brand hover:bg-brand-hover text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg active:scale-95"
           >
             Criar conta
           </Link>
@@ -80,9 +81,9 @@ export default function Navbar() {
             aria-expanded={menuAberto}
             aria-controls="menu-mobile"
             aria-label={menuAberto ? 'Fechar menu' : 'Abrir menu'}
-            className="md:hidden p-2 -mr-2 text-slate-900 rounded-xl hover:bg-slate-100 transition-colors"
+            className="md:hidden flex h-11 w-11 items-center justify-center -mr-2 text-ink rounded-control hover:bg-surface-sunken transition-colors"
           >
-            {menuAberto ? <X size={26} /> : <Menu size={26} />}
+            {menuAberto ? <X size={26} aria-hidden="true" /> : <Menu size={26} aria-hidden="true" />}
           </button>
         </div>
 
@@ -95,7 +96,7 @@ export default function Navbar() {
               key={destino}
               to={destino}
               onClick={fecharMenu}
-              className="py-3 text-slate-700 hover:text-indigo-600 font-bold border-b border-slate-100"
+              className="py-3 text-ink hover:text-brand font-bold border-b border-line"
             >
               {rotulo}
             </Link>
@@ -103,14 +104,14 @@ export default function Navbar() {
           <Link
             to="/login"
             onClick={fecharMenu}
-            className="mt-3 py-3 text-center font-bold text-slate-900 border border-slate-300 rounded-full"
+            className="mt-3 py-3 text-center font-bold text-ink border border-line-input rounded-full"
           >
             Entrar
           </Link>
           <Link
             to="/#contato"
             onClick={fecharMenu}
-            className="mt-2 py-3 text-center font-bold text-white bg-indigo-600 rounded-full"
+            className="mt-2 py-3 text-center font-bold text-white bg-brand rounded-full"
           >
             Criar conta
           </Link>
