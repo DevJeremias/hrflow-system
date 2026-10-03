@@ -19,6 +19,24 @@ Durante o desenvolvimento, o Vite encaminha as chamadas `/api` para `http://loca
 VITE_API_PROXY_TARGET=http://localhost:3000 npm run dev
 ```
 
+## Design system
+
+Tokens em `tailwind.config.js` (cores `brand`, `ink`, `surface`, `line` e as semânticas `success`, `warning`, `danger`, `info`; raios `control`, `card` e `modal`; fonte Inter via `@fontsource-variable/inter`) e regras globais em `src/index.css` (anel de `focus-visible`, `prefers-reduced-motion`). Os pares de texto e fundo cumprem WCAG AA e `tests/designSystem.test.ts` calcula o contraste. Nenhum texto fica abaixo de 12 px (`text-xs`).
+
+Os componentes compartilhados vivem em `src/components/ui`; telas novas os usam em vez de classes soltas:
+
+| Componente | Uso |
+| --- | --- |
+| `Button`, `IconButton` | todo botão; `IconButton` exige `label` (nome acessível) |
+| `Field` com `Input`, `Select`, `Textarea` | todo campo de formulário; `Field` liga `<label for>`, `id`, `name` e as descrições aria |
+| `Modal`, `ConfirmDialog` | janelas: `role="dialog"`, foco preso, Esc, fundo inerte, foco devolvido a quem abriu; `useConfirm()` no lugar de `confirm()` |
+| `ToastProvider`, `useToast()` | feedback de ação no lugar de `alert()` |
+| `DataTable` | tabelas; abaixo do ponto de quebra cada linha vira cartão com todas as colunas |
+| `Tabs`, `TabPanel` | abas WAI-ARIA com setas, Home e End |
+| `PageHeader`, `Card`, `StatCard`, `Badge`, `Avatar`, `EmptyState`, `Spinner`, `Skeleton` | estrutura e estados da página |
+
+`usePageTitle('Nome da página')` define o `<title>` de cada rota (`Nome | HRFlow`). O `Layout` é o único dono do `<main>`.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
