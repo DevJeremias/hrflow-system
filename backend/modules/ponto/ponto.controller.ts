@@ -12,13 +12,11 @@ type RequisicaoDoColaborador = Request<{ funcionarioId: string }>;
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { proibido: 403, invalido: 400, inexistente: 404, conflito: 409 };
 
-// Falha de regra vira a resposta que o serviço descreveu; qualquer outra é 500 com a mensagem do
-// endpoint. `traduzirBanco` também converte falhas conhecidas do MySQL em 4xx/503 (shared/utils/erros.ts).
-const responderFalha = (res: Response, erro: unknown, mensagem500: string, { traduzirBanco = false } = {}) => {
+// Falha de regra vira a resposta que o serviço descreveu; falha do banco vira 4xx/503 (shared/utils/erros.ts)
+// e qualquer outra é 500 com a mensagem do endpoint.
+const responderFalha = (res: Response, erro: unknown, mensagem500: string) => {
     if (erro instanceof ErroDePonto) return res.status(STATUS_POR_TIPO[erro.tipo]).json(erro.corpo);
-    if (traduzirBanco) return responderErro(res, erro, mensagem500);
-    console.error(`${mensagem500}:`, erro);
-    return res.status(500).json({ erro: mensagem500 });
+    return responderErro(res, erro, mensagem500);
 };
 
 // O authMiddleware, que roda antes de qualquer rota do ponto, preenche req.usuario.
@@ -93,7 +91,7 @@ export const enviarJustificativa = async (req: Request, res: Response) => {
         const justificativa = await service.enviarJustificativa({ empresaId: empresa_id, funcionarioId: funcionario_id, data, texto });
         res.json(justificativa);
     } catch (erro) {
-        responderFalha(res, erro, 'Erro interno ao salvar a justificativa.', { traduzirBanco: true });
+        responderFalha(res, erro, 'Erro interno ao salvar a justificativa.');
     }
 };
 
@@ -102,6 +100,6 @@ export const listarJustificativas = async (req: Request, res: Response) => {
         const { mes, funcionarioId } = entradaDe<ConsultaDeJustificativas>(req, 'query');
         res.json(await service.listarJustificativas({ empresaId: usuarioDe(req).empresa_id, mes, funcionarioId }));
     } catch (erro) {
-        responderFalha(res, erro, 'Erro interno ao buscar as justificativas.', { traduzirBanco: true });
+        responderFalha(res, erro, 'Erro interno ao buscar as justificativas.');
     }
 };

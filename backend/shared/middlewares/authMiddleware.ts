@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import jwtSecret from '../config/jwtSecret.ts';
 import db from '../db/pool.ts';
+import { responderErro } from '../utils/erros.ts';
 // Direto do arquivo, não do index do módulo: o index monta o router de auth, que importa este middleware.
 import { lerTokenDaSessao, csrfValido, encerrarSessao } from '../../modules/auth/auth.sessao.ts';
 
@@ -58,7 +59,7 @@ export default async (req: Request, res: Response, next: NextFunction) => {
         req.usuario = verified;
         next();
     } catch (erro) {
-        console.error("Erro ao conferir a sessão:", erro);
-        return res.status(500).json({ erro: 'Erro ao validar a sessão.' });
+        // Banco fora do ar ou pool cheio é 503 com Retry-After, não um 500 sem saída.
+        return responderErro(res, erro, 'Erro ao validar a sessão.');
     }
 };
