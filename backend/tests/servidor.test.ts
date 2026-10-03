@@ -18,8 +18,9 @@ describe('server.ts', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        // PORT=0 deixa o sistema escolher uma porta livre; o servidor informa qual no log de partida.
-        processo = spawn(process.execPath, ['server.ts'], { cwd: RAIZ, env: { ...process.env, PORT: '0' }, stdio: ['ignore', 'pipe', 'inherit'] });
+        // PORT=0 deixa o sistema escolher uma porta livre; o servidor informa qual no log de partida (o log
+        // sai com LOG_LEVEL=info: bancoDeTeste o silencia nos testes).
+        processo = spawn(process.execPath, ['server.ts'], { cwd: RAIZ, env: { ...process.env, PORT: '0', LOG_LEVEL: 'info' }, stdio: ['ignore', 'pipe', 'inherit'] });
         encerrado = new Promise((resolve) => processo.on('exit', (codigo, sinal) => resolve({ codigo, sinal })));
         const porta = await new Promise<string>((resolve, rejeitar) => {
             const prazo = setTimeout(() => rejeitar(new Error(`server.ts não informou a porta em ${PRAZO_MS} ms:\n${saida}`)), PRAZO_MS);

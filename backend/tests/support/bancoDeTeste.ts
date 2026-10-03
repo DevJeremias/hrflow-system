@@ -32,6 +32,9 @@ if (host) {
     process.env.DB_NAME = config.database;
 }
 process.env.JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+// O app registra uma linha por requisição em stdout; nos testes isso só atrapalha a saída. Quem testa o
+// log passa o próprio logger a criarApp.
+process.env.LOG_LEVEL = process.env.LOG_LEVEL || 'silent';
 
 // Onde o executar.ts guarda o nome do molde, para os arquivos de teste (processos filhos) o acharem.
 export const VARIAVEL_DO_MOLDE = 'HRFLOW_TEST_MOLDE';

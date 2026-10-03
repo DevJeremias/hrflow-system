@@ -8,6 +8,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import RecentActivities from '../../components/Admin/DashboardActivities';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { ehAdministrador } from '../../utils/sessao';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 const Dashboard: React.FC = () => {
@@ -35,11 +36,13 @@ const Dashboard: React.FC = () => {
     setReloadKey((key) => key + 1);
   };
 
+  // Só o Administrador alcança a estrutura; para o RH os números ficam sem link.
+  const structureLink = ehAdministrador(user?.role) ? '/admin/estrutura' : undefined;
   const inactive = data?.inactiveEmployees ?? 0;
   const statConfig = data ? [
     { label: 'Colaboradores', value: data.activeEmployees, to: '/admin/colaboradores', hint: inactive > 0 ? `${inactive} ${inactive === 1 ? 'inativo' : 'inativos'}` : undefined, icon: <Users size={24} />, tone: 'brand' as const },
-    { label: 'Departamentos', value: data.departments, to: '/admin/estrutura', icon: <Building2 size={24} />, tone: 'brand' as const },
-    { label: 'Cargos Cadastrados', value: data.roles, to: '/admin/estrutura', icon: <Briefcase size={24} />, tone: 'brand' as const },
+    { label: 'Departamentos', value: data.departments, to: structureLink, icon: <Building2 size={24} />, tone: 'brand' as const },
+    { label: 'Cargos Cadastrados', value: data.roles, to: structureLink, icon: <Briefcase size={24} />, tone: 'brand' as const },
     { label: 'Marcações Hoje', value: data.punchesToday, to: '/admin/gestao-ponto', icon: <Clock size={24} />, tone: 'warning' as const },
   ] : [];
 

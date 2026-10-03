@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { KeyRound, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
+import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
 import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
@@ -14,6 +14,8 @@ import EmptyState from '../../components/ui/EmptyState';
 import Field, { Input } from '../../components/ui/Field';
 import { useToast } from '../../components/ui/toastContext';
 import { mensagemDeErro } from '../../utils/erros';
+import { useAuth } from '../../contexts/AuthContext';
+import { podeGerirCadastro, motivoDeNegacaoDoCadastro } from '../../utils/permissoes';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 const PAGE_SIZE = 50;
@@ -27,11 +29,13 @@ const TOM_DO_STATUS: Record<string, BadgeTone> = {
 // 'AAAA-MM-DD' -> 'DD/MM/AAAA', sem passar por Date (o fuso moveria o dia).
 const formatDate = (isoDate: string) => isoDate.split('-').reverse().join('/');
 
-// O RH não age sobre o cadastro de outro RH ou Administrador (nem sobre o próprio, que é de RH).
-const isManageable = (employee: Employee) => employee.perfilAcesso === null || employee.perfilAcesso === 'Colaborador';
-
 const Employees: React.FC = () => {
   usePageTitle('Colaboradores');
+  const { user } = useAuth();
+  // Editar segue a matriz de permissões (docs/permissoes.md): o RH não alcança o próprio cadastro
+  // nem o de RH ou Administrador. Situação, senha e exclusão valem para os outros, nunca para o próprio cadastro.
+  const canEdit = (employee: Employee) => podeGerirCadastro(user, employee);
+  const isManageable = (employee: Employee) => canEdit(employee) && !(user?.funcionarioId != null && String(user.funcionarioId) === employee.id);
   const toast = useToast();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -136,7 +140,12 @@ const Employees: React.FC = () => {
       header: 'Ações',
       align: 'right',
       semRotuloNoCartao: true,
-      cell: (emp) => (
+      cell: (emp) => !canEdit(emp) ? (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-ink-muted" title={motivoDeNegacaoDoCadastro(user, emp)}>
+          <Lock size={14} aria-hidden="true" />
+          <span>Só o Administrador</span>
+        </span>
+      ) : (
         <span className="flex justify-end gap-1">
           <IconButton label={`Editar colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}>
             <Pencil size={18} aria-hidden="true" />

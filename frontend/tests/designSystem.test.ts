@@ -119,7 +119,7 @@ test('todo <label> do código tem htmlFor e toda <img> tem alt', () => {
 test('toda página de rota define o título da aba com usePageTitle', () => {
   const paginas = [
     'pages/Landing/Home.tsx', 'pages/Auth/Login.tsx', 'pages/Auth/TrocarSenha.tsx', 'pages/Legal/LegalPage.tsx',
-    'pages/Admin/Dashboard.tsx', 'pages/Admin/Employees.tsx', 'pages/Admin/OrgStructure.tsx', 'pages/Admin/Payroll.tsx', 'pages/Admin/Company.tsx', 'pages/Admin/TimeTracking.tsx',
+    'pages/Admin/Dashboard.tsx', 'pages/Admin/Employees.tsx', 'pages/Admin/OrgStructure.tsx', 'pages/Admin/Payroll.tsx', 'pages/Admin/Company.tsx', 'pages/Admin/Users.tsx', 'pages/Admin/TimeTracking.tsx',
     'pages/Portal/EmployeeDashboard.tsx', 'pages/Portal/Payslips.tsx', 'pages/Portal/Requests.tsx', 'pages/Portal/Profile.tsx',
   ];
   const semTitulo = paginas.filter((pagina) => !/usePageTitle\(/.test(fonte(join(src, pagina))));

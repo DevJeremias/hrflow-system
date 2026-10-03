@@ -65,12 +65,12 @@ test('sem sessão, vai ao login sem chamar a API', async () => {
   assert.deepEqual(chamadas, []);
 });
 
-test('enquanto confirma a sessão, não mostra nem o conteúdo nem o login', async () => {
+test('enquanto confirma a sessão, mostra o aviso de verificação, não o conteúdo nem o login', async () => {
   let liberar: () => void = () => {};
   const esperando = new Promise<void>((resolve) => { liberar = resolve; });
   const { chamadas } = montar('RH', ['RH'], () => esperando.then(() => ({ corpo: sessao('RH') })) as unknown as Response);
   await waitFor(() => assert.equal(chamadas.length, 1));
-  assert.equal(document.body.textContent, '');
+  assert.equal(document.body.textContent, 'Verificando sua sessão...');
   liberar();
   assert.ok(await screen.findByText('Conteúdo protegido'));
 });

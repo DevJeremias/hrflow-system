@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { CONSULTA_DESKTOP, ID_DO_MENU } from './menu';
 import Header from './Header';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
   // Sem matchMedia (jsdom, SSR) vale desktop: a gaveta só existe abaixo de lg.
   const desktop = useMediaQuery(CONSULTA_DESKTOP, true);
   const gavetaAberta = isSidebarOpen && !desktop;
@@ -28,7 +30,10 @@ const Layout: React.FC = () => {
 
         <main id="conteudo" tabIndex={-1} className="flex-1 overflow-y-auto p-4 focus:outline-none sm:p-6 lg:p-10">
           <div className="mx-auto max-w-7xl">
-            <Outlet />
+            {/* Falha numa tela não leva o menu junto: o limite fica só em volta do conteúdo. */}
+            <ErrorBoundary resetKey={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

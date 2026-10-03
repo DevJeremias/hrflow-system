@@ -39,7 +39,7 @@ let App: ComponentType;
 let AuthProvider: ComponentType<{ children: unknown }>;
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   ({ default: App } = await server.ssrLoadModule('/src/App.tsx'));
   ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
 });

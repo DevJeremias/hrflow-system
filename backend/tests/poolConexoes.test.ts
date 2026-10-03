@@ -35,6 +35,18 @@ describe('pool de conexões', { skip: banco.skip }, () => {
         assert.equal(connectionConfig.connectTimeout, connectTimeout);
     });
 
+    it('espera até 5 s por uma conexão nova', () => {
+        assert.equal(LIMITES_POOL.connectTimeout, 5000);
+    });
+
+    it('entrega DATE como texto AAAA-MM-DD, sem passar pelo fuso do processo', async () => {
+        const [[linha]] = await pool.query<RowDataPacket[]>(
+            "SELECT CAST('2024-03-01' AS DATE) AS dia, CAST('2024-03-01 00:30:00' AS DATETIME) AS momento"
+        );
+        assert.equal(linha.dia, '2024-03-01');
+        assert.ok(linha.momento instanceof Date, 'só DATE vira texto; DATETIME segue como Date');
+    });
+
     it('limita a duração das consultas em toda conexão nova', async () => {
         const limitado = criar({ connectionLimit: 1, maxExecutionTime: 1234 });
         const [[{ limite }]] = await limitado.query<RowDataPacket[]>('SELECT @@SESSION.max_execution_time AS limite');

@@ -3,6 +3,9 @@ import compression from 'compression';
 import pool from './shared/db/pool.ts';
 import { interpretarTrustProxy } from './shared/config/trustProxy.ts';
 import tratarErros from './shared/middlewares/tratarErros.ts';
+import appLogger from './shared/observabilidade/logger.ts';
+import type { Logger } from './shared/observabilidade/logger.ts';
+import { criarRegistroDeRequisicoes } from './shared/observabilidade/registroDeRequisicoes.ts';
 
 // Importação das Rotas
 import { criarSaudeRouter } from './modules/saude/index.ts';
@@ -13,6 +16,7 @@ import { dashboardRoutes } from './modules/dashboard/index.ts';
 import { perfilRoutes } from './modules/perfil/index.ts';
 import { estruturaRoutes } from './modules/estrutura/index.ts';
 import { folhaRoutes } from './modules/folha/index.ts';
+import { usuariosRoutes } from './modules/usuarios/index.ts';
 import { empresaRoutes } from './modules/empresa/index.ts';
 
 // Importação do Middleware de Proteção
@@ -25,11 +29,16 @@ export interface OpcoesDoApp {
     limitesAuth?: Parameters<typeof criarAuthRouter>[0];
     // Mesmo formato de TRUST_PROXY (número de proxies ou sub-redes); sem ele, vale a variável de ambiente.
     trustProxy?: string;
+    // Onde o log por requisição é escrito; os testes passam um logger que guarda as linhas.
+    logger?: Logger;
 }
 
 // Monta o app Express inteiro, sem abrir porta: server.ts o escuta e os testes sobem o mesmo app.
-export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUST_PROXY }: OpcoesDoApp = {}) => {
+export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUST_PROXY, logger = appLogger }: OpcoesDoApp = {}) => {
     const app = express();
+
+    // O primeiro middleware: dá o id à requisição (X-Request-Id) e escreve a linha de log quando a resposta termina.
+    app.use(criarRegistroDeRequisicoes(logger));
 
     // O limitador de tentativas da autenticação usa req.ip. Por padrão nenhum proxy é confiável
     // e X-Forwarded-For é ignorado; atrás de um proxy reverso, defina TRUST_PROXY (ex.: 1).
@@ -56,6 +65,7 @@ export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUS
 
     // Rotas Protegidas (Exigem Token JWT)
     app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
+    app.use('/api/usuarios', authMiddleware, usuariosRoutes);
     app.use('/api/ponto', authMiddleware, pontoRoutes);
     app.use('/api/estrutura', authMiddleware, estruturaRoutes);
     app.use('/api/folha', authMiddleware, folhaRoutes);

@@ -12,15 +12,31 @@ import {
   Clock,
   FileText,
   User as UserIcon,
+  UserCog,
   Command
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { ehGestao } from '../utils/sessao';
+import { menuDoUsuario } from '../utils/menu';
+import type { IconeDoMenu } from '../utils/menu';
 import { solicitacoesAtivas } from '../utils/recursos';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import Avatar from '../components/ui/Avatar';
 import { CONSULTA_DESKTOP, ID_DO_MENU } from './menu';
+
+const ICONES: Record<IconeDoMenu, React.ReactNode> = {
+  dashboard: <LayoutDashboard size={20} />,
+  colaboradores: <Users size={20} />,
+  estrutura: <Building2 size={20} />,
+  folha: <Calculator size={20} />,
+  empresa: <Landmark size={20} />,
+  gestaoPonto: <Clock size={20} />,
+  usuarios: <UserCog size={20} />,
+  ponto: <Clock size={20} />,
+  holerite: <FileText size={20} />,
+  solicitacoes: <Calendar size={20} />,
+  perfil: <UserIcon size={20} />,
+};
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -42,24 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () => {} })
   // Abaixo de lg o menu é uma gaveta: fechada, sai da ordem de Tab e da árvore de acessibilidade.
   const fechadaNoCelular = !desktop && !isOpen;
 
-  const adminMenu = [
-    { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-    { path: '/admin/colaboradores', icon: <Users size={20} />, label: 'Colaboradores' },
-    { path: '/admin/estrutura', icon: <Building2 size={20} />, label: 'Depto & Cargos' },
-    { path: '/admin/folha', icon: <Calculator size={20} />, label: 'Folha de Pagamento' },
-    { path: '/admin/empresa', icon: <Landmark size={20} />, label: 'Empresa' },
-    { path: '/admin/gestao-ponto', icon: <Clock size={20} />, label: 'Gestão de Ponto' },
-    { path: '/admin/perfil', icon: <UserIcon size={20} />, label: 'Meu Perfil' },
-  ];
-
-  const employeeMenu = [
-    { path: '/meu-painel', icon: <Clock size={20} />, label: 'Bater Ponto' },
-    { path: '/meu-painel/holerites', icon: <FileText size={20} />, label: 'Meus Holerites' },
-    ...(solicitacoesAtivas() ? [{ path: '/meu-painel/solicitacoes', icon: <Calendar size={20} />, label: 'Minhas Solicitações' }] : []),
-    { path: '/meu-painel/perfil', icon: <UserIcon size={20} />, label: 'Meus Dados' },
-  ];
-
-  const menuItems = ehGestao(user?.role) ? adminMenu : employeeMenu;
+  const secoes = user ? menuDoUsuario(user, { solicitacoes: solicitacoesAtivas() }) : [];
 
   return (
     <>
@@ -90,23 +89,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () => {} })
           </button>
         </div>
 
-        <nav aria-label="Menu principal" className="flex-1 space-y-1 overflow-y-auto px-4 py-6">
-          <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Menu principal</p>
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={onClose}
-                aria-current={isActive ? 'page' : undefined}
-                className={`flex items-center gap-4 rounded-control px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'bg-brand text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
-              >
-                <span aria-hidden="true">{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav aria-label="Menu principal" className="flex-1 space-y-6 overflow-y-auto px-4 py-6">
+          {secoes.map((secao) => (
+            <div key={secao.titulo} className="space-y-1">
+              <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-widest text-slate-400">{secao.titulo}</p>
+              {secao.itens.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`flex items-center gap-4 rounded-control px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'bg-brand text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+                  >
+                    <span aria-hidden="true">{ICONES[item.icone]}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="space-y-3 border-t border-white/10 p-4">

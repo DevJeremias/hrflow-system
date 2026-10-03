@@ -5,12 +5,15 @@ import assert from 'node:assert/strict';
 import { act, botaoPorTexto, clicar, dom, createElement, desmontarTudo, esperar, iniciarVite, montar, porRole, teclar } from './support/ui.ts';
 import { instalarApi, type Chamada } from './support/apiAdmin.ts';
 import type { ComponentType } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ViteDevServer } from 'vite';
 
 let server: ViteDevServer;
 let Employees: ComponentType;
 let OrgStructure: ComponentType;
 let UiProviders: ComponentType<{ children: unknown }>;
+let AuthProvider: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 let chamadas: Chamada[] = [];
 
@@ -19,14 +22,19 @@ before(async () => {
   ({ default: Employees } = await server.ssrLoadModule('/src/pages/Admin/Employees.tsx'));
   ({ default: OrgStructure } = await server.ssrLoadModule('/src/pages/Admin/OrgStructure.tsx'));
   ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
+  ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
 });
 after(async () => { globalThis.fetch = originalFetch; await server.close(); });
 beforeEach(() => { chamadas = []; instalarApi(chamadas); });
 afterEach(desmontarTudo);
 
 const abrirTela = async (Tela: ComponentType) => {
-  await montar(createElement(UiProviders, null, createElement(Tela)));
-  await esperar();
+  // A tela de colaboradores decide os botões pelo perfil da sessão (cookie de CSRF = há sessão a confirmar).
+  document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
+  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await montar(createElement(QueryClientProvider, { client: cliente },
+    createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(UiProviders, null, createElement(Tela))))));
+  await esperar(20);
 };
 
 const dialogo = () => porRole(document, 'dialog')!;

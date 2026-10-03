@@ -20,7 +20,7 @@ let UiProviders: ComponentType<{ children: unknown }>;
 const originalFetch = globalThis.fetch;
 
 before(async () => {
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   ({ default: OrgStructure } = await server.ssrLoadModule('/src/pages/Admin/OrgStructure.tsx'));
   ({ default: UiProviders } = await server.ssrLoadModule('/src/components/ui/UiProviders.tsx'));
 });

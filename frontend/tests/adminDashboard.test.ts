@@ -29,7 +29,7 @@ const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo
 before(async () => {
   // O cookie de CSRF é o que diz ao AuthProvider que há uma sessão a confirmar.
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
-  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
   const [{ default: Dashboard }, { AuthProvider }] = await Promise.all([
     server.ssrLoadModule('/src/pages/Admin/Dashboard.tsx'),
     server.ssrLoadModule('/src/contexts/AuthContext.tsx'),

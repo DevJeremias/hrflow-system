@@ -1,0 +1,34 @@
+# Proxy reverso de produção: serve o front-end compilado (frontend/dist) e encaminha /api para a API.
+# Front-end e API respondem na mesma origem, por isso a API não habilita CORS (README, "Autenticação").
+#
+# HRFLOW_SITE         endereço público (ex.: hrflow.exemplo.com.br); sem ele o Caddy atende em localhost
+# HRFLOW_API_UPSTREAM host:porta da API (padrão localhost:3000)
+# HRFLOW_FRONTEND_DIR pasta do build do front-end (padrão /srv/hrflow)
+#
+# Na API, defina TRUST_PROXY=1 e NODE_ENV=production (backend/.env.example).
+
+{$HRFLOW_SITE:localhost} {
+	# Uma linha JSON por requisição em stdout, para o Docker recolher junto com o log da API.
+	log {
+		output stdout
+		format json
+	}
+
+	# O mesmo id aparece no log do Caddy (request_id), no da API (reqId) e no cabeçalho X-Request-Id da
+	# resposta: com o id que o usuário informa, uma requisição se acompanha de ponta a ponta. Nas rotas da API
+	# o cabeçalho da resposta é o que a própria API devolve, igual ao que recebeu do Caddy.
+	log_append request_id {http.request.uuid}
+
+	handle /api/* {
+		reverse_proxy {$HRFLOW_API_UPSTREAM:localhost:3000} {
+			header_up X-Request-Id {http.request.uuid}
+		}
+	}
+
+	handle {
+		header X-Request-Id {http.request.uuid}
+		root * {$HRFLOW_FRONTEND_DIR:/srv/hrflow}
+		try_files {path} /index.html
+		file_server
+	}
+}
