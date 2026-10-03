@@ -217,7 +217,7 @@ O Playwright sobe a API (porta 3181) e o Vite (porta 3182); `E2E_API_PORT` e `E2
 
 ### Verificação completa (`verify`)
 
-`npm run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes (back-end e front-end), todas as etapas, e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam. A etapa de testes também reprova se a cobertura de linhas do back-end ficar abaixo de 90% (`PISO_COBERTURA_LINHAS` em `scripts/verify.mjs`) ou se o relatório de cobertura não vier. Os fluxos de ponta a ponta não fazem parte do `verify`: rodam no job `e2e` do CI.
+`npm run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes (back-end e front-end), todas as etapas ao mesmo tempo (cerca de 25 s numa máquina de desenvolvimento, com o MySQL ocioso), mostra a saída de cada uma quando ela termina e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam. A etapa de testes também reprova se a cobertura de linhas do back-end ficar abaixo de 90% (`PISO_COBERTURA_LINHAS` em `scripts/verify.mjs`) ou se o relatório de cobertura não vier. Os fluxos de ponta a ponta não fazem parte do `verify`: rodam no job `e2e` do CI.
 
 ```bash
 HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflow-dev npm run verify
