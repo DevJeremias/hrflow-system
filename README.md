@@ -168,7 +168,7 @@ Os passos podem ser rodados separadamente:
 | `npm run db:status` | mostra o estado de cada migration |
 | `npm run db:audit` | procura dados que violariam as constraints novas, sem alterar nada |
 | `npm run db:seed` | carrega as fixtures (não repete se já estiverem carregadas) |
-| `npm run db:reset --confirmar` | **apaga o banco inteiro** e refaz tudo; só para desenvolvimento |
+| `npm run db:reset -- --banco=<DB_NAME>` | **apaga o banco inteiro** e refaz tudo; só para desenvolvimento: exige o nome do banco e recusa `DB_HOST` que não seja local |
 
 Regras das migrations:
 
