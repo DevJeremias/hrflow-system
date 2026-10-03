@@ -12,6 +12,8 @@ export interface FuncionarioListado extends RowDataPacket {
     nome: string;
     cargo_nome: string | null;
     departamento_nome: string | null;
+    // Perfil da conta de acesso do funcionário; null quando ele não tem conta.
+    perfil_acesso: string | null;
 }
 
 export interface NovoFuncionario extends DadosDoFuncionario {
@@ -36,10 +38,11 @@ const criarRepositorio = (executor: Connection) => ({
     // `limite` e `deslocamento` recortam a página, ordenada por id.
     async listarDaEmpresa(empresaId: number, limite: number, deslocamento: number): Promise<FuncionarioListado[]> {
         const [linhas] = await executor.query<FuncionarioListado[]>(
-            `SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome
+            `SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome, u.perfil AS perfil_acesso
              FROM funcionarios f
              LEFT JOIN cargos c ON f.cargo_id = c.id AND c.empresa_id = f.empresa_id
              LEFT JOIN departamentos d ON f.departamento_id = d.id AND d.empresa_id = f.empresa_id
+             LEFT JOIN usuarios u ON u.funcionario_id = f.id AND u.empresa_id = f.empresa_id
              WHERE f.empresa_id = ?
              ORDER BY f.id
              LIMIT ? OFFSET ?`,
@@ -61,6 +64,20 @@ const criarRepositorio = (executor: Connection) => ({
 
     departamentoDaEmpresa(departamentoId: number, empresaId: number): Promise<boolean> {
         return departamentoDaEmpresa(executor, departamentoId, empresaId);
+    },
+
+    // O perfil da conta ligada ao funcionário (null se não houver conta) ou undefined se o funcionário
+    // não existe na empresa.
+    async perfilDaContaDoFuncionario(funcionarioId: number, empresaId: number): Promise<string | null | undefined> {
+        const [linhas] = await executor.query<(RowDataPacket & { perfil: string | null })[]>(
+            `SELECT u.perfil FROM funcionarios f
+             LEFT JOIN usuarios u ON u.funcionario_id = f.id AND u.empresa_id = f.empresa_id
+             WHERE f.id = ? AND f.empresa_id = ?
+             ORDER BY FIELD(u.perfil, 'Administrador', 'RH', 'Colaborador')
+             FOR UPDATE`,
+            [funcionarioId, empresaId]
+        );
+        return linhas.length === 0 ? undefined : linhas[0].perfil;
     },
 
     // O e-mail do login é único em todas as empresas.

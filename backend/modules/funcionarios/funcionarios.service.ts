@@ -7,6 +7,8 @@ import type { FuncionarioListado, RepositorioDeFuncionarios } from './funcionari
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro, Paginacao } from './funcionarios.schemas.ts';
 import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
+import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
+import type { AtorDoCadastro } from '../../shared/utils/permissoes.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 
 const VOLTAS_DO_HASH = 10;
@@ -19,6 +21,20 @@ const exigirReferencias = async (repo: RepositorioDeFuncionarios, cargoId: numbe
     if (departamentoId && !(await repo.departamentoDaEmpresa(departamentoId, empresaId))) {
         throw new ErroDeFuncionario('invalido', 'Departamento não encontrado nesta empresa.');
     }
+};
+
+// Quem opera: a empresa vem do token. O RH não altera o próprio cadastro nem o de quem tem acesso
+// de RH ou Administrador (shared/utils/permissoes.ts); um cadastro que não existe responde 404 antes.
+interface Operador extends AtorDoCadastro {
+    empresa_id: number;
+}
+
+const exigirAlcance = async (repo: RepositorioDeFuncionarios, operador: Operador, id: number): Promise<void> => {
+    const perfilDaConta = await repo.perfilDaContaDoFuncionario(id, operador.empresa_id);
+    if (perfilDaConta === undefined) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+
+    const motivo = motivoDeNegacaoDoCadastro(operador, { id, perfilDaConta });
+    if (motivo) throw new ErroDeFuncionario('proibido', motivo);
 };
 
 export interface PaginaDeFuncionarios {
@@ -48,8 +64,10 @@ export const criarFuncionario = async (empresaId: number, { senha, ...dados }: C
     });
 };
 
-export const atualizarFuncionario = async (empresaId: number, id: number, dados: CorpoDaEdicao): Promise<void> => {
+export const atualizarFuncionario = async (operador: Operador, id: number, dados: CorpoDaEdicao): Promise<void> => {
+    const empresaId = operador.empresa_id;
     await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, operador, id);
         await exigirReferencias(repo, dados.cargo_id, dados.departamento_id, empresaId);
 
         if (!await repo.atualizarFuncionario({ ...dados, id, empresaId })) {
@@ -63,9 +81,15 @@ export const atualizarFuncionario = async (empresaId: number, id: number, dados:
     });
 };
 
-// Remove o acesso e o funcionário juntos.
-export const deletarFuncionario = async (empresaId: number, id: number): Promise<void> => {
+// Remove o acesso e o funcionário juntos. Ninguém exclui o próprio cadastro: a conta cairia junto.
+export const deletarFuncionario = async (operador: Operador, id: number): Promise<void> => {
+    const empresaId = operador.empresa_id;
     await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, operador, id);
+        if (operador.funcionario_id === id) {
+            throw new ErroDeFuncionario('proibido', 'Você não pode excluir o seu próprio cadastro.');
+        }
+
         await repo.excluirUsuarios(id, empresaId);
 
         if (!await repo.excluirFuncionario(id, empresaId)) {

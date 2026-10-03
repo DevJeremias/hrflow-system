@@ -1,6 +1,6 @@
 // Falha de regra de funcionários. O serviço diz o que deu errado (tipo e mensagem para o usuário)
 // e o controlador traduz o tipo em status HTTP; o que não for ErroDeFuncionario é falha inesperada.
-export type TipoDeErro = 'invalido' | 'inexistente';
+export type TipoDeErro = 'invalido' | 'inexistente' | 'proibido';
 
 export class ErroDeFuncionario extends Error {
     tipo: TipoDeErro;

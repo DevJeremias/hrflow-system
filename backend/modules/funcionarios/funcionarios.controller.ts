@@ -8,7 +8,7 @@ import type { CorpoDaEdicao, CorpoDoCadastro, IdDaRota, Paginacao } from './func
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
-const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
+const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404, proibido: 403 };
 
 // Falha de regra vira a resposta que o serviço descreveu; qualquer outra passa por responderErro,
 // que converte falhas conhecidas do MySQL em 4xx/503 e devolve 500 com a mensagem do endpoint.
@@ -18,10 +18,12 @@ const responderFalha = (res: Response, erro: unknown, mensagem500: string) => {
 };
 
 // O authMiddleware, que roda antes de qualquer rota de funcionários, preenche req.usuario.
-const empresaDe = (req: Request): number => {
+const usuarioDe = (req: Request) => {
     if (!req.usuario) throw new Error('req.usuario ausente: a rota de funcionários precisa do authMiddleware.');
-    return req.usuario.empresa_id;
+    return req.usuario;
 };
+
+const empresaDe = (req: Request): number => usuarioDe(req).empresa_id;
 
 // O validarEntrada da rota já validou e normalizou a entrada; os tipos vêm de funcionarios.schemas.ts.
 const entradaDe = <T>(req: Request, parte: 'params' | 'body' | 'query'): T => {
@@ -50,7 +52,7 @@ export const criarFuncionario = async (req: Request, res: Response) => {
 export const atualizarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        await service.atualizarFuncionario(empresaDe(req), id, entradaDe<CorpoDaEdicao>(req, 'body'));
+        await service.atualizarFuncionario(usuarioDe(req), id, entradaDe<CorpoDaEdicao>(req, 'body'));
         res.json({ mensagem: 'Funcionário atualizado com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao modificar o funcionário.');
@@ -60,7 +62,7 @@ export const atualizarFuncionario = async (req: Request, res: Response) => {
 export const deletarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        await service.deletarFuncionario(empresaDe(req), id);
+        await service.deletarFuncionario(usuarioDe(req), id);
         res.json({ mensagem: 'Funcionário removido com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao remover o funcionário.');
