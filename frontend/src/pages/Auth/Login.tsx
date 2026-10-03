@@ -105,11 +105,9 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end pt-0">
-              <a href="#" className="text-sm font-bold text-primary hover:text-indigo-700 transition-colors">
-                Esqueceu a senha?
-              </a>
-            </div>
+            <p className="text-sm font-medium text-slate-500">
+              <span className="font-bold text-slate-700">Esqueceu a senha?</span> Procure o RH da sua empresa: ele redefine o seu acesso.
+            </p>
 
             {sessionNotice && !erro && (
               <div role="status" className="flex items-center gap-2 p-4 bg-amber-50 text-amber-700 rounded-xl text-sm font-bold border border-amber-100">

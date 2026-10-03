@@ -87,7 +87,8 @@ const criarRepositorio = (executor: Connection) => ({
         return linhas[0]?.senha;
     },
 
-    // Subir a versão da sessão revoga os tokens emitidos com a senha anterior; a senha própria encerra a provisória.
+    // Subir a versão da sessão revoga os tokens emitidos com a senha anterior. A senha escolhida
+    // pela própria pessoa deixa de ser provisória.
     async trocarSenha(usuarioId: number, hash: string): Promise<void> {
         await executor.query('UPDATE usuarios SET senha = ?, senha_provisoria = FALSE, sessao_versao = sessao_versao + 1 WHERE id = ?', [hash, usuarioId]);
     },

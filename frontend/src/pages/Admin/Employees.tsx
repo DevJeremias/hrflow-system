@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit2, Trash2, Lock } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, KeyRound, UserMinus, UserCheck, Lock } from 'lucide-react';
 import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
+import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,8 +10,15 @@ import { podeGerirCadastro, motivoDeNegacaoDoCadastro } from '../../utils/permis
 
 const PAGE_SIZE = 50;
 
+// 'AAAA-MM-DD' -> 'DD/MM/AAAA', sem passar por Date (o fuso moveria o dia).
+const formatDate = (isoDate: string) => isoDate.split('-').reverse().join('/');
+
 const Employees: React.FC = () => {
   const { user } = useAuth();
+  // Editar segue a matriz de permissões (docs/permissoes.md): o RH não alcança o próprio cadastro
+  // nem o de RH ou Administrador. Situação, senha e exclusão valem para os outros, nunca para o próprio cadastro.
+  const canEdit = (employee: Employee) => podeGerirCadastro(user, employee);
+  const isManageable = (employee: Employee) => canEdit(employee) && !(user?.funcionarioId != null && String(user.funcionarioId) === employee.id);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [page, setPage] = useState(1);
@@ -19,6 +27,7 @@ const Employees: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+  const [lifecycleAction, setLifecycleAction] = useState<LifecycleAction | null>(null);
 
   const loadEmployees = useCallback(async (requestedPage: number) => {
     setLoading(true);
@@ -42,22 +51,27 @@ const Employees: React.FC = () => {
   }, [loadEmployees]);
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
+  // Os dados vão por PUT; a situação (Férias, Inativo com data e motivo) só muda por PATCH.
   const handleSave = async (employeeData: EmployeeForm) => {
     await employeeService.save(employeeData);
+    if (employeeToEdit) {
+      const { status = 'Ativo', dataDesligamento = '', motivoDesligamento = '' } = employeeData;
+      const changed = status !== employeeToEdit.status
+        || (status === 'Inativo' && (dataDesligamento !== employeeToEdit.dataDesligamento || motivoDesligamento !== employeeToEdit.motivoDesligamento));
+      if (changed) {
+        await employeeService.changeStatus(employeeToEdit.id, status === 'Inativo'
+          ? { status, date: dataDesligamento, reason: motivoDesligamento.trim() }
+          : { status: status as 'Ativo' | 'Férias' });
+      }
+    }
     await loadEmployees(page);
     setIsModalOpen(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Tem a certeza que deseja excluir este colaborador?')) {
-      try {
-        await employeeService.delete(id);
-        await loadEmployees(page - (employees.length === 1 && page > 1 ? 1 : 0));
-      } catch (error) {
-        alert(mensagemDeErro(error, 'Erro ao excluir colaborador.'));
-      }
-    }
-  };
+  const openLifecycle = (kind: LifecycleKind, employee: Employee) => setLifecycleAction({ kind, employee });
+
+  // A página pode esvaziar com a exclusão: volta para a anterior.
+  const handleLifecycleDone = () => loadEmployees(page - (lifecycleAction?.kind === 'delete' && employees.length === 1 && page > 1 ? 1 : 0));
 
   const filteredEmployees = employees.filter(emp => 
     emp.nomeCompleto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,6 +95,14 @@ const Employees: React.FC = () => {
         onSave={handleSave}
         employeeToEdit={employeeToEdit}
       />
+
+      {lifecycleAction && (
+        <EmployeeLifecycleModal
+          action={lifecycleAction}
+          onClose={() => setLifecycleAction(null)}
+          onDone={handleLifecycleDone}
+        />
+      )}
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -156,30 +178,68 @@ const Employees: React.FC = () => {
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(emp.status)}`}>
                         {emp.status || 'Ativo'}
                       </span>
+                      {emp.status === 'Inativo' && emp.dataDesligamento && (
+                        <p className="mt-1 text-xs text-slate-500" title={emp.motivoDesligamento}>
+                          Desde {formatDate(emp.dataDesligamento)}{emp.motivoDesligamento ? ` · ${emp.motivoDesligamento}` : ''}
+                        </p>
+                      )}
                     </td>
                     <td className="py-4 px-6 text-right">
-                      {podeGerirCadastro(user, emp) ? (
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}
-                            className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors"
-                            title="Editar Colaborador"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(emp.id)}
-                            className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
-                            title="Excluir Colaborador"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      ) : (
+                      {!canEdit(emp) ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 whitespace-nowrap" title={motivoDeNegacaoDoCadastro(user, emp)}>
                           <Lock size={14} />
                           <span>Só o Administrador</span>
                         </span>
+                      ) : (
+                      <div className="flex justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}
+                          className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors"
+                          title="Editar Colaborador"
+                          aria-label="Editar Colaborador"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        {isManageable(emp) && emp.perfilAcesso !== null && emp.status !== 'Inativo' && (
+                          <button
+                            onClick={() => openLifecycle('reset', emp)}
+                            className="p-2 hover:bg-amber-50 text-amber-600 rounded-lg transition-colors"
+                            title="Redefinir Senha"
+                            aria-label="Redefinir Senha"
+                          >
+                            <KeyRound size={18} />
+                          </button>
+                        )}
+                        {isManageable(emp) && (emp.status === 'Inativo' ? (
+                          <button
+                            onClick={() => openLifecycle('reactivate', emp)}
+                            className="p-2 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors"
+                            title="Reativar Colaborador"
+                            aria-label="Reativar Colaborador"
+                          >
+                            <UserCheck size={18} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openLifecycle('offboard', emp)}
+                            className="p-2 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors"
+                            title="Inativar ou Desligar"
+                            aria-label="Inativar ou Desligar"
+                          >
+                            <UserMinus size={18} />
+                          </button>
+                        ))}
+                        {isManageable(emp) && !emp.temMovimento && (
+                          <button 
+                            onClick={() => openLifecycle('delete', emp)}
+                            className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                            title="Excluir Cadastro"
+                            aria-label="Excluir Cadastro"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
                       )}
                     </td>
                   </tr>

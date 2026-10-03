@@ -1,15 +1,16 @@
 // Regras de funcionários: referências da mesma empresa, e-mail único, credencial de acesso criada
-// junto e sessões derrubadas ao inativar. Não conhece HTTP (falhas de regra saem como
+// junto, e o ciclo de vida (inativar ou desligar com data e motivo, reativar, redefinir a senha,
+// excluir só o cadastro sem movimento). Não conhece HTTP (falhas de regra saem como
 // ErroDeFuncionario) e só chega ao banco pelo repositório.
 import bcrypt from 'bcrypt';
 import * as repositorio from './funcionarios.repository.ts';
-import type { FuncionarioListado, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
+import type { AlvoDoCicloDeVida, FuncionarioListado, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, Paginacao } from './funcionarios.schemas.ts';
+import { gerarSenhaProvisoria } from './funcionarios.regras.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, Paginacao } from './funcionarios.schemas.ts';
 import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
-import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
-import type { AtorDoCadastro } from '../../shared/utils/permissoes.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
+import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
 
 const VOLTAS_DO_HASH = 10;
 
@@ -23,28 +24,34 @@ const exigirReferencias = async (repo: RepositorioDeFuncionarios, cargoId: numbe
     }
 };
 
-// Quem opera: a empresa vem do token. O RH não altera o próprio cadastro nem o de quem tem acesso
-// de RH ou Administrador (shared/utils/permissoes.ts); um cadastro que não existe responde 404 antes.
-interface Operador extends AtorDoCadastro {
-    empresa_id: number;
+// Quem opera a ação, como o token o descreve.
+export interface Ator {
+    perfil: string;
+    funcionarioId: number | null;
 }
 
-const exigirAlcance = async (repo: RepositorioDeFuncionarios, operador: Operador, id: number): Promise<void> => {
-    const perfilDaConta = await repo.perfilDaContaDoFuncionario(id, operador.empresa_id);
-    if (perfilDaConta === undefined) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+// Editar ou excluir o cadastro segue a matriz de shared/utils/permissoes.ts: o RH não alcança o
+// próprio cadastro nem o de RH ou Administrador; o Administrador alcança todos. Um cadastro que não
+// existe responde 404 antes de qualquer recusa.
+const exigirAlcance = async (repo: RepositorioDeFuncionarios, empresaId: number, id: number, ator: Ator): Promise<void> => {
+    const alvo = await repo.alvoDoCicloDeVida(id, empresaId);
+    if (!alvo) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
 
-    const motivo = motivoDeNegacaoDoCadastro(operador, { id, perfilDaConta });
+    const motivo = motivoDeNegacaoDoCadastro({ perfil: ator.perfil, funcionario_id: ator.funcionarioId }, { id, perfilDaConta: alvo.usuario_perfil });
     if (motivo) throw new ErroDeFuncionario('proibido', motivo);
 };
 
+export type FuncionarioDaPagina = Omit<FuncionarioListado, 'tem_movimento'> & { tem_movimento: boolean };
+
 export interface PaginaDeFuncionarios {
-    funcionarios: FuncionarioListado[];
+    funcionarios: FuncionarioDaPagina[];
     total: number;
 }
 
 export const listarFuncionarios = async (empresaId: number, paginacao: Paginacao): Promise<PaginaDeFuncionarios> => {
     const [limite, deslocamento] = limiteEDeslocamento(paginacao);
-    const funcionarios = await repositorio.listarDaEmpresa(empresaId, limite, deslocamento);
+    const linhas = await repositorio.listarDaEmpresa(empresaId, limite, deslocamento);
+    const funcionarios = linhas.map((linha) => ({ ...linha, tem_movimento: Boolean(linha.tem_movimento) }));
     const total = await repositorio.contarDaEmpresa(empresaId);
     return { funcionarios, total };
 };
@@ -64,10 +71,9 @@ export const criarFuncionario = async (empresaId: number, { senha, ...dados }: C
     });
 };
 
-export const atualizarFuncionario = async (operador: Operador, id: number, dados: CorpoDaEdicao): Promise<void> => {
-    const empresaId = operador.empresa_id;
+export const atualizarFuncionario = async (empresaId: number, id: number, ator: Ator, dados: CorpoDaEdicao): Promise<void> => {
     await repositorio.emTransacao(async (repo) => {
-        await exigirAlcance(repo, operador, id);
+        await exigirAlcance(repo, empresaId, id, ator);
         await exigirReferencias(repo, dados.cargo_id, dados.departamento_id, empresaId);
 
         if (!await repo.atualizarFuncionario({ ...dados, id, empresaId })) {
@@ -75,25 +81,90 @@ export const atualizarFuncionario = async (operador: Operador, id: number, dados
         }
 
         await repo.sincronizarUsuario(id, empresaId, dados.nome, dados.email);
-
-        // Inativar derruba as sessões abertas; sem isso, reativar ressuscitaria tokens antigos.
-        if (dados.status === 'Inativo') await repo.derrubarSessoes(id, empresaId);
     });
 };
 
-// Remove o acesso e o funcionário juntos. Ninguém exclui o próprio cadastro: a conta cairia junto.
-export const deletarFuncionario = async (operador: Operador, id: number): Promise<void> => {
-    const empresaId = operador.empresa_id;
+// Carrega o alvo de uma ação do ciclo de vida e confere se quem opera pode agir sobre ele. O RH
+// gere colaboradores, não o cadastro de outro RH ou Administrador, e ninguém age sobre si mesmo
+// aqui: a senha própria se troca no perfil.
+const alvoPermitido = async (repo: RepositorioDeFuncionarios, empresaId: number, id: number, ator: Ator, acao: string): Promise<AlvoDoCicloDeVida> => {
+    const alvo = await repo.alvoDoCicloDeVida(id, empresaId);
+    if (!alvo) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+    if (ator.funcionarioId === id) {
+        throw new ErroDeFuncionario('proibido', `Você não pode ${acao} do seu próprio cadastro.`);
+    }
+    if (ator.perfil === 'RH' && alvo.usuario_perfil !== null && alvo.usuario_perfil !== 'Colaborador') {
+        throw new ErroDeFuncionario('proibido', `O RH não pode ${acao} de outro RH ou Administrador.`);
+    }
+    return alvo;
+};
+
+export interface SituacaoDoFuncionario {
+    status: CorpoDoStatus['status'];
+    data_desligamento: string | null;
+    motivo_desligamento: string | null;
+}
+
+// Inativar é desligar: grava data e motivo, derruba as sessões abertas e bloqueia o login, sem
+// apagar nada. Reativar (ou pôr de férias) limpa a data e o motivo. O histórico fica no ponto.
+export const alterarStatus = async (empresaId: number, id: number, ator: Ator, corpo: CorpoDoStatus): Promise<SituacaoDoFuncionario> => {
+    return repositorio.emTransacao(async (repo) => {
+        const alvo = await alvoPermitido(repo, empresaId, id, ator, 'alterar a situação');
+        const inativando = corpo.status === 'Inativo';
+
+        if (inativando && alvo.data_admissao && corpo.data_desligamento && corpo.data_desligamento < alvo.data_admissao) {
+            throw new ErroDeFuncionario('invalido', 'A data do desligamento não pode ser anterior à data de admissão.', {
+                detalhes: [{ campo: 'data_desligamento', mensagem: 'A data do desligamento não pode ser anterior à data de admissão.' }],
+            });
+        }
+
+        await repo.atualizarStatus({
+            id,
+            empresaId,
+            status: corpo.status,
+            dataDoDesligamento: inativando ? corpo.data_desligamento : null,
+            motivoDoDesligamento: inativando ? corpo.motivo_desligamento : null,
+        });
+        // Sem isto, reativar ressuscitaria os tokens emitidos antes da inativação.
+        if (inativando) await repo.derrubarSessoes(id, empresaId);
+
+        return {
+            status: corpo.status,
+            data_desligamento: inativando ? corpo.data_desligamento : null,
+            motivo_desligamento: inativando ? corpo.motivo_desligamento : null,
+        };
+    });
+};
+
+// A senha provisória é devolvida aqui e em nenhum outro lugar: o banco guarda só o hash.
+export const redefinirSenha = async (empresaId: number, id: number, ator: Ator): Promise<string> => {
+    const senhaProvisoria = gerarSenhaProvisoria();
+    const senhaCriptografada = await bcrypt.hash(senhaProvisoria, VOLTAS_DO_HASH);
+
     await repositorio.emTransacao(async (repo) => {
-        await exigirAlcance(repo, operador, id);
-        if (operador.funcionario_id === id) {
-            throw new ErroDeFuncionario('proibido', 'Você não pode excluir o seu próprio cadastro.');
+        const alvo = await alvoPermitido(repo, empresaId, id, ator, 'redefinir a senha');
+        if (alvo.usuario_id === null) throw new ErroDeFuncionario('inexistente', 'Este colaborador não tem acesso ao sistema.');
+        if (alvo.status === 'Inativo') {
+            throw new ErroDeFuncionario('conflito', 'Reative o colaborador antes de redefinir a senha: o acesso dele está desativado.');
+        }
+        await repo.definirSenhaProvisoria(alvo.usuario_id, senhaCriptografada);
+    });
+    return senhaProvisoria;
+};
+
+// Só o cadastro sem movimento pode ser apagado (o engano de digitação, por exemplo). Quem já
+// marcou ponto ou justificou um dia é inativado: a exclusão levaria o histórico junto. Ninguém
+// exclui o próprio cadastro: a conta cairia junto.
+export const deletarFuncionario = async (empresaId: number, id: number, ator: Ator): Promise<void> => {
+    await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, id, ator);
+        if (ator.funcionarioId === id) throw new ErroDeFuncionario('proibido', 'Você não pode excluir o seu próprio cadastro.');
+
+        if (await repo.temMovimento(id)) {
+            throw new ErroDeFuncionario('conflito', 'Este colaborador tem registros de ponto e não pode ser excluído. Inative-o para preservar o histórico.');
         }
 
         await repo.excluirUsuarios(id, empresaId);
-
-        if (!await repo.excluirFuncionario(id, empresaId)) {
-            throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
-        }
+        await repo.excluirFuncionario(id, empresaId);
     });
 };

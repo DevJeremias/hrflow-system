@@ -88,6 +88,11 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
 
         let departamento: number;
         const colaboradorAlheio = async () => `/api/funcionarios/${await funcionario(`Alvo ${++sequencia}`, emailNovo())}`;
+        const colaboradorComAcesso = async () => {
+            const funcionarioId = await funcionario(`Alvo ${++sequencia}`, emailNovo());
+            await criarUsuario(db, { empresaId: empresa, perfil: 'Colaborador', funcionarioId });
+            return `/api/funcionarios/${funcionarioId}`;
+        };
         const estruturaNova = async (tabela: 'departamentos' | 'cargos') => {
             const nome = `Alvo ${++sequencia}`;
             const id = tabela === 'departamentos'
@@ -118,6 +123,8 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'criar colaborador', metodo: 'POST', caminho: () => '/api/funcionarios', corpo: () => ({ nome: 'Novo Colaborador', email: emailNovo(), senha: 'senha-ficticia' }), permitido: GESTAO },
             { rotulo: 'alterar colaborador', metodo: 'PUT', caminho: colaboradorAlheio, corpo: () => ({ nome: 'Renomeado', email: emailNovo() }), permitido: GESTAO },
             { rotulo: 'excluir colaborador', metodo: 'DELETE', caminho: colaboradorAlheio, permitido: GESTAO },
+            { rotulo: 'alterar a situação do colaborador', metodo: 'PATCH', caminho: async () => `${await colaboradorAlheio()}/status`, corpo: () => ({ status: 'Férias' }), permitido: GESTAO },
+            { rotulo: 'redefinir a senha do colaborador', metodo: 'POST', caminho: async () => `${await colaboradorComAcesso()}/redefinir-senha`, permitido: GESTAO },
 
             { rotulo: 'processar folha', metodo: 'GET', caminho: () => '/api/folha/processar', permitido: GESTAO },
             { rotulo: 'ler pontos da empresa', metodo: 'GET', caminho: () => '/api/ponto?mes=2026-03', permitido: GESTAO },
@@ -196,7 +203,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
         });
 
         it('RH inativando o próprio cadastro recebe 403', async () => {
-            const { status } = await chamar('PUT', `/api/funcionarios/${ids.Rita}`, tokens.Rita, edicao({ status: 'Inativo' }));
+            const { status } = await chamar('PATCH', `/api/funcionarios/${ids.Rita}/status`, tokens.Rita, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: 'Teste' });
             assert.equal(status, 403);
         });
 
@@ -236,7 +243,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
 
         it('a lista de colaboradores informa o perfil da conta de cada um', async () => {
             const { corpo } = await chamar('GET', '/api/funcionarios', tokens.Rita);
-            const perfilDe = (id: number) => corpo.find((f: { id: number }) => f.id === id).perfil_acesso;
+            const perfilDe = (id: number) => corpo.find((f: { id: number }) => f.id === id).usuario_perfil;
             assert.equal(perfilDe(ids.Rita), 'RH');
             assert.equal(perfilDe(ids.Caio), 'Colaborador');
             assert.equal(perfilDe(ids['Admin com cadastro']), 'Administrador');
@@ -261,9 +268,16 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
 
             const entrada = await login(corpo.usuario.email, corpo.senha_provisoria);
             assert.equal(entrada.status, 200);
+            // A senha provisória só abre a troca de senha; depois dela o RH tem o acesso do perfil.
             const token = tokenDaResposta(entrada);
-            assert.equal((await chamar('GET', '/api/funcionarios', token)).status, 200);
-            assert.equal((await chamar('GET', '/api/usuarios', token)).status, 403);
+            assert.equal((await chamar('GET', '/api/funcionarios', token)).status, 403);
+            const troca = await chamar('PUT', '/api/perfil/alterar-senha', token, { senhaAtual: corpo.senha_provisoria, novaSenha: 'senha-propria-1' });
+            assert.equal(troca.status, 200, JSON.stringify(troca.corpo));
+            const novaEntrada = await login(corpo.usuario.email, 'senha-propria-1');
+            assert.equal(novaEntrada.status, 200);
+            const novoToken = tokenDaResposta(novaEntrada);
+            assert.equal((await chamar('GET', '/api/funcionarios', novoToken)).status, 200);
+            assert.equal((await chamar('GET', '/api/usuarios', novoToken)).status, 403);
         });
 
         it('a senha provisória só existe na resposta: o banco guarda o hash', async () => {
@@ -334,12 +348,12 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             const criada = await criar('RH');
             const { email } = criada.corpo.usuario;
             const sessao = tokenDaResposta(await login(email, criada.corpo.senha_provisoria));
-            assert.equal((await chamar('GET', '/api/funcionarios', sessao)).status, 200);
+            assert.equal((await chamar('GET', '/api/auth/sessao', sessao)).status, 200);
 
             const { status, corpo } = await chamar('PATCH', `/api/usuarios/${criada.corpo.usuario.id}`, tokens.Administrador, { redefinir_senha: true });
             assert.equal(status, 200, JSON.stringify(corpo));
             assert.notEqual(corpo.senha_provisoria, criada.corpo.senha_provisoria);
-            assert.equal((await chamar('GET', '/api/funcionarios', sessao)).status, 401);
+            assert.equal((await chamar('GET', '/api/auth/sessao', sessao)).status, 401);
             assert.equal((await login(email, criada.corpo.senha_provisoria)).status, 401);
             assert.equal((await login(email, corpo.senha_provisoria)).status, 200);
         });

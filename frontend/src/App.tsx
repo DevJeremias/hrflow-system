@@ -1,12 +1,13 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Perfil, rotaInicial, temAreaPessoal } from './utils/sessao';
+import { Perfil, ROTA_TROCA_DE_SENHA, rotaInicial, temAreaPessoal } from './utils/sessao';
 import { solicitacoesAtivas } from './utils/recursos';
 import ErrorAlert from './components/ErrorAlert';
 
 import Landing from './pages/Landing/Home';
 import Login from './pages/Auth/Login';
+import TrocarSenha from './pages/Auth/TrocarSenha';
 import Termos from './pages/Legal/Termos';
 import Privacidade from './pages/Legal/Privacidade';
 import Layout from './layouts/Layout';
@@ -22,9 +23,11 @@ import Payslips from './pages/Portal/Payslips';
 import Requests from './pages/Portal/Requests';
 import Profile from './pages/Portal/Profile';
 
-// `allowedRoles` restringe por perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e
-// holerite próprios) em qualquer perfil.
-const ProtectedRoute = ({ children, allowedRoles, personalArea }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean }) => {
+// `trocaDeSenha` marca a única rota de quem entrou com senha provisória: ela leva todas as outras
+// para si, e quem não tem senha provisória não tem o que fazer nela. `allowedRoles` restringe por
+// perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e holerite próprios) em
+// qualquer perfil.
+const ProtectedRoute = ({ children, allowedRoles, personalArea = false, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean, trocaDeSenha?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return null;
@@ -45,6 +48,9 @@ const ProtectedRoute = ({ children, allowedRoles, personalArea }: { children: Re
 
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />;
 
+  if (user.senhaProvisoria && !trocaDeSenha) return <Navigate to={ROTA_TROCA_DE_SENHA} replace />;
+  if (!user.senhaProvisoria && trocaDeSenha) return <Navigate to={rotaInicial(user.role)} replace />;
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to={rotaInicial(user.role)} replace />;
   }
@@ -63,6 +69,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/termos" element={<Termos />} />
       <Route path="/privacidade" element={<Privacidade />} />
+      <Route path={ROTA_TROCA_DE_SENHA} element={<ProtectedRoute trocaDeSenha><TrocarSenha /></ProtectedRoute>} />
 
       <Route 
         path="/admin" 

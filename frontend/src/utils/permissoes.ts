@@ -5,7 +5,7 @@ import type { User } from './sessao.ts';
 interface AlvoDoCadastro {
   id: string;
   // Perfil da conta de acesso do cadastro; vazio quando ele não tem conta.
-  perfilAcesso?: string;
+  perfilAcesso?: string | null;
 }
 
 // O Administrador alcança qualquer cadastro; o RH, só os de Colaborador que não são o dele.
