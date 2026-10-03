@@ -7,6 +7,7 @@ import type { UsuarioDoToken } from './auth.sessao.ts';
 export interface Usuario extends RowDataPacket, UsuarioDoToken {
     nome: string;
     senha: string;
+    senha_provisoria: number;
 }
 
 export interface FuncionarioDoUsuario extends RowDataPacket {
@@ -22,6 +23,7 @@ export interface IdentidadeDaSessao extends RowDataPacket {
     funcionario_id: number | null;
     avatar: string | null;
     nome: string;
+    senha_provisoria: number;
 }
 
 export interface NovaConta {
@@ -71,7 +73,7 @@ export const funcionarioDoUsuario = async (funcionarioId: number, empresaId: num
 
 export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDaSessao | undefined> => {
     const [linhas] = await db.query<IdentidadeDaSessao[]>(
-        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, u.avatar,
+        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, u.avatar, u.senha_provisoria,
                 COALESCE(f.nome, u.nome) AS nome
          FROM usuarios u
          JOIN empresas e ON e.id = u.empresa_id
