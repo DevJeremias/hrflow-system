@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Search, PlusCircle } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
-import PayrollSlipModal from './PayrollSlipModal'; 
+import PayrollSlipModal from './PayrollSlipModal';
+import { useAuth } from '../../contexts/AuthContext';
+import { competenciaAtual } from '../../utils/competencia';
 
 interface Props { payrolls: EmployeePayroll[]; }
 
 const PayrollTable: React.FC<Props> = ({ payrolls }) => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePayroll | null>(null);
 
@@ -72,7 +75,8 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
         isOpen={!!selectedEmployee} 
         onClose={() => setSelectedEmployee(null)} 
         employee={selectedEmployee} 
-        month="Abril de 2026" 
+        month={competenciaAtual()}
+        companyName={user?.empresaNome}
       />
     </>
   );
