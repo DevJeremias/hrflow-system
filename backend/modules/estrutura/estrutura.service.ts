@@ -19,6 +19,15 @@ interface Consulta {
 
 const DEPARTAMENTO_NAO_ENCONTRADO = 'Departamento não encontrado.';
 const CARGO_NAO_ENCONTRADO = 'Cargo não encontrado.';
+const DEPARTAMENTO_DUPLICADO = 'Já existe um departamento com este nome nesta empresa.';
+const CARGO_DUPLICADO = 'Já existe um cargo com este nome neste departamento.';
+
+// Nome de departamento é único por empresa e o de cargo, por departamento (chaves do banco): quem
+// perde a corrida entre dois cadastros iguais recebe a mesma resposta de quem repetiu o nome.
+const recusarDuplicidade = (mensagem: string) => (erro: unknown): never => {
+    if ((erro as { code?: string }).code === 'ER_DUP_ENTRY') throw new ErroDeEstrutura('conflito', mensagem);
+    throw erro;
+};
 
 // O departamento de um cargo precisa ser da mesma empresa de quem opera.
 const exigirDepartamentoDaEmpresa = async (departamentoId: number, empresaId: number): Promise<void> => {
@@ -38,10 +47,10 @@ export const listarDepartamentos = async (empresaId: number, consulta: Consulta)
 };
 
 export const criarDepartamento = (empresaId: number, dados: DadosDoDepartamento): Promise<void> =>
-    repositorio.criarDepartamento(empresaId, dados);
+    repositorio.criarDepartamento(empresaId, dados).catch(recusarDuplicidade(DEPARTAMENTO_DUPLICADO));
 
 export const atualizarDepartamento = async (id: number, empresaId: number, dados: DadosDoDepartamento): Promise<void> => {
-    if (!(await repositorio.atualizarDepartamento(id, empresaId, dados))) {
+    if (!(await repositorio.atualizarDepartamento(id, empresaId, dados).catch(recusarDuplicidade(DEPARTAMENTO_DUPLICADO)))) {
         throw new ErroDeEstrutura('inexistente', DEPARTAMENTO_NAO_ENCONTRADO);
     }
 };
@@ -66,12 +75,12 @@ export const listarCargos = async (empresaId: number, consulta: Consulta): Promi
 
 export const criarCargo = async (empresaId: number, dados: DadosDoCargo): Promise<void> => {
     await exigirDepartamentoDaEmpresa(dados.departamento_id, empresaId);
-    await repositorio.criarCargo(empresaId, dados);
+    await repositorio.criarCargo(empresaId, dados).catch(recusarDuplicidade(CARGO_DUPLICADO));
 };
 
 export const atualizarCargo = async (id: number, empresaId: number, dados: DadosDoCargo): Promise<void> => {
     await exigirDepartamentoDaEmpresa(dados.departamento_id, empresaId);
-    if (!(await repositorio.atualizarCargo(id, empresaId, dados))) throw new ErroDeEstrutura('inexistente', CARGO_NAO_ENCONTRADO);
+    if (!(await repositorio.atualizarCargo(id, empresaId, dados).catch(recusarDuplicidade(CARGO_DUPLICADO)))) throw new ErroDeEstrutura('inexistente', CARGO_NAO_ENCONTRADO);
 };
 
 export const removerCargo = async (id: number, empresaId: number): Promise<void> => {

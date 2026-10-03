@@ -4,7 +4,8 @@ export const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 
 export const departamento = corpo({
     nome: texto('Nome do departamento', 100),
-    sigla: texto('Sigla', 10),
+    // Gravada em maiúsculas: "ti" e "TI" são a mesma sigla.
+    sigla: texto('Sigla', 10).transform((valor) => valor.toUpperCase()),
     descricao: opcional(textoLivre('Descrição', 1000)),
     gestor: opcional(texto('Gestor', 100)),
 });
