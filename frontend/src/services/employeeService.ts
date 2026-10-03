@@ -9,7 +9,9 @@ export interface Employee {
   telefone: string;
   cpf: string;
   cargo: string;
+  cargoId?: string;
   departamento: string;
+  departamentoId?: string;
   status: string;
   dataAdmissao: string;
   avatar?: string;
@@ -27,6 +29,9 @@ export interface Employee {
   salarioBase?: string | number;
 }
 
+// Estado do formulário do colaborador: os campos de Employee, mais os que só existem no cadastro.
+export type EmployeeForm = Record<string, string>;
+
 const API_URL = '/funcionarios';
 
 export interface EmployeePage {
@@ -41,7 +46,9 @@ const mapEmployee = (d: any): Employee => ({
   telefone: d.telefone || '',
   cpf: d.cpf || '',
   cargo: d.cargo_nome || d.cargo_id?.toString() || 'Não definido',
+  cargoId: d.cargo_id?.toString() || '',
   departamento: d.departamento_nome || d.departamento_id?.toString() || 'Não definido',
+  departamentoId: d.departamento_id?.toString() || '',
   status: d.status || 'Ativo',
   dataAdmissao: d.data_admissao ? d.data_admissao.split('T')[0] : '',
   dataNascimento: d.data_nascimento ? d.data_nascimento.split('T')[0] : '',
@@ -71,18 +78,7 @@ export const employeeService = {
     return { employees: data.map(mapEmployee), total };
   },
 
-  save: async (data: any): Promise<void> => {
-    const [deptsRes, rolesRes] = await Promise.all([
-      httpClient('/estrutura/departamentos', { auth: true }),
-      httpClient('/estrutura/cargos', { auth: true })
-    ]);
-    
-    const depts = deptsRes;
-    const roles = rolesRes;
-    
-    const deptFound = depts.find((d: any) => d.nome === data.departamento || d.sigla === data.departamento);
-    const roleFound = roles.find((r: any) => r.nome === data.cargo);
-
+  save: async (data: EmployeeForm): Promise<void> => {
     const payload = {
       nome: data.nomeCompleto,
       cpf: data.cpf,
@@ -98,8 +94,8 @@ export const employeeService = {
       nivel: data.nivel,
       tipo_contrato: data.tipoContrato,
       salario_base: data.salarioBase,
-      cargo_id: roleFound ? roleFound.id : null,
-      departamento_id: deptFound ? deptFound.id : null,
+      cargo_id: data.cargoId ? Number(data.cargoId) : null,
+      departamento_id: data.departamentoId ? Number(data.departamentoId) : null,
       status: data.status || 'Ativo',
       // A API só usa a senha no cadastro; na edição o campo nem é exibido.
       ...(data.id ? {} : { senha: data.senhaAcesso })

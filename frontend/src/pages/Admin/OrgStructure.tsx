@@ -63,21 +63,16 @@ const DepartmentsRoles: React.FC = () => {
     setModalConfig({ isOpen: true, type, item });
   };
 
+  // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
   const handleSave = async (data: any) => {
-    try {
-      if (modalConfig.type === 'department') {
-        await saveDepartment(data);
-      } else {
-        await saveRole(data);
-      }
-      
-      await loadData();
-      setModalConfig({ ...modalConfig, isOpen: false });
-      
-    } catch (error: any) {
-      console.error(error);
-      alert(error.message || "Erro ao processar a operação.");
+    if (modalConfig.type === 'department') {
+      await saveDepartment(data);
+    } else {
+      await saveRole(data);
     }
+
+    await loadData();
+    setModalConfig({ ...modalConfig, isOpen: false });
   };
 
   const handleDeleteDepartment = async (dept: Department) => {

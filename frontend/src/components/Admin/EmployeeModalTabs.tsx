@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Role, Department } from '../../services/departmentsRolesService';
 
 // ==========================================
 // ABA 1: DADOS PESSOAIS
@@ -57,8 +58,8 @@ export const PersonalTab: React.FC<TabProps> = ({ formData, handleChange }) => (
 // ABA 2: CONTRATO DE TRABALHO
 // ==========================================
 interface WorkTabProps extends TabProps {
-  cargos?: any[];
-  departamentos?: any[];
+  cargos?: Role[];
+  departamentos?: Department[];
 }
 
 export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos = [], departamentos = [] }) => (
@@ -71,12 +72,13 @@ export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos
       </div>
     </div>
 
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
       <div className="space-y-2">
         <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Cargo</label>
-        <select name="cargo" value={formData.cargo} onChange={handleChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer font-bold text-slate-800">
+        <select name="cargoId" value={formData.cargoId} onChange={handleChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer font-bold text-slate-800">
           <option value="">Selecione o Cargo...</option>
-          {cargos.map((c: any) => <option key={c.id} value={c.title}>{c.title}</option>)}
+          {formData.cargoId && !cargos.some((c) => c.id === formData.cargoId) && <option value={formData.cargoId}>{formData.cargo}</option>}
+          {cargos.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
         </select>
       </div>
       <div className="space-y-2">
@@ -92,12 +94,13 @@ export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos
       </div>
     </div>
 
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
       <div className="space-y-2">
         <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Setor / Departamento</label>
-        <select name="departamento" value={formData.departamento} onChange={handleChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer">
+        <select name="departamentoId" value={formData.departamentoId} onChange={handleChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer">
           <option value="">Selecione o Setor...</option>
-          {departamentos.map((d: any) => <option key={d.id} value={d.name}>{d.name}</option>)}
+          {formData.departamentoId && !departamentos.some((d) => d.id === formData.departamentoId) && <option value={formData.departamentoId}>{formData.departamento}</option>}
+          {departamentos.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
         </select>
       </div>
       <div className="space-y-2">

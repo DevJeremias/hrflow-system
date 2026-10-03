@@ -1,7 +1,7 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const { cargoDaEmpresa, departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
-const { responderErro } = require('../utils/erros');
+const { responderErro, EMAIL_DUPLICADO } = require('../utils/erros');
 const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
 
 // Devolve a mensagem de erro quando cargo ou departamento informado não é da empresa.
@@ -41,7 +41,7 @@ exports.criarFuncionario = async (req, res) => {
     const { 
         nome, cpf, email, telefone, data_admissao, data_nascimento, 
         endereco, banco, agencia, conta, tipo_conta, 
-        cargo_id, departamento_id, tipo_contrato, salario_base, senha 
+        nivel, cargo_id, departamento_id, tipo_contrato, salario_base, senha 
     } = req.dadosValidados.body;
 
     const connection = await db.getConnection();
@@ -59,21 +59,21 @@ exports.criarFuncionario = async (req, res) => {
         );
         if (usuarioExistente.length > 0) {
             await connection.rollback();
-            return res.status(400).json({ erro: "Este e-mail já está registado no sistema." });
+            return res.status(400).json({ erro: EMAIL_DUPLICADO, detalhes: [{ campo: 'email', mensagem: EMAIL_DUPLICADO }] });
         }
 
         const sqlFuncionario = `
             INSERT INTO funcionarios (
                 nome, cpf, email, telefone, data_admissao, data_nascimento, 
-                endereco, banco, agencia, conta, tipo_conta, cargo_id, 
+                endereco, banco, agencia, conta, tipo_conta, nivel, cargo_id, 
                 departamento_id, tipo_contrato, salario_base, status, empresa_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo', ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Ativo', ?)
         `;
         
         const [resultFunc] = await connection.query(sqlFuncionario, [
             nome, cpf, email, telefone, data_admissao, 
             data_nascimento, endereco, banco, agencia, 
-            conta, tipo_conta, cargo_id, departamento_id, 
+            conta, tipo_conta, nivel, cargo_id, departamento_id, 
             tipo_contrato, salario_base, empresa_id
         ]);
 
@@ -106,7 +106,7 @@ exports.atualizarFuncionario = async (req, res) => {
     const { 
         nome, cpf, email, telefone, data_admissao, data_nascimento, 
         endereco, banco, agencia, conta, tipo_conta,
-        cargo_id, departamento_id, tipo_contrato, salario_base, status 
+        nivel, cargo_id, departamento_id, tipo_contrato, salario_base, status 
     } = req.dadosValidados.body;
 
     const connection = await db.getConnection();
@@ -122,7 +122,7 @@ exports.atualizarFuncionario = async (req, res) => {
         const sql = `
             UPDATE funcionarios 
             SET nome = ?, cpf = ?, email = ?, telefone = ?, data_admissao = ?, data_nascimento = ?, 
-                endereco = ?, banco = ?, agencia = ?, conta = ?, tipo_conta = ?, cargo_id = ?, 
+                endereco = ?, banco = ?, agencia = ?, conta = ?, tipo_conta = ?, nivel = ?, cargo_id = ?, 
                 departamento_id = ?, tipo_contrato = ?, salario_base = ?, status = ?
             WHERE id = ? AND empresa_id = ?
         `;
@@ -130,7 +130,7 @@ exports.atualizarFuncionario = async (req, res) => {
         const [result] = await connection.query(sql, [
             nome, cpf, email, telefone, data_admissao, data_nascimento, 
             endereco, banco, agencia, conta, tipo_conta,
-            cargo_id, departamento_id, tipo_contrato, salario_base, 
+            nivel, cargo_id, departamento_id, tipo_contrato, salario_base, 
             status, id, empresa_id
         ]);
 
