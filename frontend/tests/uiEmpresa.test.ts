@@ -57,13 +57,13 @@ const abrir = async () => {
   return host;
 };
 
-test('os três campos têm id, name e rótulo, a página tem um único h1 e o título da aba', async () => {
+test('os campos têm id, name e rótulo, a página tem um único h1 e o título da aba', async () => {
   const host = await abrir();
   assert.equal(document.title, 'Dados da empresa | HRFlow');
   assert.equal(host.querySelectorAll('h1').length, 1);
   assert.equal(host.querySelector('main'), null);
   const controles = [...host.querySelectorAll<HTMLInputElement>('input, select')];
-  assert.deepEqual(controles.map((c) => c.name), ['razaoSocial', 'cnpj', 'regime']);
+  assert.deepEqual(controles.map((c) => c.name), ['razaoSocial', 'cnpj', 'regime', 'encarregadoNome', 'encarregadoEmail']);
   for (const controle of controles) {
     assert.ok(controle.id, `${controle.name} tem id`);
     assert.ok(host.querySelector(`label[for="${controle.id}"]`), `${controle.name} tem <label for>`);

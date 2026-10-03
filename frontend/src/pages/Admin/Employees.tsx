@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { KeyRound, Lock, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
-import { Employee, EmployeeForm } from '../../services/employeeService';
+import { Download, EyeOff, History, KeyRound, Lock, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import { useFuncionarios, useInvalidarPorColaboradores, useSalvarColaborador } from '../../queries/funcionarios';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
@@ -15,6 +16,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import Field, { Input } from '../../components/ui/Field';
 import { useToast } from '../../components/ui/toastContext';
 import { mensagemDeErro } from '../../utils/erros';
+import { baixarJson } from '../../utils/download';
 import { useAuth } from '../../contexts/AuthContext';
 import { podeGerirCadastro, motivoDeNegacaoDoCadastro } from '../../utils/permissoes';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -39,6 +41,7 @@ const Employees: React.FC = () => {
   const canEdit = (employee: Employee) => podeGerirCadastro(user, employee);
   const isManageable = (employee: Employee) => canEdit(employee) && !(user?.funcionarioId != null && String(user.funcionarioId) === employee.id);
   const toast = useToast();
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [busca, setBusca] = useState('');
@@ -80,6 +83,19 @@ const Employees: React.FC = () => {
 
   const openLifecycle = (kind: LifecycleKind, employee: Employee) => setLifecycleAction({ kind, employee });
 
+  // Portabilidade (LGPD): a cópia dos dados do colaborador desce como arquivo JSON. O nome do arquivo usa o código do cadastro.
+  const handleExport = async (employee: Employee) => {
+    try {
+      baixarJson(`colaborador-${employee.id}.json`, await employeeService.exportData(employee.id));
+      toast.success(`Dados de ${employee.nomeCompleto} exportados.`);
+    } catch (err) {
+      toast.error(mensagemDeErro(err, 'Erro ao exportar os dados do colaborador.'));
+    }
+  };
+
+  const openHistory = (employee: Employee) =>
+    navigate(`/admin/auditoria?colaborador=${employee.id}&nome=${encodeURIComponent(employee.nomeCompleto)}`);
+
   // A página pode esvaziar com a exclusão: volta para a anterior.
   const handleLifecycleDone = async () => {
     if (lifecycleAction?.kind === 'delete' && employees.length === 1 && page > 1) setPage(page - 1);
@@ -109,6 +125,7 @@ const Employees: React.FC = () => {
       cell: (emp) => (
         <>
           <Badge tone={TOM_DO_STATUS[emp.status] ?? 'neutral'}>{emp.status || 'Ativo'}</Badge>
+          {emp.anonimizado && <Badge tone="info" className="ml-2">Anonimizado</Badge>}
           {emp.status === 'Inativo' && emp.dataDesligamento && (
             <span className="mt-1 block text-xs text-ink-muted" title={emp.motivoDesligamento}>
               Desde {formatDate(emp.dataDesligamento)}{emp.motivoDesligamento ? ` · ${emp.motivoDesligamento}` : ''}
@@ -122,22 +139,25 @@ const Employees: React.FC = () => {
       header: 'Ações',
       align: 'right',
       semRotuloNoCartao: true,
-      cell: (emp) => !canEdit(emp) ? (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-ink-muted" title={motivoDeNegacaoDoCadastro(user, emp)}>
-          <Lock size={14} aria-hidden="true" />
-          <span>Só o Administrador</span>
-        </span>
-      ) : (
-        <span className="flex justify-end gap-1">
-          <IconButton label={`Editar colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}>
-            <Pencil size={18} aria-hidden="true" />
-          </IconButton>
-          {isManageable(emp) && emp.perfilAcesso !== null && emp.status !== 'Inativo' && (
+      cell: (emp) => (
+        <span className="flex flex-wrap items-center justify-end gap-1">
+          {!canEdit(emp) && (
+            <span className="mr-1 inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-ink-muted" title={motivoDeNegacaoDoCadastro(user, emp)}>
+              <Lock size={14} aria-hidden="true" />
+              <span>Só o Administrador</span>
+            </span>
+          )}
+          {canEdit(emp) && !emp.anonimizado && (
+            <IconButton label={`Editar colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}>
+              <Pencil size={18} aria-hidden="true" />
+            </IconButton>
+          )}
+          {isManageable(emp) && !emp.anonimizado && emp.perfilAcesso !== null && emp.status !== 'Inativo' && (
             <IconButton label={`Redefinir senha de ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('reset', emp)}>
               <KeyRound size={18} aria-hidden="true" />
             </IconButton>
           )}
-          {isManageable(emp) && (emp.status === 'Inativo' ? (
+          {isManageable(emp) && !emp.anonimizado && (emp.status === 'Inativo' ? (
             <IconButton label={`Reativar colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('reactivate', emp)}>
               <UserCheck size={18} aria-hidden="true" />
             </IconButton>
@@ -146,9 +166,20 @@ const Employees: React.FC = () => {
               <UserMinus size={18} aria-hidden="true" />
             </IconButton>
           ))}
-          {isManageable(emp) && !emp.temMovimento && (
+          {isManageable(emp) && !emp.anonimizado && !emp.temMovimento && (
             <IconButton label={`Excluir cadastro de ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('delete', emp)} className="hover:text-danger">
               <Trash2 size={18} aria-hidden="true" />
+            </IconButton>
+          )}
+          <IconButton label={`Ver o histórico de ${emp.nomeCompleto}`} size="sm" onClick={() => openHistory(emp)}>
+            <History size={18} aria-hidden="true" />
+          </IconButton>
+          <IconButton label={`Exportar os dados de ${emp.nomeCompleto}`} size="sm" onClick={() => handleExport(emp)}>
+            <Download size={18} aria-hidden="true" />
+          </IconButton>
+          {user?.role === 'Administrador' && emp.status === 'Inativo' && !emp.anonimizado && (
+            <IconButton label={`Anonimizar o cadastro de ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('anonymize', emp)} className="hover:text-danger">
+              <EyeOff size={18} aria-hidden="true" />
             </IconButton>
           )}
         </span>

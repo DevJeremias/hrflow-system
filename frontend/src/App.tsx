@@ -24,6 +24,8 @@ const DepartmentsRoles = lazy(() => import('./pages/Admin/OrgStructure'));
 const Payroll = lazy(() => import('./pages/Admin/Payroll'));
 const Users = lazy(() => import('./pages/Admin/Users'));
 const Company = lazy(() => import('./pages/Admin/Company'));
+const Approvals = lazy(() => import('./pages/Admin/Approvals'));
+const Audit = lazy(() => import('./pages/Admin/Audit'));
 const TimeTracking = lazy(() => import('./pages/Admin/TimeTracking'));
 const EmployeeHome = lazy(() => import('./pages/Portal/EmployeeDashboard'));
 const Payslips = lazy(() => import('./pages/Portal/Payslips'));
@@ -112,6 +114,8 @@ function App() {
           >
             <Route index element={<Dashboard />} />
             <Route path="colaboradores" element={<Employees />} />
+            <Route path="aprovacoes" element={<Approvals />} />
+            <Route path="auditoria" element={<Audit />} />
             <Route path="estrutura" element={<ProtectedRoute allowedRoles={['Administrador']}><DepartmentsRoles /></ProtectedRoute>} />
             <Route path="folha" element={<Payroll />} />
             <Route path="empresa" element={<Company />} />

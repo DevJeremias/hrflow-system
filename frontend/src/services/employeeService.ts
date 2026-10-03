@@ -24,6 +24,8 @@ export interface Employee {
   perfilAcesso?: string | null;
   // Com ponto ou justificativa o cadastro não pode ser excluído, só inativado.
   temMovimento?: boolean;
+  // Os dados pessoais foram apagados a pedido do titular: o cadastro não muda mais.
+  anonimizado?: boolean;
   
   dataNascimento?: string;
   enderecoCompleto?: string;
@@ -63,6 +65,7 @@ const mapEmployee = (d: FuncionarioApi): Employee => ({
   motivoDesligamento: d.motivo_desligamento || '',
   perfilAcesso: d.usuario_perfil ?? null,
   temMovimento: Boolean(d.tem_movimento),
+  anonimizado: Boolean(d.anonimizado),
   dataAdmissao: d.data_admissao ? d.data_admissao.split('T')[0] : '',
   dataNascimento: d.data_nascimento ? d.data_nascimento.split('T')[0] : '',
   enderecoCompleto: d.endereco || '',
@@ -181,6 +184,22 @@ export const employeeService = {
       errorMessage: (err) => err?.erro || 'Erro ao redefinir a senha'
     });
     return data.senhaProvisoria;
+  },
+
+  // Tudo o que o sistema guarda do colaborador (LGPD: acesso e portabilidade), como o JSON que a API entrega.
+  exportData: (id: string): Promise<unknown> =>
+    httpClient<unknown>(`${API_URL}/${id}/exportar`, {
+      auth: true,
+      errorMessage: (err) => err?.erro || 'Erro ao exportar os dados do colaborador'
+    }),
+
+  // Irreversível: apaga CPF, nome, e-mail, endereço e dados bancários de quem já foi desligado.
+  anonymize: async (id: string): Promise<void> => {
+    await httpClient(`${API_URL}/${id}/anonimizar`, {
+      method: 'POST',
+      auth: true,
+      errorMessage: (err) => err?.erro || 'Erro ao anonimizar o colaborador'
+    });
   },
 
   delete: async (id: string): Promise<void> => {

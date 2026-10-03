@@ -13,6 +13,8 @@ import {
   FileText,
   User as UserIcon,
   UserCog,
+  ClipboardCheck,
+  History,
   Command
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +34,8 @@ const ICONES: Record<IconeDoMenu, React.ReactNode> = {
   empresa: <Landmark size={20} />,
   gestaoPonto: <Clock size={20} />,
   usuarios: <UserCog size={20} />,
+  aprovacoes: <ClipboardCheck size={20} />,
+  auditoria: <History size={20} />,
   ponto: <Clock size={20} />,
   holerite: <FileText size={20} />,
   solicitacoes: <Calendar size={20} />,
