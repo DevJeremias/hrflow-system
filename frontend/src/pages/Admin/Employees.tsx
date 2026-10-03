@@ -176,7 +176,7 @@ const Employees: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400" title={motivoDeNegacaoDoCadastro(user, emp)}>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 whitespace-nowrap" title={motivoDeNegacaoDoCadastro(user, emp)}>
                           <Lock size={14} />
                           <span>Só o Administrador</span>
                         </span>
