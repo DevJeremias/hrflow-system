@@ -13,6 +13,7 @@ import { dashboardRoutes } from './modules/dashboard/index.ts';
 import { perfilRoutes } from './modules/perfil/index.ts';
 import { estruturaRoutes } from './modules/estrutura/index.ts';
 import { folhaRoutes } from './modules/folha/index.ts';
+import { empresaRoutes } from './modules/empresa/index.ts';
 
 // Importação do Middleware de Proteção
 import authMiddleware from './shared/middlewares/authMiddleware.ts';
@@ -58,6 +59,7 @@ export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUS
     app.use('/api/ponto', authMiddleware, pontoRoutes);
     app.use('/api/estrutura', authMiddleware, estruturaRoutes);
     app.use('/api/folha', authMiddleware, folhaRoutes);
+    app.use('/api/empresa', authMiddleware, empresaRoutes);
     app.use('/api/perfil', authMiddleware, perfilRoutes);
     app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 

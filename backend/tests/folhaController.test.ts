@@ -1,6 +1,6 @@
-// Teste de integração do holerite contra um MySQL de teste descartável, com o schema
-// aplicado pelas migrations (tests/support/bancoDeTeste.ts, variáveis HRFLOW_TEST_DB_*).
-// Sem HRFLOW_TEST_DB_HOST o teste é pulado, não aprovado.
+// Teste de integração do holerite individual contra um MySQL de teste descartável, com o schema
+// aplicado pelas migrations (tests/support/bancoDeTeste.ts, variáveis HRFLOW_TEST_DB_*): a identidade
+// vem do vínculo usuário/funcionário, não do id. Sem HRFLOW_TEST_DB_HOST o teste é pulado, não aprovado.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
@@ -8,6 +8,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import db from '../shared/db/pool.ts';
 import { meuHolerite } from '../modules/folha/folha.controller.ts';
+import * as service from '../modules/folha/folha.service.ts';
 
 type Token = NonNullable<Request['usuario']>;
 
@@ -71,31 +72,37 @@ test('meuHolerite resolve a identidade pelo vínculo usuário/funcionário', { s
     assert.notEqual(usuarioBruno, bruno);
     assert.ok(usuarioAnaSemColisao > elisa, 'nenhum funcionário tem o id deste usuário');
 
-    // O controller só lê id e empresa_id do token; o authMiddleware garante o resto em produção.
-    const consultar = async (token: Partial<Token>) => {
+    // Folha de outubro fechada com o cadastro como está: Davi (inativo) fica fora, Elisa é da empresa B.
+    await db.query('UPDATE empresas SET razao_social = ?, cnpj = ? WHERE id = ?', ['Razao Social Ficticia A Ltda', '11222333000181', empresaA]);
+    await service.processarFolha({ empresaId: empresaA, competencia: '2026-10' });
+    await service.fecharFolha({ empresaId: empresaA, usuarioId: admin, competencia: '2026-10' });
+
+    // O controller só lê id e empresa_id do token e a competência validada; o authMiddleware e o
+    // validarEntrada garantem o resto em produção.
+    const consultar = async (token: Partial<Token>, competencia = '2026-10') => {
         const res = respostaFalsa();
-        await meuHolerite({ usuario: token } as Request, res as unknown as Response);
+        await meuHolerite({ usuario: token, dadosValidados: { query: { competencia } } } as Request, res as unknown as Response);
         return res;
     };
 
     await t.test('entrega o holerite do funcionário vinculado, não o de mesmo id do usuário', async () => {
         const res = await consultar({ id: usuarioBruno, empresa_id: empresaA });
         assert.equal(res.statusCode, 200);
-        assert.equal(res.corpo[0].id, String(bruno));
-        assert.equal(res.corpo[0].name, 'Bruno Teste');
-        assert.equal(res.corpo[0].baseSalary, 2500);
-        assert.equal(res.corpo[0].role, 'Desenvolvedor(a)');
+        assert.equal(res.corpo.id, String(bruno));
+        assert.equal(res.corpo.name, 'Bruno Teste');
+        assert.equal(res.corpo.baseSalary, 2500);
+        assert.equal(res.corpo.role, 'Desenvolvedor(a)');
     });
 
     await t.test('não devolve 404 quando nenhum funcionário tem o id do usuário', async () => {
         const res = await consultar({ id: usuarioAnaSemColisao, empresa_id: empresaA });
         assert.equal(res.statusCode, 200);
-        assert.equal(res.corpo[0].name, 'Ana Teste');
+        assert.equal(res.corpo.name, 'Ana Teste');
     });
 
     await t.test('ignora o funcionario_id do token e segue o vínculo vigente no banco', async () => {
         const res = await consultar({ id: usuarioBruno, empresa_id: empresaA, funcionario_id: carla });
-        assert.equal(res.corpo[0].name, 'Bruno Teste');
+        assert.equal(res.corpo.name, 'Bruno Teste');
     });
 
     await t.test('usuário sem vínculo recebe 404 mesmo havendo funcionário com o mesmo id', async () => {
