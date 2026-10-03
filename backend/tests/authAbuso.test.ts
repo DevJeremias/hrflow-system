@@ -44,7 +44,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     let criarAuthRouter: typeof import('../modules/auth/index.ts').criarAuthRouter;
     const servidores: http.Server[] = [];
 
-    // Monta o mesmo desenho do server.js: auth antes do parser global de 10mb.
+    // Monta o mesmo desenho do app.ts: auth antes do parser global de 10mb.
     const subir = async (limites = {}, trustProxy: boolean | number = false) => {
         const app = express();
         app.set('trust proxy', trustProxy);
@@ -94,7 +94,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         process.env.DB_NAME = dbName;
         process.env.JWT_SECRET = jwtSecret;
         // Só depois das variáveis de ambiente acima: o pool e o segredo JWT as leem ao carregar.
-        pool = (await import('../config/db.js')).default;
+        pool = (await import('../shared/db/pool.ts')).default;
         ({ criarAuthRouter } = await import('../modules/auth/index.ts'));
     });
 

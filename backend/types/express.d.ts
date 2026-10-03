@@ -1,9 +1,9 @@
-// O que os middlewares em JavaScript penduram na requisição. Opcional porque só existe depois
+// O que os middlewares de shared/middlewares penduram na requisição. Opcional porque só existe depois
 // deles: os handlers conferem em vez de presumir.
 declare global {
     namespace Express {
         interface Request {
-            // Claims do token, preenchidas por middlewares/authMiddleware.js (ver modules/auth/auth.sessao.ts).
+            // Claims do token, preenchidas por shared/middlewares/authMiddleware.ts (ver modules/auth/auth.sessao.ts).
             usuario?: {
                 id: number;
                 perfil: string;
@@ -12,7 +12,7 @@ declare global {
                 nome: string;
                 sv: number;
             };
-            // Entrada que o schema da rota aceitou e normalizou, preenchida por middlewares/validarEntrada.js.
+            // Entrada que o schema da rota aceitou e normalizou, preenchida por shared/middlewares/validarEntrada.ts.
             dadosValidados?: { params?: unknown; body?: unknown; query?: unknown };
         }
     }

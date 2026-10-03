@@ -7,11 +7,10 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "allowJs": true,
-    "checkJs": false,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["modules", "types"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
 }

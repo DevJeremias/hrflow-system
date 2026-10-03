@@ -2,7 +2,7 @@
 // precisam pertencer à empresa de quem opera.
 //
 // Exige um MySQL real, porque o defeito está na combinação entre os controllers e os JOINs.
-// O banco é criado e migrado por tests/support/bancoDeTeste.js (variáveis HRFLOW_TEST_DB_*).
+// O banco é criado e migrado por tests/support/bancoDeTeste.ts (variáveis HRFLOW_TEST_DB_*).
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -11,10 +11,10 @@ import express from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 // banco vem antes do pool e do authMiddleware: ele define as variáveis de ambiente que eles leem
 // ao carregar.
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
-import pool from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { estruturaRoutes } from '../modules/estrutura/index.ts';
 

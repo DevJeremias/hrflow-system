@@ -1,5 +1,5 @@
-import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } from '../../schemas/comum.js';
-import { LIMITES } from '../auth/auth.schemas.ts';
+import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } from '../../shared/schemas/comum.ts';
+import { LIMITES } from '../../shared/schemas/validadores.ts';
 import { validarAvatar } from '../funcionarios/index.ts';
 
 const avatar = campo((valor: unknown) => {
@@ -25,9 +25,8 @@ export const atualizarMeusDados = corpo({
 
 export const alterarSenha = corpo({ senhaAtual, novaSenha: senhaNova });
 
-// O que cada schema entrega em req.dadosValidados. schemas/comum.js ainda é JavaScript e seus
-// construtores não declaram o tipo que devolvem, então estes tipos são escritos à mão: mude-os
-// junto com o schema.
+// O que cada schema entrega em req.dadosValidados. Os tipos são escritos à mão: mude-os junto com
+// o schema.
 export interface CorpoDeAtualizarMeusDados {
     nome: string;
     email: string;

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import type { ZodType } from 'zod';
 import { criarFuncionario, atualizarFuncionario } from '../modules/funcionarios/funcionarios.schemas.ts';
 import { validarAvatar, TAMANHO_MAXIMO_BYTES } from '../modules/funcionarios/index.ts';
-import { dataUrl } from './support/imagens.js';
+import { dataUrl } from './support/imagens.ts';
 
 const recusa = (schema: ZodType, entrada: unknown, esperado: RegExp) => {
     const resultado = schema.safeParse(entrada);

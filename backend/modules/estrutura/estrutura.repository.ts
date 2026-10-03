@@ -1,7 +1,7 @@
 // Todo o SQL da estrutura organizacional: departamentos e cargos. Devolve linhas como o MySQL as
 // entrega e não conhece HTTP nem regra de negócio. Toda consulta filtra por empresa_id.
 import type { Pool, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import db from '../../config/db.js';
+import db from '../../shared/db/pool.ts';
 import type { DadosDoCargo, DadosDoDepartamento } from './estrutura.schemas.ts';
 
 export interface DepartamentoListado extends RowDataPacket {

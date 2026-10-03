@@ -1,15 +1,39 @@
 # Back-end do HRFlow
 
-API REST em Node.js com Express e MySQL. Este README descreve o padrão dos módulos novos; a instalação, o banco e os testes estão no README da raiz.
+API REST em Node.js com Express e MySQL. Este README descreve a estrutura do código e as regras que o lint e o CI fazem valer; a instalação, o banco e os testes estão no README da raiz.
 
-## Estado atual
+## Estrutura
 
-O back-end está sendo reorganizado como um monólito modular, módulo por módulo. Convivem dois formatos:
+O back-end é um monólito modular escrito inteiramente em TypeScript, com módulos ES.
 
-* **Código legado em JavaScript (CommonJS):** `controllers/`, `routes/`, `schemas/`, `utils/` e `middlewares/`, que ainda misturam HTTP, regra e SQL no controlador. Nada disso muda até o módulo correspondente ser migrado.
-* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência; `modules/dashboard` e `modules/folha` já seguem o padrão. Para escrever um módulo novo, copie a estrutura dele.
+```text
+backend/
+├── app.ts                  # monta o app Express: parsers, rotas de cada módulo e tratador de erros
+├── server.ts               # ponto de entrada: carrega o .env, testa o banco e abre a porta
+├── modules/<área>/         # uma pasta por área do domínio, em camadas (padrão abaixo)
+├── shared/                 # o que mais de uma área usa
+│   ├── config/             # segredo JWT, leitura de TRUST_PROXY
+│   ├── db/                 # pool do MySQL, aplicador de migrations, fixtures de desenvolvimento
+│   ├── middlewares/        # autenticação, perfis, validação de entrada, limites de tentativas, erros
+│   ├── schemas/            # blocos zod comuns, regras de texto, e-mail e senha, paginação
+│   └── utils/              # tradução de erros do MySQL, paginação das respostas
+├── migrations/             # schema versionado (SQL numerado) e auditorias; não é código
+├── tests/                  # testes de integração e de unidade (*.test.ts)
+└── types/                  # declarações que só o tsc usa (express.d.ts)
+```
 
-Migre um módulo inteiro por vez, sem reescrever os outros.
+As áreas são `auth`, `dashboard`, `estrutura`, `folha`, `funcionarios`, `perfil`, `ponto` e `saude` (health e ready, só rotas). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
+
+## Regras de estrutura
+
+O `npm run lint` (na raiz ou aqui) e o CI fazem valer o que segue. Os testes das regras estão em `tests/estruturaGuardas.test.ts`.
+
+* **Código novo vai em `modules/<área>` ou `shared/`.** Na raiz só existem `app.ts`, `server.ts`, `modules/`, `shared/`, `migrations/`, `tests/` e `types/`. Uma pasta nova como `controllers/`, `routes/` ou `utils/` na raiz é recusada pela regra `estrutura/codigo-no-lugar` do `eslint.config.mjs`.
+* **Uma área só importa outra pelo `index.ts` dela.** `modules/ponto` pode importar `../auth/index.ts`, nunca `../auth/auth.service.ts`: o interior de uma área muda sem aviso, o `index.ts` é o contrato. Vale também para `import type`. A regra é o `no-restricted-imports` do `eslint.config.mjs`, gerado a partir das pastas de `modules/`, então uma área nova entra sozinha.
+* **O que duas áreas precisam vai para `shared/`.** Quando uma área importa de outra só para reaproveitar uma regra (como os limites e as validações de texto, e-mail e senha, hoje em `shared/schemas/validadores.ts`), o certo é mover a regra para `shared/`, não abrir o interior da outra área.
+* **Nada de `.js` nem `.jsx` em `backend/` ou `frontend/`.** A guarda `scripts/guardar-estrutura.mts` falha o lint e o CI. As únicas exceções são as configurações de ferramenta do front-end que só são lidas em JavaScript, listadas em `CONFIGURACOES_PERMITIDAS` no próprio script; um arquivo novo só entra nessa lista se a ferramenta exigir.
+
+Dependência conhecida que o lint não cobre: `shared/middlewares/authMiddleware.ts` importa `modules/auth/auth.sessao.ts` (a leitura do token e do CSRF), então `shared/` ainda depende de uma área. Importa o arquivo, não o `index.ts`, porque o `index.ts` monta o router de auth, que importa o próprio `authMiddleware`.
 
 ## Estrutura de um módulo
 
@@ -32,40 +56,37 @@ Cada camada só conhece a de baixo:
 rotas -> controlador -> serviço -> repositório -> banco
 ```
 
-* **Rotas** montam o `Router`. Autorização por perfil (`verificarPerfil`, `verificarAcessoFuncionario`) e validação de entrada (`validarEntrada` com os schemas do módulo) ficam aqui, antes do controlador. O `authMiddleware` é aplicado no `server.js`, ao montar o módulo.
+* **Rotas** montam o `Router`. Autorização por perfil (`verificarPerfil`, `verificarAcessoFuncionario`) e validação de entrada (`validarEntrada` com os schemas do módulo) ficam aqui, antes do controlador. O `authMiddleware` é aplicado no `app.ts`, ao montar o módulo.
 * **Controlador** é fino: extrai da requisição o que o serviço precisa (a empresa e o colaborador vêm do token em `req.usuario`, nunca do corpo), chama uma função do serviço e responde. Não tem regra nem SQL.
 * **Serviço** decide. Recebe parâmetros simples, devolve o formato que o front-end consome e lança `ErroDePonto` quando uma regra recusa a operação. O tipo do erro (`proibido`, `invalido`, `inexistente`, `conflito`) diz o que aconteceu; quem o transforma em status HTTP (403, 400, 404, 409) é o controlador.
 * **Repositório** executa as consultas e devolve as linhas como o MySQL as entrega. `emTransacao` reserva uma conexão, confirma se o trabalho terminar e desfaz se ele lançar erro; o repositório que ele entrega usa essa conexão, e é assim que o serviço mantém uma regra e a escrita dela na mesma transação.
-* **Falhas inesperadas** viram 500 com a mensagem do endpoint. Onde o endpoint já traduzia erros do MySQL em 4xx e 503 (`utils/erros.js`), o controlador liga `traduzirBanco`.
+* **Falhas inesperadas** viram 500 com a mensagem do endpoint. Onde o endpoint já traduzia erros do MySQL em 4xx e 503 (`shared/utils/erros.ts`), o controlador liga `traduzirBanco`.
 
 ## TypeScript sem etapa de build
 
-O Node 22.18 ou superior executa arquivos `.ts` tirando os tipos na hora, então `npm start`, `npm run dev` e `npm test` rodam o código-fonte direto, sem compilar. O `tsc` só confere os tipos: `npm run typecheck` aqui confere o back-end, e na raiz confere front-end e back-end e faz parte do `npm run verify`.
+O Node 22.18 ou superior executa arquivos `.ts` tirando os tipos na hora, então `npm start`, `npm run dev` e `npm test` rodam o código-fonte direto, sem compilar. O `tsc` só confere os tipos, de código e de testes com um único `tsconfig.json` (`strict`): `npm run typecheck` aqui confere o back-end, e na raiz confere front-end e back-end e faz parte do `npm run verify`.
 
 Como o Node só apaga os tipos, o código precisa ser o que a remoção de tipos suporta (`erasableSyntaxOnly` no `tsconfig.json` recusa o resto):
 
-* Nada de `enum`, `namespace` com código, propriedades de parâmetro de construtor (`constructor(private x)`) nem `import x = require()`.
+* Nada de `enum`, `namespace` com código, propriedades de parâmetro de construtor (`constructor(private x)`), `import x = require()` nem asserção `<T>valor` (use `valor as T`).
 * `import type` para o que só existe nos tipos.
-* Imports relativos levam a extensão real do arquivo: `./ponto.service.ts` para TypeScript e `../../config/db.js` para JavaScript.
-* Use exports nomeados. `modules/package.json` marca a pasta como módulo ES, e o código CommonJS pede o módulo com `require('./modules/ponto/index.ts')` e desestrutura o que precisa (`const { pontoRoutes } = require(...)`).
-
-Os arquivos JavaScript importados por um módulo (`config/db.js`, `schemas/comum.js`, os middlewares) são lidos pelo `tsc` com os tipos que ele infere, sem conferi-los (`checkJs` desligado). Duas consequências:
-
+* Imports relativos levam a extensão real do arquivo: `./ponto.service.ts`.
+* Use exports nomeados, exceto onde o arquivo tem uma única coisa a oferecer (o pool, os middlewares), que usa `export default`.
 * O que os middlewares penduram na requisição (`req.usuario`, `req.dadosValidados`) é declarado em `types/express.d.ts`. Os campos são opcionais porque só existem depois do middleware: o controlador confere em vez de presumir.
-* Os construtores de `schemas/comum.js` não declaram o tipo que devolvem, então o tipo do que cada schema entrega é escrito à mão em `ponto.schemas.ts`. Mantenha os dois juntos. Migrar `schemas/comum.js` para TypeScript permite derivar os tipos com `z.infer`.
+* Os construtores de `shared/schemas/comum.ts` declaram o tipo que devolvem, e o tipo do que cada schema entrega continua escrito à mão em `<área>.schemas.ts`. Mantenha os dois juntos.
+* O pool e o segredo JWT leem o ambiente ao serem carregados. Em `server.ts` o `import 'dotenv/config'` vem antes de tudo por isso, e nos testes o `support/bancoDeTeste.ts` é sempre o primeiro import: o ESM avalia os imports na ordem em que aparecem.
 
 ## Testes
 
-Os testes de integração ficam em `tests/`, contra um MySQL real (veja o README da raiz), e os do módulo migrado são TypeScript (`*.test.ts`, rodados pelo mesmo `node --test`). Como `tests/` ainda mistura arquivos CommonJS, o `tsc` confere os `.ts` com o `tests/tsconfig.json` (módulos ES), e `npm run typecheck` roda as duas conferências. Ao migrar um módulo:
+Os testes ficam em `tests/` e são todos TypeScript (`*.test.ts`), rodados pelo `node --test`. Os de integração usam um MySQL real (veja o README da raiz). Ao migrar ou mover código:
 
-* Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os `require` que apontam para os arquivos movidos.
+* Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os imports que apontam para os arquivos movidos.
 * Para fixar "agora", o serviço expõe `relogio.agora`; o teste a substitui e a restaura no fim.
 * Renomeações mecânicas (mover arquivos e ajustar caminhos) vão num commit separado, antes das mudanças de conteúdo, para o histórico mostrar edições em vez de arquivos novos.
 
 ## Roteiro para um módulo novo
 
 1. Crie `modules/<nome>/` com os arquivos acima. Comece pelo que depende só do domínio (regras puras, schemas) e termine nas rotas.
-2. Mova as consultas do controlador antigo para o repositório e as regras para o serviço. Duplicação que os testes já cobrem pode ser unificada; mudar o que a API responde, não.
-3. Exponha só as rotas em `index.ts` e troque o `require` no `server.js`, mantendo o `authMiddleware` ali.
-4. Aponte os testes para os arquivos novos e rode `npm run typecheck` e `npm test`.
-5. Remova o controlador, as rotas, os schemas e os utilitários antigos que deixaram de ter uso.
+2. Ponha as consultas no repositório e as regras no serviço.
+3. Exponha só as rotas em `index.ts` e monte-as no `app.ts`, mantendo o `authMiddleware` ali.
+4. Escreva os testes em `tests/` e rode `npm run lint`, `npm run typecheck` e `npm test`.

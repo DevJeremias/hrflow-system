@@ -5,15 +5,15 @@ import * as service from './ponto.service.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { TipoDeErro } from './ponto.erros.ts';
 import type { ConsultaDeJustificativas, ConsultaDePontosDaEmpresa, CorpoDaJustificativa, DiaDaJustificativa } from './ponto.schemas.ts';
-import { responderErro } from '../../utils/erros.js';
-import { enviarPagina } from '../../utils/paginacao.js';
+import { responderErro } from '../../shared/utils/erros.ts';
+import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
 type RequisicaoDoColaborador = Request<{ funcionarioId: string }>;
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { proibido: 403, invalido: 400, inexistente: 404, conflito: 409 };
 
 // Falha de regra vira a resposta que o serviço descreveu; qualquer outra é 500 com a mensagem do
-// endpoint. `traduzirBanco` também converte falhas conhecidas do MySQL em 4xx/503 (utils/erros.js).
+// endpoint. `traduzirBanco` também converte falhas conhecidas do MySQL em 4xx/503 (shared/utils/erros.ts).
 const responderFalha = (res: Response, erro: unknown, mensagem500: string, { traduzirBanco = false } = {}) => {
     if (erro instanceof ErroDePonto) return res.status(STATUS_POR_TIPO[erro.tipo]).json(erro.corpo);
     if (traduzirBanco) return responderErro(res, erro, mensagem500);

@@ -1,6 +1,6 @@
 // Regressão do SEC-06: a sessão cai na troca de senha, na inativação e na exclusão do funcionário;
 // funcionário inativo não faz login; o token dura 8 horas. Cada cenário reproduz um achado da
-// revisão técnica de 11/09/2026, de ponta a ponta contra o MySQL migrado (tests/support/bancoDeTeste.js).
+// revisão técnica de 11/09/2026, de ponta a ponta contra o MySQL migrado (tests/support/bancoDeTeste.ts).
 // Sem HRFLOW_TEST_DB_HOST os testes são marcados como ignorados, nunca como aprovados.
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,10 +8,10 @@ import type http from 'node:http';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
-import pool from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 import { criarAuthRouter } from '../modules/auth/index.ts';

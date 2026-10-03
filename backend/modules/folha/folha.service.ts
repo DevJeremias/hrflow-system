@@ -5,7 +5,7 @@ import * as repositorio from './folha.repository.ts';
 import type { FuncionarioDaFolha } from './folha.repository.ts';
 import { ErroDeFolha } from './folha.erros.ts';
 import type { ConsultaDaFolha } from './folha.schemas.ts';
-import { limiteEDeslocamento } from '../../utils/paginacao.js';
+import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 
 const NAO_DEFINIDO = 'Não definido';
 

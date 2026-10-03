@@ -1,5 +1,5 @@
-import { z, data, corpo, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../schemas/comum.js';
-import { paginacao } from '../../schemas/paginacao.js';
+import { z, data, corpo, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../shared/schemas/comum.ts';
+import { paginacao } from '../../shared/schemas/paginacao.ts';
 import * as fuso from './ponto.fuso.ts';
 
 export const LIMITE_JUSTIFICATIVA = 1000;
@@ -37,9 +37,8 @@ export const consultarPontosDaEmpresa = z.object({
     ...paginacao.shape,
 });
 
-// O que cada schema entrega em req.dadosValidados. schemas/comum.js ainda é JavaScript e seus
-// construtores não declaram o tipo que devolvem, então estes tipos são escritos à mão: mude-os
-// junto com o schema.
+// O que cada schema entrega em req.dadosValidados. Os tipos são escritos à mão: mude-os junto com
+// o schema.
 export interface DiaDaJustificativa {
     data: string;
 }

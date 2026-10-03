@@ -1,7 +1,7 @@
 import express from 'express';
 import * as folhaController from './folha.controller.ts';
-import verificarPerfil from '../../middlewares/roleMiddleware.js';
-import validarEntrada from '../../middlewares/validarEntrada.js';
+import verificarPerfil from '../../shared/middlewares/roleMiddleware.ts';
+import validarEntrada from '../../shared/middlewares/validarEntrada.ts';
 import { consultarFolha } from './folha.schemas.ts';
 
 export const folhaRoutes = express.Router();

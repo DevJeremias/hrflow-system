@@ -1,4 +1,4 @@
-import { z, opcional, texto, textoLivre, inteiroPositivo, dinheiro, corpo } from '../../schemas/comum.js';
+import { z, opcional, texto, textoLivre, inteiroPositivo, dinheiro, corpo } from '../../shared/schemas/comum.ts';
 
 export const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 
@@ -16,9 +16,8 @@ export const cargo = corpo({
     salario_base: opcional(dinheiro('Salário base')).transform((salario) => salario ?? 0),
 });
 
-// O que cada schema entrega em req.dadosValidados. schemas/comum.js ainda é JavaScript e seus
-// construtores não declaram o tipo que devolvem, então estes tipos são escritos à mão: mude-os
-// junto com o schema.
+// O que cada schema entrega em req.dadosValidados. Os tipos são escritos à mão: mude-os junto com
+// o schema.
 export interface IdDaRota {
     id: number;
 }

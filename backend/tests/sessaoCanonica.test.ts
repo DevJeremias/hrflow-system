@@ -1,16 +1,16 @@
 // SEC-08 (lado do servidor): GET /api/auth/sessao responde "quem sou eu" com perfil e vínculo,
 // lidos do banco, e todo token inválido ou expirado é 401, que o front-end trata em um só lugar.
-// Banco e variáveis em tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST o teste é pulado.
+// Banco e variáveis em tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST o teste é pulado.
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
-import pool from '../config/db.js';
-import { carregarFixtures } from '../seeds/fixtures.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
+import { carregarFixtures } from '../shared/db/fixtures.ts';
 import { authRoutes } from '../modules/auth/index.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
 

@@ -49,6 +49,10 @@ jobs:
           node-version-file: .node-version
           cache: npm
 
+      # Sem dependências: falha cedo se entrar .js ou .jsx em backend/ ou frontend/ (scripts/guardar-estrutura.mts).
+      - name: Estrutura do código
+        run: node scripts/guardar-estrutura.mts
+
       - run: npm ci
 
       # Schema reproduzível: migrations e fixtures da main aplicadas num banco novo.

@@ -1,7 +1,7 @@
 // Departamentos e cargos devolvem os números reais (colaboradores, ocupantes, cargos), a sigla do
 // setor em cada cargo, e a exclusão não revela nem toca registros de outra empresa.
 //
-// Exige um MySQL real (variáveis HRFLOW_TEST_DB_*, ver tests/support/bancoDeTeste.js).
+// Exige um MySQL real (variáveis HRFLOW_TEST_DB_*, ver tests/support/bancoDeTeste.ts).
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -10,11 +10,11 @@ import express from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
 // banco vem antes do pool, do authMiddleware e das fixtures: ele define as variáveis de ambiente
 // que eles leem ao carregar.
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
-import pool from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
-import { carregarFixtures } from '../seeds/fixtures.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
+import { carregarFixtures } from '../shared/db/fixtures.ts';
 import { estruturaRoutes } from '../modules/estrutura/index.ts';
 
 interface Departamento extends RowDataPacket {
