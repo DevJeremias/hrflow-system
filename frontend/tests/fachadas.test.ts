@@ -67,7 +67,7 @@ const instalarApi = (perfil: 'Administrador' | 'Colaborador') => {
     const caminho = new URL(String(entrada), 'http://localhost').pathname;
     chamadas.push(caminho);
     switch (caminho) {
-      case '/api/auth/sessao': return json({ id: 1, nome: 'Rita Teste', perfil, funcionario_id: perfil === 'Colaborador' ? 7 : null });
+      case '/api/auth/sessao': return json({ id: 1, nome: 'Rita Teste', perfil, empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: perfil === 'Colaborador' ? 7 : null });
       case '/api/folha/processar': return json([holerite], { 'X-Total-Count': '1' });
       case '/api/folha/meu-holerite': return json([holerite]);
       case '/api/funcionarios': return json([{ id: 7, nome: 'Ana Souza', email: 'ana@exemplo.invalid', cargo_nome: 'Dev', departamento_nome: 'Eng', status: 'Ativo' }], { 'X-Total-Count': '1' });

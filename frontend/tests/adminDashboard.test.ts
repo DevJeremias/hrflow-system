@@ -22,7 +22,7 @@ const originalFetch = globalThis.fetch;
 
 // Fixtures da Alfa: 3 colaboradores ativos, 4 departamentos e 4 cargos.
 const resumoDaAlfa = { colaboradoresAtivos: 3, colaboradoresInativos: 1, departamentos: 4, cargos: 4, marcacoesHoje: 2 };
-const sessaoDoAdmin = { id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', funcionario_id: null, avatar: null };
+const sessaoDoAdmin = { id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: null, avatar: null };
 
 const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), { status });
 

@@ -14,6 +14,7 @@ export interface User {
   nome: string;
   role: Perfil;
   funcionarioId: number | null;
+  empresaNome: string;
   avatar?: string | null;
 }
 
@@ -24,11 +25,12 @@ const ehId = (valor: unknown): valor is number => Number.isInteger(valor) && (va
 // Devolve null se algo não bate: quem chama trata como sessão inválida.
 export const lerSessao = (dados: unknown): User | null => {
   if (typeof dados !== 'object' || dados === null) return null;
-  const { id, nome, perfil, funcionario_id: funcionarioId, avatar } = dados as Record<string, unknown>;
+  const { id, nome, perfil, funcionario_id: funcionarioId, empresa_nome: empresaNome, avatar } = dados as Record<string, unknown>;
 
   if (!ehId(id) || typeof nome !== 'string' || !nome.trim() || !ehPerfil(perfil)) return null;
+  if (typeof empresaNome !== 'string' || !empresaNome.trim()) return null;
   if (funcionarioId !== null && !ehId(funcionarioId)) return null;
   if (avatar !== null && avatar !== undefined && typeof avatar !== 'string') return null;
 
-  return { id, nome, role: perfil, funcionarioId, avatar: avatar ?? null };
+  return { id, nome, role: perfil, funcionarioId, empresaNome, avatar: avatar ?? null };
 };
