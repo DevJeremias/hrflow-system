@@ -17,6 +17,7 @@ export interface Role {
   id: string;
   title: string;
   department: string;
+  departmentId: string;
   deptSigla: string;
   level: string;
   salary: number;
@@ -74,6 +75,7 @@ export const getRoles = async (): Promise<Role[]> => {
     id: c.id.toString(),
     title: c.nome,
     department: c.departamento_nome,
+    departmentId: c.departamento_id?.toString() || '',
     deptSigla: c.departamento_nome,
     level: c.nivel || 'Júnior',
     salary: parseFloat(c.salario_base) || 0,

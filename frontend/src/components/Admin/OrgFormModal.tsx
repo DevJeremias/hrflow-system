@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { getStandardItems } from '../../services/departmentsRolesService';
+import ErrorAlert from '../ErrorAlert';
+import { mensagemDeErro } from '../../utils/erros';
 
 // ==========================================
 // SUBCOMPONENTE: FORMULÁRIO DE DEPARTAMENTO
@@ -124,7 +126,7 @@ interface Props {
   item?: any;
   departments: any[];
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: any) => Promise<void>;
 }
 
 const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSave }) => {
@@ -133,6 +135,10 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
   const [earnings, setEarnings] = useState<any[]>([]);
   const [deductions, setDeductions] = useState<any[]>([]);
   const [dictionary, setDictionary] = useState<any>({ earnings: [], deductions: [] });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // O estado só muda no próximo render: o ref fecha a janela entre dois cliques seguidos.
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     getStandardItems().then(setDictionary);
@@ -143,15 +149,22 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
     }
   }, [item, isDept]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
-    
-    if (!isDept) {
-      onSave({ ...data, earnings, deductions, id: item?.id });
-    } else {
-      onSave({ ...data, id: item?.id });
+
+    submittingRef.current = true;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSave(isDept ? { ...data, id: item?.id } : { ...data, earnings, deductions, id: item?.id });
+    } catch (error) {
+      setSubmitError(mensagemDeErro(error, 'Não foi possível salvar. Tente novamente.'));
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -189,12 +202,14 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
             />
           )}
 
+          {submitError && <div className="mt-8"><ErrorAlert message={submitError} /></div>}
+
           <div className="mt-12 pt-8 border-t border-slate-100 flex gap-4">
-            <button type="button" onClick={onClose} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all">
+            <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50">
               Cancelar
             </button>
-            <button type="submit" className="flex-[2] py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95">
-              Finalizar Registro
+            <button type="submit" disabled={submitting} className="flex-[2] py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
+              {submitting ? 'Salvando...' : 'Finalizar Registro'}
             </button>
           </div>
         </form>

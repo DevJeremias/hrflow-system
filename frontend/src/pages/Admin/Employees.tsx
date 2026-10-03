@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
-import { Employee, employeeService } from '../../services/employeeService';
+import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
@@ -38,14 +38,11 @@ const Employees: React.FC = () => {
     Promise.resolve().then(() => loadEmployees(1));
   }, [loadEmployees]);
 
-  const handleSave = async (employeeData: Partial<Employee>) => {
-    try {
-      await employeeService.save(employeeData);
-      await loadEmployees(page);
-      setIsModalOpen(false);
-    } catch {
-      alert("Erro ao guardar colaborador.");
-    }
+  // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
+  const handleSave = async (employeeData: EmployeeForm) => {
+    await employeeService.save(employeeData);
+    await loadEmployees(page);
+    setIsModalOpen(false);
   };
 
   const handleDelete = async (id: string) => {
