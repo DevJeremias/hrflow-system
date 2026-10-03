@@ -62,6 +62,61 @@ jobs:
       # Lint, typecheck, build e testes de backend em banco migrado.
       - run: npm run verify
 
+  # Os dois fluxos de ponta a ponta (e2e/): navegador de verdade contra a API e o front-end de verdade,
+  # num banco criado pelas migrations e fixtures. Job à parte para rodar em paralelo ao verify.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          # Banco descartável do job: a senha não protege nada além dele.
+          MYSQL_ROOT_PASSWORD: ci-mysql-descartavel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pci-mysql-descartavel"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_USER: root
+      DB_PASS: ci-mysql-descartavel
+      DB_NAME: hrflow_e2e
+      JWT_SECRET: ci-segredo-jwt-com-pelo-menos-trinta-e-dois-bytes
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci
+
+      - name: Banco de dados (migrations e fixtures)
+        run: npm run db:setup
+
+      - name: Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - run: npm run e2e
+
+      # Relatório e traces só interessam quando um fluxo falha.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+
   # Dependências de produção sem vulnerabilidade conhecida. Falha por advisory novo, não por mudança do PR.
   audit:
     runs-on: ubuntu-latest

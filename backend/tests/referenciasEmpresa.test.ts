@@ -7,16 +7,14 @@ import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import express from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 // banco vem antes do pool e do authMiddleware: ele define as variáveis de ambiente que eles leem
 // ao carregar.
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
+import { criarApp } from '../app.ts';
 import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
-import { estruturaRoutes } from '../modules/estrutura/index.ts';
 
 interface Cargo extends RowDataPacket {
     id: number;
@@ -64,10 +62,7 @@ describe('referências de cargo e departamento entre empresas', { skip: banco.sk
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use(express.json());
-        app.use('/api/estrutura', authMiddleware, estruturaRoutes);
-        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
+        const app = criarApp();
         const servidor = http.createServer(app);
         server = servidor;
         await new Promise<void>((resolve) => servidor.listen(0, '127.0.0.1', resolve));

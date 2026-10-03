@@ -55,6 +55,50 @@ describe('migrations', { skip: banco.skip }, () => {
         assert.deepEqual(await migrator.migrar(principal), []);
     });
 
+    it('o banco do arquivo, copiado do molde, é idêntico a um migrado do zero', async () => {
+        await migrator.removerBanco(parcial);
+        await migrator.criarBanco(parcial);
+        await migrator.migrar(parcial);
+        const alvo = await migrator.conectar(parcial);
+        try {
+            const descrever = async (executor: Connection, banco: string) => {
+                const [tabelas] = await executor.query<RowDataPacket[]>(
+                    "SELECT TABLE_NAME AS nome FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME", [banco]
+                );
+                const esquema: Record<string, string> = {};
+                for (const { nome } of tabelas) {
+                    const [[criacao]] = await executor.query<RowDataPacket[]>(`SHOW CREATE TABLE \`${banco}\`.\`${nome}\``);
+                    esquema[nome] = criacao['Create Table'].replace(/ AUTO_INCREMENT=\d+/, '');
+                }
+                const [triggers] = await executor.query<RowDataPacket[]>(
+                    'SELECT TRIGGER_NAME AS nome, ACTION_TIMING AS momento, EVENT_MANIPULATION AS evento, EVENT_OBJECT_TABLE AS tabela, ACTION_STATEMENT AS corpo FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = ? ORDER BY TRIGGER_NAME', [banco]
+                );
+                const [migracoes] = await executor.query<RowDataPacket[]>(`SELECT versao, nome, checksum FROM \`${banco}\`.schema_migrations ORDER BY versao`);
+                return { esquema, triggers, migracoes };
+            };
+            assert.deepEqual(await descrever(conexao, principal.database), await descrever(alvo, parcial.database));
+        } finally {
+            await alvo.end();
+        }
+    });
+
+    it('a trava de migração é por banco: a migração de um banco não espera a de outro', async () => {
+        await migrator.removerBanco(parcial);
+        await migrator.criarBanco(parcial);
+        const segurando = await migrator.conectar(principal, { comBanco: false });
+        try {
+            await segurando.query('SELECT GET_LOCK(?, 5)', [`hrflow_migracoes_${parcial.database}`]);
+            const emAndamento = migrator.migrar(parcial);
+            const inicio = Date.now();
+            assert.deepEqual(await migrator.migrar(principal), []);
+            assert.ok(Date.now() - inicio < 5000, 'migrar o banco principal esperou a trava do banco parcial');
+            await segurando.query('SELECT RELEASE_LOCK(?)', [`hrflow_migracoes_${parcial.database}`]);
+            assert.ok((await emAndamento).length >= 3);
+        } finally {
+            await segurando.end();
+        }
+    });
+
     it('audita vínculos usuário/funcionário legados antes de aplicar a 0007', async () => {
         await migrator.removerBanco(parcial);
         await migrator.criarBanco(parcial);

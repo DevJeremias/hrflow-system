@@ -6,20 +6,12 @@ import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import express from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import { dataUrl } from './support/imagens.ts';
 import pool from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { authRoutes } from '../modules/auth/index.ts';
-import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
-import { pontoRoutes } from '../modules/ponto/index.ts';
-import { estruturaRoutes } from '../modules/estrutura/index.ts';
-import { folhaRoutes } from '../modules/folha/index.ts';
-import { empresaRoutes } from '../modules/empresa/index.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
+import { criarApp } from '../app.ts';
 import { mesLocal } from '../modules/ponto/ponto.fuso.ts';
 
 describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, () => {
@@ -44,15 +36,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use(express.json({ limit: '10mb' }));
-        app.use('/api/auth', authRoutes);
-        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
-        app.use('/api/ponto', authMiddleware, pontoRoutes);
-        app.use('/api/estrutura', authMiddleware, estruturaRoutes);
-        app.use('/api/folha', authMiddleware, folhaRoutes);
-        app.use('/api/empresa', authMiddleware, empresaRoutes);
-        app.use('/api/perfil', authMiddleware, perfilRoutes);
+        const app = criarApp();
         server = http.createServer(app);
         await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
         baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -172,8 +156,8 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
         const mes = mesLocal(Math.floor(Date.now() / 1000));
         const historico = await chamar('GET', `/api/ponto/historico/${estado.funcionario}?mes=${mes}`, estado.admin);
-        assert.equal(historico.corpo.length, 1);
-        assert.notEqual(historico.corpo[0].exit, '--:--');
+        const marcados = historico.corpo.filter((d: any) => d.exit !== '--:--');
+        assert.equal(marcados.length, 1);
 
         const todos = await chamar('GET', `/api/ponto?mes=${mes}`, estado.admin);
         assert.equal(todos.corpo.length, 4);

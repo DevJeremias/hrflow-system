@@ -8,8 +8,8 @@ O back-end é um monólito modular escrito inteiramente em TypeScript, com módu
 
 ```text
 backend/
-├── app.ts                  # monta o app Express: parsers, rotas de cada módulo e tratador de erros
-├── server.ts               # ponto de entrada: carrega o .env, testa o banco e abre a porta
+├── app.ts                  # criarApp: monta o app Express (parsers, rotas de cada módulo, tratador de erros)
+├── server.ts               # ponto de entrada: carrega o .env, testa o banco, abre a porta e encerra limpo no SIGTERM
 ├── modules/<área>/         # uma pasta por área do domínio, em camadas (padrão abaixo)
 ├── shared/                 # o que mais de uma área usa
 │   ├── config/             # segredo JWT, leitura de TRUST_PROXY
@@ -46,7 +46,7 @@ modules/ponto/
 ├── ponto.repository.ts   # todo o SQL; não conhece HTTP nem regra
 ├── ponto.schemas.ts      # schemas zod da entrada (params, body, query) e os tipos que eles entregam
 ├── ponto.erros.ts        # falhas de regra do módulo (ErroDePonto)
-├── ponto.regras.ts       # regras puras, sem banco (sequência das marcações, coordenadas)
+├── ponto.regras.ts       # regras puras, sem banco (sequência das marcações, coordenadas, apuração do dia e do mês)
 └── ponto.fuso.ts         # utilitário de data e hora do módulo
 ```
 
@@ -80,6 +80,9 @@ Como o Node só apaga os tipos, o código precisa ser o que a remoção de tipos
 
 Os testes ficam em `tests/` e são todos TypeScript (`*.test.ts`), rodados pelo `node --test`. Os de integração usam um MySQL real (veja o README da raiz). Ao migrar ou mover código:
 
+* Teste a API pelo app de verdade: `criarApp()` (de `app.ts`) devolve o mesmo app que o `server.ts` escuta, com os prefixos, os parsers e o `authMiddleware` no lugar. Não monte rotas à mão num `express()` de teste: uma rota esquecida sem `authMiddleware` passaria em todos os testes. `criarApp` aceita `db` (o banco que o `/api/ready` consulta; os repositórios usam o pool compartilhado), `limitesAuth` e `trustProxy`, e `tests/support/servidor.ts` sobe o app numa porta livre.
+* Cada arquivo de teste de integração começa por `import * as banco from './support/bancoDeTeste.ts'` e chama `banco.preparar()`: o banco do arquivo (`hrflow_test_<pid>`) nasce como cópia do molde que `tests/support/executar.ts` (o `npm test`) migrou uma vez por execução; o `--test-global-setup` do Node faria o mesmo, mas só existe a partir do Node 24. Os arquivos rodam quatro de cada vez (`--test-concurrency=4`), e a trava das migrations é por banco (`hrflow_migracoes_<DB_NAME>`), então migrar bancos diferentes não faz fila. O que o clone não copia (views, rotinas, eventos) faz `clonarBanco` falhar, em vez de sair incompleto.
+* `npm run test:cobertura` mede a cobertura de linhas de `app.ts`, `server.ts`, `modules/` e `shared/`; o `verify` da raiz exige 90%.
 * Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os imports que apontam para os arquivos movidos.
 * Para fixar "agora", o serviço expõe `relogio.agora`; o teste a substitui e a restaura no fim.
 * Renomeações mecânicas (mover arquivos e ajustar caminhos) vão num commit separado, antes das mudanças de conteúdo, para o histórico mostrar edições em vez de arquivos novos.
