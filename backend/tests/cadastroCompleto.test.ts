@@ -443,14 +443,12 @@ describe('cadastro completo', { skip: banco.skip }, () => {
         });
 
         it('aceita ponto e vírgula, BOM, CRLF, aspas, datas dd/mm/aaaa, salário em formato brasileiro e e-mail como e_mail', async () => {
-            const arquivo = '﻿E-mail;Nome;"Data de Nascimento";Salário_Base;CPF;Setor\r\n';
-            assert.ok(arquivo.length > 0);
             const csv = [
                 'e-mail;nome;cpf;data_admissao;salario_base;cargo;departamento',
                 `br.1@exemplo.invalid;"Silva, Joana Ficticia";${comPontuacao(cpfDeTeste(1501))};15/03/2024;"R$ 3.500,50";Analista de RH;Recursos Humanos (RH)`,
                 `br.2@exemplo.invalid;Joana Sem Cargo;;02/01/2024;1200,5;;`,
             ].join('\r\n');
-            const { status, corpo } = await importar(`﻿${csv}`);
+            const { status, corpo } = await importar(`\uFEFF${csv}`);
             assert.equal(status, 200, JSON.stringify(corpo));
             assert.equal(corpo.criados, 2, JSON.stringify(corpo.erros));
             const primeira = await colaboradorPorEmail('br.1@exemplo.invalid');
