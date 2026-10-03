@@ -36,7 +36,8 @@ describe('Sentry', () => {
         // Um envelope é [cabeçalho, [[cabeçalho do item, conteúdo], ...]]; as falhas são os itens com `exception`.
         const falhas = (envelopes as [unknown, [unknown, { exception?: { values?: { value?: string }[] } }][]][])
             .flatMap(([, itens]) => itens.map(([, conteudo]) => conteudo.exception?.values?.[0]?.value))
-            .filter(Boolean);
+            .filter(Boolean)
+            .sort(); // o envio é assíncrono: a ordem de chegada não é a de captura
         assert.deepEqual(falhas, ['falha-500-ficticia', 'falha-503-ficticia'], 'só o 500 e o 503 são incidentes; o 4xx de regra não');
     });
 });
