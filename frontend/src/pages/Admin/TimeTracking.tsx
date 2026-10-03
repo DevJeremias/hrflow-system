@@ -15,7 +15,8 @@ import Tabs, { TabPanel, type TabItem } from '../../components/ui/Tabs';
 import JustificativasPonto from '../../components/Admin/JustificativasPonto';
 import { mensagemDeErro } from '../../utils/erros';
 import { formatarDataIso, formatarHoraSemSegundos } from '../../utils/ponto';
-import { mesAtualEmBelem } from '../../utils/competencia';
+import { mesAtualNoFuso } from '../../utils/competencia';
+import { useFusoDaEmpresa } from '../../hooks/useFusoDaEmpresa';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 type Aba = 'marcacoes' | 'justificativas';
@@ -32,10 +33,11 @@ const ATRASO_DA_BUSCA_MS = 300;
 
 export default function TimeTracking() {
   usePageTitle('Gestão de ponto');
+  const fuso = useFusoDaEmpresa();
   const [aba, setAba] = useState<Aba>('marcacoes');
   const [searchTerm, setSearchTerm] = useState('');
   const [busca, setBusca] = useState('');
-  const [monthFilter, setMonthFilter] = useState(mesAtualEmBelem);
+  const [monthFilter, setMonthFilter] = useState(() => mesAtualNoFuso(fuso));
   const [pagina, setPagina] = useState(1);
 
   useEffect(() => {

@@ -29,6 +29,7 @@ export interface SessaoApi {
   perfil: Perfil;
   empresa_id: number;
   empresa_nome: string;
+  empresa_fuso: string;
   funcionario_id: number | null;
   avatar: string | null;
 }

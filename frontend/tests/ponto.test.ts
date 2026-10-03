@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { diaTemMarcacao, formatarDataDeBelem, formatarHoraDeBelem, hojeDeBelem, podeJustificar, proximosTiposDePonto, rotuloDoDia } from '../src/utils/ponto.ts';
+import { diaTemMarcacao, formatarDataNoFuso, formatarHoraNoFuso, hojeNoFuso, podeJustificar, proximosTiposDePonto, rotuloDoDia } from '../src/utils/ponto.ts';
 import type { HistoryDay, PointRecord } from '../src/services/pontoService.ts';
 
 const registro = (type: string): PointRecord => ({ id: type, type, time: '08:00:00', date: '2026-03-10' });
@@ -17,14 +17,16 @@ describe('fluxo de marcações no painel', () => {
   });
 });
 
-describe('formatação do relógio em Belém', () => {
+describe('formatação do relógio no fuso da empresa', () => {
   it('formata hora e data em Belém mesmo com o processo em outro fuso', () => {
     const fusoOriginal = process.env.TZ;
     process.env.TZ = 'Pacific/Honolulu';
     try {
       const data = new Date('2026-03-11T01:30:00.000Z');
-      assert.equal(formatarHoraDeBelem(data), '22:30:00');
-      assert.match(formatarDataDeBelem(data), /terça-feira, 10 de março/);
+      assert.equal(formatarHoraNoFuso(data), '22:30:00');
+      assert.match(formatarDataNoFuso(data), /terça-feira, 10 de março/);
+      // Manaus está uma hora atrás de Belém: o mesmo instante mostra 21:30.
+      assert.equal(formatarHoraNoFuso(data, 'America/Manaus'), '21:30:00');
     } finally {
       if (fusoOriginal === undefined) delete process.env.TZ;
       else process.env.TZ = fusoOriginal;
@@ -39,9 +41,12 @@ const dia = (parcial: Partial<HistoryDay>): HistoryDay => ({
 });
 
 describe('espelho de ponto', () => {
-  it('o dia de hoje é o de Belém, não o do relógio do navegador', () => {
-    assert.equal(hojeDeBelem(new Date('2026-10-08T02:30:00.000Z')), '2026-10-07');
-    assert.equal(hojeDeBelem(new Date('2026-10-08T03:00:00.000Z')), '2026-10-08');
+  it('o dia de hoje é o do fuso da empresa, não o do relógio do navegador', () => {
+    assert.equal(hojeNoFuso('America/Belem', new Date('2026-10-08T02:30:00.000Z')), '2026-10-07');
+    assert.equal(hojeNoFuso('America/Belem', new Date('2026-10-08T03:00:00.000Z')), '2026-10-08');
+    // Às 03:30Z já é dia 8 em Belém, mas em Manaus ainda é dia 7.
+    assert.equal(hojeNoFuso('America/Manaus', new Date('2026-10-08T03:30:00.000Z')), '2026-10-07');
+    assert.equal(hojeNoFuso(undefined, new Date('2026-10-08T03:30:00.000Z')), '2026-10-08');
   });
 
   it('qualquer dia útil que já começou pode ser justificado, com ou sem marcação', () => {

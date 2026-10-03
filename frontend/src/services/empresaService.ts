@@ -8,12 +8,15 @@ export interface Company {
   // Só os 14 dígitos.
   cnpj: string | null;
   regime_tributario: typeof REGIMES_TRIBUTARIOS[number] | null;
+  // Fuso IANA ('America/Manaus'): o dia do ponto e o mês da folha da empresa seguem ele.
+  fuso: string;
 }
 
 export interface CompanyData {
   razao_social: string;
   cnpj: string;
   regime_tributario: Company['regime_tributario'];
+  fuso: string;
 }
 
 const API_URL = '/empresa';

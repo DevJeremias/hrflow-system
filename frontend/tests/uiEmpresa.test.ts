@@ -18,7 +18,7 @@ const originalFetch = globalThis.fetch;
 
 let perfil: 'Administrador' | 'RH' = 'RH';
 let gravacoes: Record<string, unknown>[] = [];
-const EMPRESA = { nome: 'Empresa Ficticia Alfa', razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181', regime_tributario: 'Lucro Real' };
+const EMPRESA = { nome: 'Empresa Ficticia Alfa', razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181', regime_tributario: 'Lucro Real', fuso: 'America/Belem' };
 
 const json = (status: number, corpo: unknown) => new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -57,13 +57,13 @@ const abrir = async () => {
   return host;
 };
 
-test('os três campos têm id, name e rótulo, a página tem um único h1 e o título da aba', async () => {
+test('os quatro campos têm id, name e rótulo, a página tem um único h1 e o título da aba', async () => {
   const host = await abrir();
   assert.equal(document.title, 'Dados da empresa | HRFlow');
   assert.equal(host.querySelectorAll('h1').length, 1);
   assert.equal(host.querySelector('main'), null);
   const controles = [...host.querySelectorAll<HTMLInputElement>('input, select')];
-  assert.deepEqual(controles.map((c) => c.name), ['razaoSocial', 'cnpj', 'regime']);
+  assert.deepEqual(controles.map((c) => c.name), ['razaoSocial', 'cnpj', 'regime', 'fuso']);
   for (const controle of controles) {
     assert.ok(controle.id, `${controle.name} tem id`);
     assert.ok(host.querySelector(`label[for="${controle.id}"]`), `${controle.name} tem <label for>`);
@@ -94,4 +94,20 @@ test('o Administrador salva e recebe o aviso de sucesso em uma região de status
   assert.equal(gravacoes[0].razao_social, 'Nova Razao Ltda');
   const status = host.querySelector('[role="status"]');
   assert.equal(status?.textContent, 'Dados da empresa salvos.');
+});
+
+test('o Administrador escolhe o fuso da empresa e ele segue na gravação', async () => {
+  perfil = 'Administrador';
+  const host = await abrir();
+  const fuso = host.querySelector<HTMLSelectElement>('[name="fuso"]')!;
+  assert.equal(fuso.value, 'America/Belem');
+  assert.match(fuso.selectedOptions[0].textContent ?? '', /^Belém \(GMT-3\)$/);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(dom.window.HTMLSelectElement.prototype, 'value')!.set!.call(fuso, 'America/Manaus');
+    fuso.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  });
+  await act(async () => { botaoPorTexto(host, /Salvar dados/).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true })); });
+  await esperar(20);
+  assert.equal(gravacoes[0].fuso, 'America/Manaus');
+  assert.equal(host.querySelector<HTMLSelectElement>('[name="fuso"]')!.value, 'America/Manaus');
 });

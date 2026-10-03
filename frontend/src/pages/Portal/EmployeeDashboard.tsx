@@ -12,7 +12,8 @@ import { useToast } from '../../components/ui/toastContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { mensagemDeErro } from '../../utils/erros';
 import { obterLocalizacao } from '../../utils/localizacao';
-import { formatarDataDeBelem, proximosTiposDePonto, type TipoPonto } from '../../utils/ponto';
+import { formatarDataNoFuso, proximosTiposDePonto, type TipoPonto } from '../../utils/ponto';
+import { mesAtualNoFuso } from '../../utils/competencia';
 
 const SEM_REGISTROS: never[] = [];
 
@@ -24,10 +25,7 @@ const EmployeeDashboard: React.FC = () => {
   const toast = useToast();
 
   const funcionarioId = user?.funcionarioId ?? null;
-  const [historyMonth, setHistoryMonth] = useState(() => {
-    const hoje = new Date();
-    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [historyMonth, setHistoryMonth] = useState(() => mesAtualNoFuso(user?.empresaFuso));
   // Cobre a captura do GPS, que acontece antes de a mutação começar.
   const [locating, setLocating] = useState(false);
 
@@ -65,7 +63,7 @@ const EmployeeDashboard: React.FC = () => {
   };
 
   const firstName = user?.nome?.split(' ')[0] || 'Usuário';
-  const formattedDate = primeiraMaiuscula(formatarDataDeBelem(new Date()));
+  const formattedDate = primeiraMaiuscula(formatarDataNoFuso(new Date(), user?.empresaFuso));
   const proximosTipos = proximosTiposDePonto(dailyRecords);
 
   return (

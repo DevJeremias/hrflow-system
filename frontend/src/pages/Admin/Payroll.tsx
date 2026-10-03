@@ -12,13 +12,15 @@ import EmptyState from '../../components/ui/EmptyState';
 import Field, { Input, Select } from '../../components/ui/Field';
 import { useConfirm } from '../../components/ui/confirmContext';
 import { mensagemDeErro } from '../../utils/erros';
-import { mesAtualEmBelem, rotuloDaCompetencia, formatarMomento } from '../../utils/competencia';
+import { mesAtualNoFuso, rotuloDaCompetencia, formatarMomento } from '../../utils/competencia';
+import { useFusoDaEmpresa } from '../../hooks/useFusoDaEmpresa';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 const Payroll: React.FC = () => {
   usePageTitle('Folha de pagamento');
   const confirmar = useConfirm();
-  const [competencia, setCompetencia] = useState(mesAtualEmBelem);
+  const fuso = useFusoDaEmpresa();
+  const [competencia, setCompetencia] = useState(() => mesAtualNoFuso(fuso));
   const [deptFilter, setDeptFilter] = useState('Todos');
 
   // A folha de cada competência fica em cache: trocar de mês e voltar não refaz a chamada.
@@ -89,7 +91,7 @@ const Payroll: React.FC = () => {
         actions={(
           <div className="flex flex-wrap items-end gap-4">
             <Field label="Competência" name="competencia">
-              <Input type="month" autoComplete="off" value={competencia} max={mesAtualEmBelem()} onChange={(e) => e.target.value && trocarCompetencia(e.target.value)} />
+              <Input type="month" autoComplete="off" value={competencia} max={mesAtualNoFuso(fuso)} onChange={(e) => e.target.value && trocarCompetencia(e.target.value)} />
             </Field>
             {folha && (
               <Field label="Setor" name="setor">
@@ -136,8 +138,8 @@ const Payroll: React.FC = () => {
                 <p className="font-bold text-ink">{fechada ? 'Folha fechada' : 'Folha aberta'}</p>
                 <p className="text-sm text-ink-muted">
                   {fechada && folha.fechadaEm
-                    ? `Fechada em ${formatarMomento(folha.fechadaEm)}. Os colaboradores já veem o holerite e nada mais muda nesta competência.`
-                    : `Processada em ${formatarMomento(folha.processadaEm)}. Alterações no cadastro só entram ao processar de novo.`}
+                    ? `Fechada em ${formatarMomento(folha.fechadaEm, fuso)}. Os colaboradores já veem o holerite e nada mais muda nesta competência.`
+                    : `Processada em ${formatarMomento(folha.processadaEm, fuso)}. Alterações no cadastro só entram ao processar de novo.`}
                 </p>
               </div>
             </div>

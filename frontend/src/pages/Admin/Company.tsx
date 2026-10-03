@@ -11,18 +11,21 @@ import Spinner from '../../components/ui/Spinner';
 import Field, { Input, Select } from '../../components/ui/Field';
 import { mensagemDeErro } from '../../utils/erros';
 import { mascararCnpj } from '../../utils/empresa';
+import { FUSO_PADRAO, FUSOS_DO_BRASIL, rotuloDoFuso } from '../../utils/fuso';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 interface Formulario {
   razaoSocial: string;
   cnpj: string;
   regime: string;
+  fuso: string;
 }
 
 const formularioDe = (empresa: CompanyData): Formulario => ({
   razaoSocial: empresa.razao_social ?? '',
   cnpj: mascararCnpj(empresa.cnpj ?? ''),
-  regime: empresa.regime_tributario ?? ''
+  regime: empresa.regime_tributario ?? '',
+  fuso: empresa.fuso
 });
 
 // Os dados legais que o holerite imprime. O RH confere; só o Administrador altera.
@@ -35,7 +38,7 @@ const Company: React.FC = () => {
   // O formulário nasce da empresa carregada; `editado` guarda o que o RH digitou (nulo até ele digitar
   // ou a empresa ser gravada).
   const [editado, setEditado] = useState<Formulario | null>(null);
-  const form = editado ?? (empresa ? formularioDe(empresa) : { razaoSocial: '', cnpj: '', regime: '' });
+  const form = editado ?? (empresa ? formularioDe(empresa) : { razaoSocial: '', cnpj: '', regime: '', fuso: FUSO_PADRAO });
   const loading = isPending;
   const loadError = error ? mensagemDeErro(error, 'Erro ao buscar os dados da empresa') : null;
   const [saving, setSaving] = useState(false);
@@ -59,7 +62,8 @@ const Company: React.FC = () => {
       const gravada = await salvarEmpresa.mutateAsync({
         razao_social: form.razaoSocial,
         cnpj: form.cnpj,
-        regime_tributario: (form.regime || null) as CompanyData['regime_tributario']
+        regime_tributario: (form.regime || null) as CompanyData['regime_tributario'],
+        fuso: form.fuso
       });
       setEditado(formularioDe(gravada));
       setSaved(true);
@@ -114,6 +118,12 @@ const Company: React.FC = () => {
                 </Select>
               </Field>
             </div>
+
+            <Field label="Fuso horário" name="fuso" hint="Define o dia do ponto e o mês da folha. O horário exibido aos colaboradores segue este fuso.">
+              <Select autoComplete="off" disabled={!podeEditar} value={form.fuso} onChange={(e) => alterar({ fuso: e.target.value })}>
+                {FUSOS_DO_BRASIL.map(({ zona }) => <option key={zona} value={zona}>{rotuloDoFuso(zona)}</option>)}
+              </Select>
+            </Field>
 
             {saveError && <ErrorAlert message={saveError} />}
             {saved && <p role="status" className="rounded-control border border-success-line bg-success-soft p-4 text-sm font-semibold text-success">Dados da empresa salvos.</p>}

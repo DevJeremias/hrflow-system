@@ -1,3 +1,4 @@
+import { FUSO_PADRAO } from './fuso.ts';
 import type { DayStatus, HistoryDay, JustificationStatus, PointRecord } from '../services/pontoService';
 
 export type TipoPonto = 'Entrada' | 'Pausa Almoço' | 'Retorno Almoço' | 'Saída';
@@ -14,12 +15,13 @@ export const proximosTiposDePonto = (registros: PointRecord[]): readonly TipoPon
   return ultimoTipo ? PROXIMOS[ultimoTipo] ?? [] : ['Entrada'];
 };
 
-export const formatarHoraDeBelem = (data: Date): string => new Intl.DateTimeFormat('pt-BR', {
-  timeZone: 'America/Belem', hour: '2-digit', minute: '2-digit', second: '2-digit',
+// A hora e a data, no relógio do fuso da empresa (ver utils/fuso.ts).
+export const formatarHoraNoFuso = (data: Date, fuso: string = FUSO_PADRAO): string => new Intl.DateTimeFormat('pt-BR', {
+  timeZone: fuso, hour: '2-digit', minute: '2-digit', second: '2-digit',
 }).format(data);
 
-export const formatarDataDeBelem = (data: Date): string => new Intl.DateTimeFormat('pt-BR', {
-  timeZone: 'America/Belem', weekday: 'long', day: 'numeric', month: 'long',
+export const formatarDataNoFuso = (data: Date, fuso: string = FUSO_PADRAO): string => new Intl.DateTimeFormat('pt-BR', {
+  timeZone: fuso, weekday: 'long', day: 'numeric', month: 'long',
 }).format(data);
 
 // 'AAAA-MM-DD' (o dia que a API devolve) como 'dd/mm/aaaa'.
@@ -28,9 +30,9 @@ export const formatarDataIso = (data: string): string => data.split('-').reverse
 // 'HH:MM:SS' como 'HH:MM'.
 export const formatarHoraSemSegundos = (hora: string): string => hora.slice(0, 5);
 
-// 'AAAA-MM-DD' de hoje em Belém, o mesmo dia que a API usa para recusar justificativa futura.
-export const hojeDeBelem = (agora: Date = new Date()): string => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Belem', year: 'numeric', month: '2-digit', day: '2-digit',
+// 'AAAA-MM-DD' de hoje no fuso da empresa, o mesmo dia que a API usa para recusar justificativa futura.
+export const hojeNoFuso = (fuso: string = FUSO_PADRAO, agora: Date = new Date()): string => new Intl.DateTimeFormat('en-CA', {
+  timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit',
 }).format(agora);
 
 // Dia da semana abreviado ('qui.') de um 'AAAA-MM-DD'.

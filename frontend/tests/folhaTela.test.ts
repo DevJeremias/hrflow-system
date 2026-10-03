@@ -10,12 +10,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { novoQueryClient } from './support/consulta.ts';
 import { createServer, type ViteDevServer } from 'vite';
-import { mesAtualEmBelem } from '../src/utils/competencia.ts';
+import { mesAtualNoFuso } from '../src/utils/competencia.ts';
 
 // O AuthProvider apaga as chaves legadas do localStorage ao carregar.
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: dom.window.localStorage });
 
-const MES = mesAtualEmBelem();
+const MES = mesAtualNoFuso();
 const EMPRESA = { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181' };
 
 const colaborador = (id: number, nome: string, salario: number, inss: number, contrato = 'CLT') => ({
