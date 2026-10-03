@@ -7,7 +7,7 @@ export default function Benefits() {
       title: "Menos planilhas soltas",
       desc: "Colaboradores, cargos, ponto e folha ficam no mesmo cadastro, em vez de espalhados em arquivos diferentes.",
       icon: <Clock size={32} />,
-      color: "text-orange-500 group-hover:text-white",
+      color: "text-orange-600 group-hover:text-white",
       bg: "bg-orange-50 group-hover:bg-orange-500",
       border: "border-orange-200 group-hover:border-orange-500"
     },
@@ -47,7 +47,7 @@ export default function Benefits() {
                 seu novo braço direito.
               </span>
             </h2>
-            <p className="text-xl text-slate-600 font-medium leading-relaxed">
+            <p className="text-xl text-ink-muted font-medium leading-relaxed">
               Uma interface direta para as rotinas de RH do dia a dia, sem módulos que você não vai usar.
             </p>
             
@@ -72,7 +72,7 @@ export default function Benefits() {
                   {benefit.icon}
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 mb-4">{benefit.title}</h3>
-                <p className="text-lg text-slate-600 font-medium leading-relaxed">{benefit.desc}</p>
+                <p className="text-lg text-ink-muted font-medium leading-relaxed">{benefit.desc}</p>
               </div>
             ))}
           </div>

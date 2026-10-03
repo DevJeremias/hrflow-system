@@ -9,8 +9,10 @@ import AnatomySection from "./AnatomySection";
 import Contact from "./Contact"; 
 import CommandCenter from "./CommandCenter";
 import Footer from "./Footer";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 export default function Home() {
+  usePageTitle('Gestão inteligente de RH');
   const location = useLocation();
 
   useEffect(() => {
@@ -29,13 +31,15 @@ export default function Home() {
   return (
     <div className="Home">
       <Navbar />
-      <Hero />
-      <Benefits />
-      <Stats />
-      <Features />
-      <Contact />
-      <AnatomySection />
-      <CommandCenter />
+      <main>
+        <Hero />
+        <Benefits />
+        <Stats />
+        <Features />
+        <Contact />
+        <AnatomySection />
+        <CommandCenter />
+      </main>
       <Footer />
     </div>
   );

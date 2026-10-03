@@ -22,6 +22,7 @@ type Modulos = {
   App: typeof import('../src/App.tsx').default;
   AuthProvider: typeof import('../src/contexts/AuthContext.tsx').AuthProvider;
   solicitacoesAtivas: typeof import('../src/utils/recursos.ts').solicitacoesAtivas;
+  UiProviders: typeof import('../src/components/ui/UiProviders.tsx').default;
 };
 
 const abrirServidor = async (flag: string | undefined) => {
@@ -32,6 +33,7 @@ const abrirServidor = async (flag: string | undefined) => {
     App: (await server.ssrLoadModule('/src/App.tsx')).default,
     AuthProvider: (await server.ssrLoadModule('/src/contexts/AuthContext.tsx')).AuthProvider,
     solicitacoesAtivas: (await server.ssrLoadModule('/src/utils/recursos.ts')).solicitacoesAtivas,
+    UiProviders: (await server.ssrLoadModule('/src/components/ui/UiProviders.tsx')).default,
   };
   return { server, ...modulos };
 };
@@ -91,7 +93,7 @@ const abrirApp = async (modulos: Awaited<ReturnType<typeof abrirServidor>>, rota
   const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const arvore: ReactElement = createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, { initialEntries: [rota] },
-      createElement(modulos.AuthProvider, null, createElement(modulos.App), createElement(Localizacao))));
+      createElement(modulos.AuthProvider, null, createElement(modulos.UiProviders, null, createElement(modulos.App)), createElement(Localizacao))));
   await act(async () => { root.render(arvore); });
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 700)); });
   return { host, root, rota: () => host.querySelector('output')?.getAttribute('data-rota') };
@@ -187,7 +189,8 @@ for (const tela of telasAdmin) {
     assert.deepEqual(botoesMudos(app.host), []);
     for (const texto of tela.abrir ?? []) {
       await clicarTexto(app.host, texto);
-      assert.deepEqual(botoesMudos(app.host), [], `depois de abrir ${texto}`);
+      // Os modais vão para um contêiner no <body>, fora do host.
+      assert.deepEqual(botoesMudos(document.body), [], `depois de abrir ${texto}`);
     }
     await fechar(app);
   });
@@ -209,7 +212,7 @@ test('o modal de cargo não oferece proventos e descontos padrão', async () => 
   const app = await abrirApp(desligada, '/admin/estrutura');
   await clicarTexto(app.host, /Cargos e Funções/);
   await clicarTexto(app.host, /Criar Cargo/);
-  const texto = app.host.textContent ?? '';
+  const texto = document.body.textContent ?? '';
   assert.match(texto, /Título do Cargo/);
   assert.doesNotMatch(texto, /Proventos Padrão|Descontos Padrão/);
   await fechar(app);

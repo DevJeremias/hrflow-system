@@ -31,7 +31,7 @@ export default function Termos() {
           A empresa que cria a conta decide quais dados de colaboradores inserir e para quê. Cabe a ela ter base
           legal para tratar esses dados, informar seus colaboradores e atender os pedidos deles. O HRFlow apenas
           armazena e processa as informações a pedido da empresa. Os detalhes estão na{' '}
-          <Link to="/privacidade" className="text-indigo-600 font-bold hover:underline">Política de Privacidade</Link>.
+          <Link to="/privacidade" className="font-bold text-brand underline underline-offset-2 hover:text-brand-hover">Política de Privacidade</Link>.
         </p>
       </Secao>
 

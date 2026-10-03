@@ -7,13 +7,13 @@ export default function Features() {
       <div className="max-w-7xl mx-auto px-6">
         
         <div className="max-w-2xl mb-20">
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-6">
+          <h2 className="text-4xl md:text-5xl font-black text-ink tracking-tight mb-6">
             Do cadastro<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-purple-500">
               ao holerite.
             </span>
           </h2>
-          <p className="text-xl text-gray-500 font-medium">
+          <p className="text-xl text-ink-muted font-medium">
             O HRFlow reúne as rotinas básicas do Departamento Pessoal em uma só aplicação web: estrutura da empresa, colaboradores, ponto e folha.
           </p>
         </div>
@@ -22,11 +22,11 @@ export default function Features() {
           
           <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 flex flex-col md:flex-row gap-8 items-center border border-gray-100 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
             <div className="flex-1">
-              <div className="w-14 h-14 bg-orange-50 text-orange-500 border border-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
+              <div className="w-14 h-14 bg-orange-50 text-orange-600 border border-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
                 <Calculator size={28} />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-4">Folha de pagamento em lote</h3>
-              <p className="text-gray-500 font-medium">
+              <h3 className="text-2xl font-black text-ink mb-4">Folha de pagamento em lote</h3>
+              <p className="text-ink-muted font-medium">
                 Processe a folha de todos os colaboradores ativos de uma vez. O desconto de INSS é calculado no servidor e cada colaborador tem o seu holerite.
               </p>
             </div>
@@ -35,38 +35,38 @@ export default function Features() {
               <div className="h-4 w-1/2 bg-gray-100 rounded-full mb-3"></div>
               <div className="h-4 w-3/4 bg-gray-100 rounded-full mb-6"></div>
               <div className="h-10 w-full bg-green-50 rounded-xl border border-green-100 flex items-center px-4">
-                <span className="text-green-600 font-bold text-sm">Desconto INSS</span>
+                <span className="text-green-700 font-bold text-sm">Desconto INSS</span>
               </div>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-[2rem] p-10 flex flex-col justify-between border border-gray-100 hover:border-purple-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
             <div>
-              <div className="w-14 h-14 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-center text-purple-500 mb-6 group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-sm">
+              <div className="w-14 h-14 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-sm">
                 <Users size={28} />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-4">Estrutura Viva</h3>
-              <p className="text-gray-500 font-medium">
+              <h3 className="text-2xl font-black text-ink mb-4">Estrutura Viva</h3>
+              <p className="text-ink-muted font-medium">
                 Cadastre departamentos e cargos, com gestor responsável, nível hierárquico e salário base, e vincule cada colaborador à sua posição.
               </p>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-[2rem] p-10 border border-gray-100 hover:border-green-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-            <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center text-green-500 mb-6 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all shadow-sm">
+            <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center text-green-600 mb-6 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all shadow-sm">
               <Printer size={24} />
             </div>
-            <h3 className="text-xl font-black text-gray-900 mb-2">Holerite para imprimir</h3>
-            <p className="text-gray-500 text-sm font-medium">Abra o holerite de cada colaborador e imprima ou salve em PDF pelo navegador.</p>
+            <h3 className="text-xl font-black text-ink mb-2">Holerite para imprimir</h3>
+            <p className="text-ink-muted text-sm font-medium">Abra o holerite de cada colaborador e imprima ou salve em PDF pelo navegador.</p>
           </div>
 
           <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 border border-gray-100 flex items-center gap-6 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-            <div className="hidden md:flex w-24 h-24 bg-orange-50 border border-orange-100 rounded-full items-center justify-center text-orange-500 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
+            <div className="hidden md:flex w-24 h-24 bg-orange-50 border border-orange-100 rounded-full items-center justify-center text-orange-600 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
               <ShieldCheck size={40} />
             </div>
             <div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Acesso por perfil</h3>
-              <p className="text-gray-500 font-medium">O colaborador só enxerga os próprios dados; Administrador e RH gerem a empresa. A sessão fica em cookie protegido e as senhas são guardadas com hash.</p>
+              <h3 className="text-2xl font-black text-ink mb-2">Acesso por perfil</h3>
+              <p className="text-ink-muted font-medium">O colaborador só enxerga os próprios dados; Administrador e RH gerem a empresa. A sessão fica em cookie protegido e as senhas são guardadas com hash.</p>
             </div>
           </div>
 

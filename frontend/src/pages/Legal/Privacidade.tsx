@@ -78,7 +78,7 @@ export default function Privacidade() {
       <Secao titulo="8. Alterações">
         <p>
           Esta política pode ser atualizada; a data da última atualização fica no topo da página. O uso do sistema
-          está sujeito também aos <Link to="/termos" className="text-indigo-600 font-bold hover:underline">Termos de Uso</Link>.
+          está sujeito também aos <Link to="/termos" className="font-bold text-brand underline underline-offset-2 hover:text-brand-hover">Termos de Uso</Link>.
         </p>
       </Secao>
     </LegalPage>

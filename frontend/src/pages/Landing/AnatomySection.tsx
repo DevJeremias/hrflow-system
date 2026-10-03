@@ -39,11 +39,11 @@ export default function AnatomySection() {
 
               <div className="absolute -bottom-6 -right-6 bg-white text-slate-900 p-6 rounded-3xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] animate-float-slow hidden md:block border border-slate-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center border border-green-200">
+                  <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center border border-green-200">
                     <CheckCircle2 size={24} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Folha de pagamento</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-ink-muted">Folha de pagamento</p>
                     <p className="text-lg font-bold text-slate-900">INSS calculado</p>
                   </div>
                 </div>
@@ -59,7 +59,7 @@ export default function AnatomySection() {
                   Eficiência.
                 </span>
               </h2>
-              <p className="text-xl text-slate-500 font-medium leading-relaxed max-w-lg">
+              <p className="text-xl text-slate-800 font-medium leading-relaxed max-w-lg">
                 Veja como o HRFlow organiza a rotina de RH: da estrutura da empresa ao holerite de cada colaborador.
               </p>
             </div>
@@ -73,19 +73,19 @@ export default function AnatomySection() {
                     icon: <Cog size={20} />, 
                     title: "Estrutura da empresa", 
                     desc: "Cadastre departamentos e cargos e vincule os colaboradores.",
-                    colorClasses: "text-orange-500 bg-orange-50 border-orange-100 group-hover:bg-orange-500 group-hover:text-white"
+                    colorClasses: "text-orange-700 bg-orange-50 border-orange-100 group-hover:bg-orange-500 group-hover:text-white"
                   },
                   { 
                     icon: <Network size={20} />, 
                     title: "Folha e holerites", 
                     desc: "Processe a folha dos colaboradores ativos e consulte cada holerite.",
-                    colorClasses: "text-purple-500 bg-purple-50 border-purple-100 group-hover:bg-purple-500 group-hover:text-white"
+                    colorClasses: "text-purple-700 bg-purple-50 border-purple-100 group-hover:bg-purple-500 group-hover:text-white"
                   },
                   { 
                     icon: <Database size={20} />, 
                     title: "Acesso controlado", 
                     desc: "Perfis de Administrador, RH e Colaborador; senhas guardadas com hash.",
-                    colorClasses: "text-green-500 bg-green-50 border-green-100 group-hover:bg-green-500 group-hover:text-white"
+                    colorClasses: "text-green-700 bg-green-50 border-green-100 group-hover:bg-green-500 group-hover:text-white"
                   }
                 ].map((item, index) => (
                   <div key={index} className="flex items-start gap-5 p-6 rounded-3xl border border-slate-200 bg-white hover:border-slate-300 transition-all group shadow-sm hover:shadow-md">
@@ -94,7 +94,7 @@ export default function AnatomySection() {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 mb-1">{item.title}</h4>
-                      <p className="text-sm text-slate-500 font-medium">{item.desc}</p>
+                      <p className="text-sm text-ink-muted font-medium">{item.desc}</p>
                     </div>
                   </div>
                 ))}
