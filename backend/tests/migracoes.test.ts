@@ -9,7 +9,10 @@ import * as migrator from '../shared/db/migrator.ts';
 import { carregarFixtures } from '../shared/db/fixtures.ts';
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
-const TABELAS = ['empresas', 'departamentos', 'cargos', 'funcionarios', 'dependentes', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens', 'schema_migrations'];
+const TABELAS = [
+    'empresas', 'departamentos', 'cargos', 'funcionarios', 'dependentes', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens',
+    'auditoria', 'historico_contratual', 'solicitacoes_alteracao', 'avatares', 'schema_migrations',
+];
 
 describe('migrations', { skip: banco.skip }, () => {
     const principal = banco.config;

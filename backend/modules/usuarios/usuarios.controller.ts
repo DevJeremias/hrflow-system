@@ -5,6 +5,7 @@ import * as service from './usuarios.service.ts';
 import { ErroDeUsuario } from './usuarios.erros.ts';
 import type { TipoDeErro } from './usuarios.erros.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro, IdDaRota } from './usuarios.schemas.ts';
+import { autoriaDe } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -40,7 +41,7 @@ export const listarUsuarios = async (req: Request, res: Response) => {
 
 export const criarUsuario = async (req: Request, res: Response) => {
     try {
-        res.status(201).json(await service.criarUsuario(usuarioDe(req).empresa_id, entradaDe<CorpoDoCadastro>(req, 'body')));
+        res.status(201).json(await service.criarUsuario(usuarioDe(req).empresa_id, autoriaDe(req), entradaDe<CorpoDoCadastro>(req, 'body')));
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao criar o usuário.');
     }
@@ -49,7 +50,7 @@ export const criarUsuario = async (req: Request, res: Response) => {
 export const atualizarUsuario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        res.json(await service.atualizarUsuario(usuarioDe(req), id, entradaDe<CorpoDaEdicao>(req, 'body')));
+        res.json(await service.atualizarUsuario(usuarioDe(req), autoriaDe(req), id, entradaDe<CorpoDaEdicao>(req, 'body')));
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao alterar o usuário.');
     }

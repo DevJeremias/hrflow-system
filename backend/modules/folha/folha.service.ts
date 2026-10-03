@@ -9,6 +9,7 @@ import { eventosDoPonto } from './folha.ponto.ts';
 import * as repositorio from './folha.repository.ts';
 import type { ColaboradorDaFolha, DadosDaEmpresa, FolhaGravada, ItemGravado, JustificativaDoMes, MarcacaoDoMes, NovoItem, Pendencia, StatusDaFolha } from './folha.repository.ts';
 import { ErroDeFolha } from './folha.erros.ts';
+import type { Autoria } from '../../shared/utils/auditar.ts';
 
 export { relogio };
 
@@ -244,7 +245,7 @@ export const consultarFolha = async ({ empresaId, competencia }: { empresaId: nu
 };
 
 // Cria a folha da competência ou, estando ela aberta, a recalcula com os dados de agora.
-export const processarFolha = async ({ empresaId, competencia }: { empresaId: number; competencia: string }): Promise<{ folha: FolhaDaCompetencia; criada: boolean }> => {
+export const processarFolha = async ({ empresaId, competencia, autoria }: { empresaId: number; competencia: string; autoria: Autoria }): Promise<{ folha: FolhaDaCompetencia; criada: boolean }> => {
     exigirCompetenciaProcessavel(competencia);
     const { criada, folhaId } = await repositorio.emTransacao(async (repo) => {
         const criada = await repo.criarFolhaSeNaoExiste(empresaId, competencia);
@@ -257,6 +258,12 @@ export const processarFolha = async ({ empresaId, competencia }: { empresaId: nu
         // Reprocessar parte do que o RH já lançou em cada colaborador.
         const { itens, pendencias } = apurar(colaboradores, competencia, empresa.regime_tributario, await carregarPonto(repo, empresaId, competencia, null), await repo.lancamentosDaFolha(folha.id));
         await repo.gravarProcessamento(folha.id, empresaId, itens, pendencias, empresa);
+        await repo.auditar(autoria, {
+            acao: 'folha.processada',
+            entidade: 'folha',
+            entidadeId: folha.id,
+            depois: { competencia, criada, colaboradores: itens.length, pendencias: pendencias.length },
+        });
         return { criada, folhaId: folha.id };
     });
     const folha = (await repositorio.folhaDaCompetencia(empresaId, competencia))!;
@@ -265,7 +272,7 @@ export const processarFolha = async ({ empresaId, competencia }: { empresaId: nu
 
 // Trava a folha. O que foi conferido é o que fecha: o fechamento não recalcula nada, só registra
 // quem fechou e congela a razão social e o CNPJ da empresa neste momento.
-export const fecharFolha = async ({ empresaId, usuarioId, competencia }: { empresaId: number; usuarioId: number; competencia: string }): Promise<FolhaDaCompetencia> => {
+export const fecharFolha = async ({ empresaId, usuarioId, competencia, autoria }: { empresaId: number; usuarioId: number; competencia: string; autoria: Autoria }): Promise<FolhaDaCompetencia> => {
     const folhaId = await repositorio.emTransacao(async (repo) => {
         const folha = await repo.travarFolha(empresaId, competencia);
         if (!folha) throw new ErroDeFolha('inexistente', `A folha de ${rotuloDaCompetencia(competencia)} ainda não foi processada.`);
@@ -275,6 +282,7 @@ export const fecharFolha = async ({ empresaId, usuarioId, competencia }: { empre
             throw new ErroDeFolha('incompleto', 'Preencha a razão social e o CNPJ da empresa antes de fechar a folha: eles aparecem no holerite.');
         }
         await repo.fecharFolha(folha.id, usuarioId, empresa);
+        await repo.auditar(autoria, { acao: 'folha.fechada', entidade: 'folha', entidadeId: folha.id, depois: { competencia } });
         return folha.id;
     });
     return montarFolha((await repositorio.folhaDaCompetencia(empresaId, competencia))!, await repositorio.itensDaFolha(folhaId));
@@ -307,7 +315,7 @@ export const meusHolerites = async ({ usuarioId, empresaId }: { usuarioId: numbe
 
 // Substitui os lançamentos de um colaborador na folha aberta e recalcula só o holerite dele. Os
 // valores que não vierem são zero: o que o RH não informa deixa de ser lançado.
-export const lancarEventos = async ({ empresaId, competencia, funcionarioId, lancamentos }: { empresaId: number; competencia: string; funcionarioId: number; lancamentos: Lancamentos }): Promise<HoleriteDoColaborador> => {
+export const lancarEventos = async ({ empresaId, competencia, funcionarioId, lancamentos, autoria }: { empresaId: number; competencia: string; funcionarioId: number; lancamentos: Lancamentos; autoria: Autoria }): Promise<HoleriteDoColaborador> => {
     await repositorio.emTransacao(async (repo) => {
         const folha = await repo.travarFolha(empresaId, competencia);
         if (!folha) throw new ErroDeFolha('inexistente', `A folha de ${rotuloDaCompetencia(competencia)} ainda não foi processada.`);
@@ -323,7 +331,12 @@ export const lancarEventos = async ({ empresaId, competencia, funcionarioId, lan
         if (itens.length === 0) {
             throw new ErroDeFolha('invalido', `Não foi possível calcular o holerite: ${pendencias[0]?.motivo.toLowerCase() ?? 'colaborador fora da folha'}.`);
         }
+        const anteriores = (await repo.lancamentosDaFolha(folha.id)).get(funcionarioId) ?? null;
         await repo.substituirItem(folha.id, empresaId, itens[0]);
+        await repo.auditar(autoria, {
+            acao: 'folha.lancamentos_alterados', entidade: 'folha', entidadeId: folha.id, funcionarioId,
+            antes: { competencia, lancamentos: anteriores }, depois: { competencia, lancamentos },
+        });
     });
     const folha = await folhaOuErro(empresaId, competencia);
     return holeriteDe((await repositorio.itensDaFolha(folha.id, funcionarioId))[0]);

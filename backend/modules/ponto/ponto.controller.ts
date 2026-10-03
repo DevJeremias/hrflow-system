@@ -5,6 +5,7 @@ import * as service from './ponto.service.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { TipoDeErro } from './ponto.erros.ts';
 import type { ConsultaDeJustificativas, ConsultaDePontosDaEmpresa, CorpoDaJustificativa, DecisaoRecebida, DiaDaJustificativa, IdDaJustificativa } from './ponto.schemas.ts';
+import { autoriaDe } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -97,7 +98,7 @@ export const enviarJustificativa = async (req: Request, res: Response) => {
         const { empresa_id, funcionario_id } = usuarioDe(req);
         const { data } = entradaDe<DiaDaJustificativa>(req, 'params');
         const { texto } = entradaDe<CorpoDaJustificativa>(req, 'body');
-        const justificativa = await service.enviarJustificativa({ empresaId: empresa_id, funcionarioId: funcionario_id, data, texto });
+        const justificativa = await service.enviarJustificativa({ empresaId: empresa_id, funcionarioId: funcionario_id, data, texto, autoria: autoriaDe(req) });
         res.json(justificativa);
     } catch (erro) {
         responderFalha(res, erro, 'Erro interno ao salvar a justificativa.');
@@ -119,7 +120,7 @@ export const decidirJustificativa = async (req: Request, res: Response) => {
         const { id } = entradaDe<IdDaJustificativa>(req, 'params');
         const { status, resposta } = entradaDe<DecisaoRecebida>(req, 'body');
         const justificativa = await service.decidirJustificativa({
-            empresaId: empresa_id, id, status, resposta, usuarioId, funcionarioIdDoUsuario: funcionario_id,
+            empresaId: empresa_id, id, status, resposta, usuarioId, funcionarioIdDoUsuario: funcionario_id, autoria: autoriaDe(req),
         });
         res.json(justificativa);
     } catch (erro) {

@@ -3,9 +3,11 @@
 import type { Request, Response } from 'express';
 import * as service from './funcionarios.service.ts';
 import type { Ator } from './funcionarios.service.ts';
+import * as titular from './funcionarios.titular.service.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { TipoDeErro } from './funcionarios.erros.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, IdDaRota, IdDoDependente, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
+import { autoriaDe } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -47,7 +49,7 @@ export const listarFuncionarios = async (req: Request, res: Response) => {
 
 export const criarFuncionario = async (req: Request, res: Response) => {
     try {
-        await service.criarFuncionario(empresaDe(req), entradaDe<CorpoDoCadastro>(req, 'body'));
+        await service.criarFuncionario(empresaDe(req), autoriaDe(req), entradaDe<CorpoDoCadastro>(req, 'body'));
         res.status(201).json({ mensagem: 'Colaborador e credenciais de acesso criados com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro interno ao processar o cadastro.');
@@ -57,7 +59,7 @@ export const criarFuncionario = async (req: Request, res: Response) => {
 export const atualizarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        await service.atualizarFuncionario(empresaDe(req), id, atorDe(req), entradaDe<CorpoDaEdicao>(req, 'body'));
+        await service.atualizarFuncionario(empresaDe(req), id, atorDe(req), autoriaDe(req), entradaDe<CorpoDaEdicao>(req, 'body'));
         res.json({ mensagem: 'Funcionário atualizado com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao modificar o funcionário.');
@@ -66,7 +68,7 @@ export const atualizarFuncionario = async (req: Request, res: Response) => {
 
 export const importarFuncionarios = async (req: Request, res: Response) => {
     try {
-        const relatorio = await service.importarFuncionarios(empresaDe(req), entradaDe<string>(req, 'body'));
+        const relatorio = await service.importarFuncionarios(empresaDe(req), autoriaDe(req), entradaDe<string>(req, 'body'));
         // O relatório leva as senhas provisórias: o navegador não deve guardá-lo.
         res.set('Cache-Control', 'no-store').json(relatorio);
     } catch (erro) {
@@ -77,7 +79,7 @@ export const importarFuncionarios = async (req: Request, res: Response) => {
 export const deletarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        await service.deletarFuncionario(empresaDe(req), id, atorDe(req));
+        await service.deletarFuncionario(empresaDe(req), id, atorDe(req), autoriaDe(req));
         res.json({ mensagem: 'Funcionário removido com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao remover o funcionário.');
@@ -87,7 +89,7 @@ export const deletarFuncionario = async (req: Request, res: Response) => {
 export const alterarStatus = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        const situacao = await service.alterarStatus(empresaDe(req), id, atorDe(req), entradaDe<CorpoDoStatus>(req, 'body'));
+        const situacao = await service.alterarStatus(empresaDe(req), id, atorDe(req), autoriaDe(req), entradaDe<CorpoDoStatus>(req, 'body'));
         res.json({ mensagem: 'Situação do colaborador atualizada com sucesso!', ...situacao });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao alterar a situação do colaborador.');
@@ -98,7 +100,7 @@ export const alterarStatus = async (req: Request, res: Response) => {
 export const redefinirSenha = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        const senhaProvisoria = await service.redefinirSenha(empresaDe(req), id, atorDe(req));
+        const senhaProvisoria = await service.redefinirSenha(empresaDe(req), id, atorDe(req), autoriaDe(req));
         res.set('Cache-Control', 'no-store').json({
             mensagem: 'Senha redefinida. Entregue a senha provisória ao colaborador: ela não será exibida de novo.',
             senhaProvisoria,
@@ -120,7 +122,7 @@ export const listarDependentes = async (req: Request, res: Response) => {
 export const criarDependente = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        const dependenteId = await service.criarDependente(empresaDe(req), id, atorDe(req), entradaDe<CorpoDoDependente>(req, 'body'));
+        const dependenteId = await service.criarDependente(empresaDe(req), id, atorDe(req), autoriaDe(req), entradaDe<CorpoDoDependente>(req, 'body'));
         res.status(201).json({ mensagem: 'Dependente cadastrado com sucesso!', id: dependenteId });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao cadastrar o dependente.');
@@ -130,7 +132,7 @@ export const criarDependente = async (req: Request, res: Response) => {
 export const atualizarDependente = async (req: Request, res: Response) => {
     try {
         const { id, dependenteId } = entradaDe<IdDoDependente>(req, 'params');
-        await service.atualizarDependente(empresaDe(req), id, dependenteId, atorDe(req), entradaDe<CorpoDoDependente>(req, 'body'));
+        await service.atualizarDependente(empresaDe(req), id, dependenteId, atorDe(req), autoriaDe(req), entradaDe<CorpoDoDependente>(req, 'body'));
         res.json({ mensagem: 'Dependente atualizado com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao atualizar o dependente.');
@@ -140,9 +142,40 @@ export const atualizarDependente = async (req: Request, res: Response) => {
 export const excluirDependente = async (req: Request, res: Response) => {
     try {
         const { id, dependenteId } = entradaDe<IdDoDependente>(req, 'params');
-        await service.excluirDependente(empresaDe(req), id, dependenteId, atorDe(req));
+        await service.excluirDependente(empresaDe(req), id, dependenteId, atorDe(req), autoriaDe(req));
         res.json({ mensagem: 'Dependente removido com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao remover o dependente.');
+    }
+};
+
+export const historicoContratual = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        res.json(await service.historicoContratual(empresaDe(req), id));
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao buscar o histórico contratual.');
+    }
+};
+
+// O arquivo baixa com o código do cadastro no nome (o nome da pessoa é dado pessoal e não vai em cabeçalho) e
+// não fica em cache: é o dado de uma pessoa.
+export const exportarDados = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        const exportacao = await titular.exportarDados(empresaDe(req), id, autoriaDe(req));
+        res.set({ 'Cache-Control': 'no-store', 'Content-Disposition': `attachment; filename="colaborador-${id}.json"` }).json(exportacao);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao exportar os dados do colaborador.');
+    }
+};
+
+export const anonimizarFuncionario = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        await titular.anonimizar(empresaDe(req), id, atorDe(req).funcionarioId, autoriaDe(req));
+        res.json({ mensagem: 'Cadastro anonimizado. Os dados pessoais foram apagados e não podem ser recuperados.' });
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao anonimizar o colaborador.');
     }
 };

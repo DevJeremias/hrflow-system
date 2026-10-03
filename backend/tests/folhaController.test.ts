@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
+import { autoriaDeTeste } from './support/auditoria.ts';
 import db from '../shared/db/pool.ts';
 import { meuHolerite } from '../modules/folha/folha.controller.ts';
 import * as service from '../modules/folha/folha.service.ts';
@@ -74,8 +75,8 @@ test('meuHolerite resolve a identidade pelo vínculo usuário/funcionário', { s
 
     // Folha de outubro fechada com o cadastro como está: Davi (inativo) fica fora, Elisa é da empresa B.
     await db.query('UPDATE empresas SET razao_social = ?, cnpj = ? WHERE id = ?', ['Razao Social Ficticia A Ltda', '11222333000181', empresaA]);
-    await service.processarFolha({ empresaId: empresaA, competencia: '2026-10' });
-    await service.fecharFolha({ empresaId: empresaA, usuarioId: admin, competencia: '2026-10' });
+    await service.processarFolha({ empresaId: empresaA, competencia: '2026-10', autoria: autoriaDeTeste(empresaA, admin) });
+    await service.fecharFolha({ empresaId: empresaA, usuarioId: admin, competencia: '2026-10', autoria: autoriaDeTeste(empresaA, admin) });
 
     // O controller só lê id e empresa_id do token e a competência validada; o authMiddleware e o
     // validarEntrada garantem o resto em produção.

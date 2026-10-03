@@ -2,14 +2,11 @@
 // pode rodar em qualquer fuso; tudo que o colaborador vê ou que define "hoje" e "mês" passa por aqui.
 // Instantes circulam como segundos Unix (UNIX_TIMESTAMP / FROM_UNIXTIME no SQL), que não dependem
 // do fuso da sessão do MySQL nem do fuso do processo Node.
-export const FUSO = 'America/Belem';
+// O relógio e o dia de Belém vivem em shared/utils/relogio.ts, para quem não pode importar o ponto.
+import { FUSO, relogio, diaLocal } from '../../shared/utils/relogio.ts';
 
-// Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia em Belém.
-export const relogio = { agora: (): number => Date.now() };
+export { FUSO, relogio, diaLocal };
 
-const formatadorDia = new Intl.DateTimeFormat('en-CA', {
-    timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit',
-});
 const formatadorHora = new Intl.DateTimeFormat('pt-BR', {
     timeZone: FUSO, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
 });
@@ -19,9 +16,6 @@ const formatadorPartes = new Intl.DateTimeFormat('en-US', {
 });
 
 const paraMs = (segundos: number): number => segundos * 1000;
-
-// 'YYYY-MM-DD' do dia, em Belém, em que o instante cai.
-export const diaLocal = (segundos: number): string => formatadorDia.format(paraMs(segundos));
 
 // 'HH:MM:SS' em Belém.
 export const horaLocal = (segundos: number): string => formatadorHora.format(paraMs(segundos));

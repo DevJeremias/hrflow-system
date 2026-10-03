@@ -1,17 +1,9 @@
 import httpClient from './httpClient';
-import type { CorpoDeAlterarSenhaApi, CorpoDeMeusDadosApi, MensagemApi, PerfilApi } from '../types/api';
+import type { CorpoDeAlterarSenhaApi, CorpoDeMeusDadosApi, MensagemApi, MeusDadosSalvosApi, PerfilApi } from '../types/api';
 
 // Resposta de GET /api/perfil/meus-dados: a mesma forma para todos os perfis. Os campos do
 // vínculo com o funcionário vêm null quando `vinculado` é false (ex.: o Administrador).
 export type PerfilUsuario = PerfilApi;
-
-// O que a aba de dados edita. `avatar` é o endereço da foto atual, '' (sem foto) ou um data URL novo.
-export interface DadosEditaveis {
-  nome: string;
-  email: string;
-  telefone: string;
-  avatar: string;
-}
 
 export const userService = {
   async getMyProfile(): Promise<PerfilUsuario> {
@@ -21,8 +13,10 @@ export const userService = {
     });
   },
 
-  async updateMyProfile(dados: CorpoDeMeusDadosApi): Promise<void> {
-    await httpClient('/perfil/meus-dados', {
+  // Telefone e foto (e, para o Administrador, também nome, e-mail, endereço e dados bancários). Trocar o e-mail
+  // encerra a sessão: `sessaoEncerrada` avisa a tela.
+  async updateMyProfile(dados: CorpoDeMeusDadosApi): Promise<MeusDadosSalvosApi> {
+    return httpClient<MeusDadosSalvosApi>('/perfil/meus-dados', {
       method: 'PUT',
       auth: true,
       body: JSON.stringify(dados),

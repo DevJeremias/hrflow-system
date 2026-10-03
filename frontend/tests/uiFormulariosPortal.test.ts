@@ -52,7 +52,7 @@ before(async () => {
     chamadas.push({ metodo, caminho });
     if (caminho === '/auth/sessao') return json({ id: 3, nome: 'Caio Ficticio', perfil: 'Colaborador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: 7, avatar: null });
     if (caminho === '/perfil/meus-dados') return json(PERFIL);
-    if (caminho === '/solicitacoes/minhas') return json([]);
+    if (caminho === '/solicitacoes/minhas' || caminho === '/solicitacoes-alteracao/minhas') return json([]);
     if (caminho.startsWith('/ponto/hoje/')) return json(registrosDeHoje);
     if (caminho.startsWith('/ponto/historico/')) return json([DIA]);
     if (caminho.startsWith('/ponto/totais/')) return json({ workSchedule: JORNADA, totals: [], monthlySummary: TOTAIS_VAZIOS });
@@ -149,7 +149,7 @@ test('Meus Dados: os campos de edição têm id, name, rótulo e autocomplete; s
   await clicar(botaoPorTexto(host, /Editar Dados/));
 
   const campos = verificarCampos(host);
-  assert.deepEqual(campos.map((c) => [c.name, c.getAttribute('autocomplete')]), [['avatar', null], ['name', 'name'], ['email', 'email'], ['telefone', 'tel']]);
+  assert.deepEqual(campos.map((c) => [c.name, c.getAttribute('autocomplete')]), [['avatar', null], ['name', 'name'], ['email', 'email'], ['telefone', 'tel'], ['endereco', 'street-address'], ['banco', 'off'], ['agencia', 'off'], ['conta', 'off'], ['tipoConta', 'off']]);
   assert.equal(host.querySelector<HTMLInputElement>('[name="avatar"]')!.type, 'file');
   const idFoto = host.querySelector('[name="avatar"]')!.id;
   assert.equal(host.querySelector(`label[for="${idFoto}"]`)!.textContent, 'Alterar foto', 'o botão da câmera tem nome acessível');
@@ -170,7 +170,7 @@ test('Meus Dados: imagem acima de 2MB mostra toast de erro e nunca alert', async
 test('Meus Dados: as abas seguem o padrão ARIA e a de Segurança tem os autocompletes de senha', async () => {
   const host = await abrirPagina(Profile);
   const abas = [...host.querySelectorAll<HTMLElement>('[role="tab"]')];
-  assert.deepEqual(abas.map((aba) => aba.textContent), ['Meus Dados', 'Vínculo e Contrato', 'Segurança']);
+  assert.deepEqual(abas.map((aba) => aba.textContent), ['Meus Dados', 'Vínculo e Contrato', 'Segurança', 'Privacidade']);
   const painel = porRole(host, 'tabpanel')!;
   assert.equal(abas[0].getAttribute('aria-controls'), painel.id);
 

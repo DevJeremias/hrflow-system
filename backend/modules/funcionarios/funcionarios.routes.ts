@@ -25,3 +25,8 @@ funcionariosRoutes.get('/:id/dependentes', apenasRH, validarEntrada({ params: id
 funcionariosRoutes.post('/:id/dependentes', apenasRH, validarEntrada({ params: idDaRota, body: dependente }), funcionariosController.criarDependente);
 funcionariosRoutes.put('/:id/dependentes/:dependenteId', apenasRH, validarEntrada({ params: idDoDependente, body: dependente }), funcionariosController.atualizarDependente);
 funcionariosRoutes.delete('/:id/dependentes/:dependenteId', apenasRH, validarEntrada({ params: idDoDependente }), funcionariosController.excluirDependente);
+
+// Histórico contratual e direitos do titular. Exportar é da gestão; anonimizar é irreversível e só do Administrador.
+funcionariosRoutes.get('/:id/historico-contratual', apenasRH, validarEntrada({ params: idDaRota }), funcionariosController.historicoContratual);
+funcionariosRoutes.get('/:id/exportar', exigirPermissao('colaboradores:exportar'), validarEntrada({ params: idDaRota }), funcionariosController.exportarDados);
+funcionariosRoutes.post('/:id/anonimizar', exigirPermissao('colaboradores:anonimizar'), validarEntrada({ params: idDaRota }), funcionariosController.anonimizarFuncionario);

@@ -19,6 +19,13 @@ export const PERMISSOES = {
     'estrutura:consultar': GESTAO,
     // O alcance sobre cada cadastro (RH não toca RH, Administrador nem o próprio) é o de podeGerirCadastro.
     'colaboradores:gerir': GESTAO,
+    // Exportar os dados de um colaborador (portabilidade) é da gestão; anonimizar (eliminação) é irreversível e só do Administrador.
+    'colaboradores:exportar': GESTAO,
+    'colaboradores:anonimizar': SO_ADMINISTRADOR,
+    // Quem alterou o quê e quando; o RH precisa da trilha dos colaboradores que gere.
+    'auditoria:consultar': GESTAO,
+    // Aprovar ou recusar o que o colaborador pede para mudar no próprio cadastro (nome, e-mail, endereço, banco).
+    'solicitacoes:decidir': GESTAO,
     'folha:processar': GESTAO,
     'ponto:consultar-empresa': GESTAO,
     'dashboard:consultar': GESTAO,

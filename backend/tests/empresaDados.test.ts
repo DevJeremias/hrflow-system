@@ -76,7 +76,7 @@ describe('dados da empresa', { skip: banco.skip }, () => {
         for (const token of [admin, rh]) {
             const { status, corpo } = await chamar('GET', token);
             assert.equal(status, 200);
-            assert.deepEqual(Object.keys(corpo).sort(), ['cnpj', 'nome', 'razao_social', 'regime_tributario']);
+            assert.deepEqual(Object.keys(corpo).sort(), ['cnpj', 'encarregado_email', 'encarregado_nome', 'nome', 'razao_social', 'regime_tributario']);
             assert.equal(corpo.cnpj, null);
             assert.equal(corpo.razao_social, null);
             assert.equal(corpo.regime_tributario, null);
@@ -102,6 +102,30 @@ describe('dados da empresa', { skip: banco.skip }, () => {
         const limpo = await chamar('PUT', admin, { razao_social: 'Razao Ficticia Ltda', cnpj, regime_tributario: '' });
         assert.equal(limpo.status, 200);
         assert.equal(limpo.corpo.regime_tributario, null);
+    });
+
+    it('o encarregado pelo tratamento de dados (LGPD) é indicado pelo Administrador, mantido quando o corpo não o traz e apagado com vazio', async () => {
+        const { admin } = await cenario();
+        const base = { razao_social: 'Razao Ficticia Ltda', cnpj: novoCnpj() };
+        const indicado = await chamar('PUT', admin, { ...base, encarregado_nome: '  Enzo Encarregado Ficticio ', encarregado_email: 'Encarregado@Exemplo.INVALID' });
+        assert.equal(indicado.status, 200, JSON.stringify(indicado.corpo));
+        assert.equal(indicado.corpo.encarregado_nome, 'Enzo Encarregado Ficticio');
+        assert.equal(indicado.corpo.encarregado_email, 'encarregado@exemplo.invalid');
+
+        const mantido = await chamar('PUT', admin, base);
+        assert.equal(mantido.corpo.encarregado_email, 'encarregado@exemplo.invalid', 'sem as chaves, o encarregado fica como está');
+
+        const apagado = await chamar('PUT', admin, { ...base, encarregado_nome: '', encarregado_email: null });
+        assert.equal(apagado.corpo.encarregado_nome, null);
+        assert.equal(apagado.corpo.encarregado_email, null);
+    });
+
+    it('recusa encarregado só com o nome, só com o e-mail ou com e-mail inválido', async () => {
+        const { admin } = await cenario();
+        const base = { razao_social: 'Razao Ficticia Ltda', cnpj: novoCnpj() };
+        for (const extra of [{ encarregado_nome: 'Só Nome' }, { encarregado_email: 'so@exemplo.invalid' }, { encarregado_nome: 'Nome', encarregado_email: 'sem-arroba' }, { encarregado_nome: 'Nome', encarregado_email: '' }]) {
+            assert.equal((await chamar('PUT', admin, { ...base, ...extra })).status, 400, JSON.stringify(extra));
+        }
     });
 
     it('só o Administrador altera: RH e colaborador recebem 403 e nada muda', async () => {
