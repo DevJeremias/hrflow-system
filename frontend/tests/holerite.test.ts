@@ -1,4 +1,4 @@
-// Holerite (B-07): empresa e competência reais, e um layout que não depende de 600 px de largura.
+// Holerite (B-07, B-12): empresa, CNPJ e competência reais, e um layout que não depende de 600 px de largura.
 // jsdom não calcula layout; a medição em 360 px é feita no navegador (ver PR). Aqui ficam o conteúdo
 // e a estrutura responsiva que a tornam possível.
 import { after, before, test } from 'node:test';
@@ -9,7 +9,7 @@ import { JSDOM } from 'jsdom';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createServer, type ViteDevServer } from 'vite';
-import { competenciaAtual } from '../src/utils/competencia.ts';
+import { rotuloDaCompetencia } from '../src/utils/competencia.ts';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' });
 Object.defineProperties(globalThis, {
@@ -48,20 +48,28 @@ const abrir = async (props: Record<string, unknown>) => {
   return { fechar, modal: document.querySelector('.holerite-impressao') as HTMLElement };
 };
 
-test('a competência é o mês corrente por extenso, em minúsculas', () => {
-  assert.equal(competenciaAtual(new Date(2026, 9, 2)), 'outubro de 2026');
-  assert.equal(competenciaAtual(new Date(2027, 0, 31)), 'janeiro de 2027');
-  assert.equal(competenciaAtual(new Date(2026, 2, 1)), 'março de 2026');
+test('a competência AAAA-MM vira o mês por extenso, em minúsculas', () => {
+  assert.equal(rotuloDaCompetencia('2026-10'), 'outubro de 2026');
+  assert.equal(rotuloDaCompetencia('2027-01'), 'janeiro de 2027');
+  assert.equal(rotuloDaCompetencia('2026-03'), 'março de 2026');
 });
 
 test('o título traz a competência e o nome da empresa vem da sessão', async () => {
-  const { fechar, modal } = await abrir({ month: competenciaAtual(new Date(2026, 9, 2)), companyName: 'Empresa Ficticia Alfa Ltda' });
+  const { fechar, modal } = await abrir({ month: rotuloDaCompetencia('2026-10'), companyName: 'Empresa Ficticia Alfa Ltda' });
   const texto = modal.textContent ?? '';
   assert.match(texto, /Referência: outubro de 2026/);
   assert.match(texto, /Empresa Ficticia Alfa Ltda/);
-  assert.doesNotMatch(texto, /CNPJ/, 'sem coluna em empresas, a linha do CNPJ não aparece');
+  assert.doesNotMatch(texto, /CNPJ/, 'sem CNPJ cadastrado, a linha não aparece');
   const titulo = [...modal.querySelectorAll('p')].find((p) => p.textContent?.startsWith('Referência:'));
   assert.doesNotMatch(titulo?.className ?? '', /capitalize/, 'capitalize transformaria "de" em "De"');
+  await fechar();
+});
+
+test('com CNPJ, o cabeçalho mostra razão social e CNPJ formatado', async () => {
+  const { fechar, modal } = await abrir({ month: 'outubro de 2026', companyName: 'Razao Social Ficticia Ltda', cnpj: '11222333000181' });
+  const cabecalho = modal.querySelector('h1')?.parentElement?.textContent ?? '';
+  assert.match(cabecalho, /Razao Social Ficticia Ltda/);
+  assert.match(cabecalho, /CNPJ: 11\.222\.333\/0001-81/);
   await fechar();
 });
 

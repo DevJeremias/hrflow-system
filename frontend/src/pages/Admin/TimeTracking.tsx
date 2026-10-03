@@ -4,12 +4,7 @@ import { pontoService, type CompanyPointRecord } from '../../services/pontoServi
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 import { formatarDataIso, formatarHoraSemSegundos } from '../../utils/ponto';
-
-const mesAtualEmBelem = (): string => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Belem',
-  year: 'numeric',
-  month: '2-digit'
-}).format(new Date()).slice(0, 7);
+import { mesAtualEmBelem } from '../../utils/competencia';
 
 const TAMANHO_DA_PAGINA = 50;
 const ATRASO_DA_BUSCA_MS = 300;

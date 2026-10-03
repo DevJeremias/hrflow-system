@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { X, Printer, Building } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
+import { mascararCnpj } from '../../utils/empresa';
 
 interface Props {
   isOpen: boolean;
@@ -9,11 +10,13 @@ interface Props {
   employee: EmployeePayroll | null;
   month: string;
   companyName?: string;
+  // Só os dígitos, como a API os guarda; sem CNPJ a linha não aparece.
+  cnpj?: string | null;
 }
 
 interface Linha { descricao: string; referencia: string; tipo: 'vencimento' | 'desconto'; valor: number; }
 
-const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName }) => {
+const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName, cnpj }) => {
   if (!isOpen || !employee) return null;
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -51,7 +54,10 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
                 <div className="w-12 h-12 shrink-0 bg-slate-900 text-white rounded-xl flex items-center justify-center print:border print:border-slate-900 print:bg-white print:text-slate-900">
                   <Building size={24} />
                 </div>
-                {companyName && <h1 className="font-black text-lg text-slate-900 uppercase tracking-tight break-words min-w-0">{companyName}</h1>}
+                <div className="min-w-0">
+                  {companyName && <h1 className="font-black text-lg text-slate-900 uppercase tracking-tight break-words min-w-0">{companyName}</h1>}
+                  {cnpj && <p className="text-sm font-bold text-slate-500">CNPJ: {mascararCnpj(cnpj)}</p>}
+                </div>
               </div>
               <div className="sm:text-right">
                 <h2 className="font-black text-xl text-slate-900 uppercase">Recibo de Pagamento</h2>

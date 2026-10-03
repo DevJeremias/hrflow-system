@@ -1,14 +1,14 @@
 import React from 'react';
 import { FileText, Eye, Calendar } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { Payslip } from '../../services/payrollService';
+import { rotuloDaCompetencia } from '../../utils/competencia';
 
 interface Props {
-  payslips: EmployeePayroll[];
-  monthsLabels: string[];
-  onOpenPayslip: (payroll: EmployeePayroll, monthLabel: string) => void;
+  payslips: Payslip[];
+  onOpenPayslip: (payslip: Payslip) => void;
 }
 
-const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip }) => {
+const PayslipsTable: React.FC<Props> = ({ payslips, onOpenPayslip }) => {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
@@ -20,7 +20,7 @@ const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip 
         <div className="p-2.5 bg-indigo-50 text-primary rounded-xl">
           <Calendar size={20} />
         </div>
-        <h2 className="text-xl font-black text-slate-900 tracking-tight">Demonstrativo calculado com os dados atuais</h2>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Holerites das folhas fechadas</h2>
       </div>
 
       {/* Corpo da Tabela */}
@@ -36,10 +36,10 @@ const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip 
             </tr>
           </thead>
           <tbody className="text-sm font-medium">
-            {payslips.map((payroll, idx) => {
-              const monthLabel = monthsLabels[idx] || 'Mês Anterior';
+            {payslips.map((payroll) => {
+              const monthLabel = rotuloDaCompetencia(payroll.competencia);
               return (
-                <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
+                <tr key={payroll.competencia} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
                   
                   <td className="p-6">
                     <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip 
                   
                   <td className="p-6 text-right">
                     <button
-                      onClick={() => onOpenPayslip(payroll, monthLabel)}
+                      onClick={() => onOpenPayslip(payroll)}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-primary text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95"
                     >
                       <Eye size={14} /> Visualizar

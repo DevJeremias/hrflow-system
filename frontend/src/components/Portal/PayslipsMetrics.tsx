@@ -1,9 +1,9 @@
 import React from 'react';
 import { DollarSign, TrendingDown, Wallet } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { Payslip } from '../../services/payrollService';
 
 interface Props {
-  latestPayslip: EmployeePayroll;
+  latestPayslip: Payslip;
   monthLabel: string;
 }
 
