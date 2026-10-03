@@ -1,9 +1,12 @@
-// Fluxo 1: o colaborador entra e marca o ponto. O colaborador nasce pela API do administrador, para o
-// fluxo valer em qualquer dia e quantas vezes for repetido (a sequência das marcações é por dia).
+// Fluxo 1: o colaborador faz o primeiro acesso (a senha que o RH definiu é provisória e precisa ser trocada),
+// entra com a senha nova e marca o ponto. O colaborador nasce pela API do administrador, para o fluxo valer
+// em qualquer dia e quantas vezes for repetido (a sequência das marcações é por dia).
 import { test, expect } from '@playwright/test';
 import { ADMINISTRADOR, SENHA, emailUnico, entrar, sessaoDaApi } from './support/sessao';
 
-test('o colaborador entra, marca a entrada e o registro sobrevive ao recarregar a página', async ({ page, baseURL }) => {
+const SENHA_NOVA = 'senha-nova-e2e-1';
+
+test('o colaborador troca a senha provisória, entra, marca a entrada e o registro sobrevive ao recarregar a página', async ({ page, baseURL }) => {
   const email = emailUnico('ponto');
   const admin = await sessaoDaApi(baseURL as string, ADMINISTRADOR);
   const criado = await admin.post('/api/funcionarios', {
@@ -12,7 +15,16 @@ test('o colaborador entra, marca a entrada e o registro sobrevive ao recarregar 
   expect(criado.status()).toBe(201);
   await admin.dispose();
 
-  await entrar(page, email, SENHA, /\/meu-painel$/);
+  // O primeiro acesso só abre a troca de senha; depois dela a pessoa volta ao login com a senha nova.
+  await entrar(page, email, SENHA, /\/trocar-senha$/);
+  await page.getByLabel('SENHA PROVISÓRIA').fill(SENHA);
+  await page.getByLabel('NOVA SENHA', { exact: true }).fill(SENHA_NOVA);
+  await page.getByLabel('CONFIRMAR NOVA SENHA').fill(SENHA_NOVA);
+  await page.getByRole('button', { name: 'DEFINIR SENHA' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole('status')).toContainText('Senha definida');
+
+  await entrar(page, email, SENHA_NOVA, /\/meu-painel$/);
   await expect(page.getByText('Horário de Belém')).toBeVisible();
   await expect(page.getByText('Nenhum ponto registrado')).toBeVisible();
 
