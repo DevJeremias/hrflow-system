@@ -6,6 +6,8 @@ import HoleriteModal from '../../components/Admin/PayrollSlipModal';
 import { FileText } from 'lucide-react';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { competenciaAtual } from '../../utils/competencia';
+import { useAuth } from '../../contexts/AuthContext';
 
 const MyPayslips: React.FC = () => {
   const [payslips, setPayslips] = useState<EmployeePayroll[]>([]);
@@ -14,7 +16,8 @@ const MyPayslips: React.FC = () => {
   const [selectedPayslip, setSelectedPayslip] = useState<EmployeePayroll | null>(null);
   const [selectedMonthLabel, setSelectedMonthLabel] = useState('');
 
-  const monthsLabels = ['Mês Atual'];
+  const { user } = useAuth();
+  const monthsLabels = [competenciaAtual()];
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -85,7 +88,8 @@ const MyPayslips: React.FC = () => {
           isOpen={!!selectedPayslip} 
           onClose={() => setSelectedPayslip(null)} 
           employee={selectedPayslip} 
-          month={selectedMonthLabel} 
+          month={selectedMonthLabel}
+          companyName={user?.empresaNome}
         />
       )}
     </div>

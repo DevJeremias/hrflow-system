@@ -89,9 +89,10 @@ exports.logout = (req, res) => {
 exports.sessao = async (req, res) => {
     try {
         const [linhas] = await db.query(
-            `SELECT u.id, u.perfil, u.empresa_id, u.funcionario_id, u.avatar,
+            `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, u.avatar,
                     COALESCE(f.nome, u.nome) AS nome
              FROM usuarios u
+             JOIN empresas e ON e.id = u.empresa_id
              LEFT JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
              WHERE u.id = ?`,
             [req.usuario.id]
