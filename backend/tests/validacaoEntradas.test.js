@@ -49,7 +49,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
         app.use(express.json({ limit: '4mb' }));
         app.use('/api/funcionarios', authMiddleware, require('../modules/funcionarios/index.ts').funcionariosRoutes);
         app.use('/api/estrutura', authMiddleware, require('../routes/estruturaRoutes'));
-        app.use('/api/folha', authMiddleware, require('../routes/folhaRoutes'));
+        app.use('/api/folha', authMiddleware, require('../modules/folha/index.ts').folhaRoutes);
         app.use('/api/perfil', authMiddleware, require('../modules/perfil/index.ts').perfilRoutes);
         app.use(tratarErros);
         server = http.createServer(app);

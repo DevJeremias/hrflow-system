@@ -7,7 +7,7 @@ API REST em Node.js com Express e MySQL. Este README descreve o padrão dos mód
 O back-end está sendo reorganizado como um monólito modular, módulo por módulo. Convivem dois formatos:
 
 * **Código legado em JavaScript (CommonJS):** `controllers/`, `routes/`, `schemas/`, `utils/` e `middlewares/`, que ainda misturam HTTP, regra e SQL no controlador. Nada disso muda até o módulo correspondente ser migrado.
-* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência. Para escrever um módulo novo, copie a estrutura dele.
+* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência; `modules/dashboard` e `modules/folha` já seguem o padrão. Para escrever um módulo novo, copie a estrutura dele.
 
 Migre um módulo inteiro por vez, sem reescrever os outros.
 

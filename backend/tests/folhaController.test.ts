@@ -1,39 +1,53 @@
 // Teste de integração do holerite contra um MySQL de teste descartável, com o schema
 // aplicado pelas migrations (tests/support/bancoDeTeste.js, variáveis HRFLOW_TEST_DB_*).
 // Sem HRFLOW_TEST_DB_HOST o teste é pulado, não aprovado.
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const banco = require('./support/bancoDeTeste');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import type { Request, Response } from 'express';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import banco from './support/bancoDeTeste.js';
+import db from '../config/db.js';
+import { meuHolerite } from '../modules/folha/folha.controller.ts';
 
-const respostaFalsa = () => {
-    const res = { statusCode: 200, corpo: undefined };
-    res.status = (codigo) => { res.statusCode = codigo; return res; };
-    res.json = (corpo) => { res.corpo = corpo; return res; };
+type Token = NonNullable<Request['usuario']>;
+
+interface RespostaFalsa {
+    statusCode: number;
+    corpo: any;
+    status: (codigo: number) => RespostaFalsa;
+    json: (corpo: unknown) => RespostaFalsa;
+}
+
+const respostaFalsa = (): RespostaFalsa => {
+    const res: RespostaFalsa = {
+        statusCode: 200,
+        corpo: undefined,
+        status: (codigo) => { res.statusCode = codigo; return res; },
+        json: (corpo) => { res.corpo = corpo; return res; },
+    };
     return res;
 };
 
 test('meuHolerite resolve a identidade pelo vínculo usuário/funcionário', { skip: banco.skip }, async (t) => {
     await banco.preparar();
-    const db = require('../config/db');
-    const { meuHolerite } = require('../controllers/folhaController');
 
     t.after(async () => {
         await db.end();
         await banco.encerrar();
     });
 
-    const inserir = async (sql, valores) => (await db.query(sql, valores))[0].insertId;
+    const inserir = async (sql: string, valores: unknown[]) => (await db.query<ResultSetHeader>(sql, valores))[0].insertId;
     const empresaA = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Fictícia A']);
     const empresaB = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Fictícia B']);
     // Cargo e departamento vêm do trigger de empresa nova (migration 0002).
-    const [[{ cargo }]] = await db.query('SELECT MIN(id) AS cargo FROM cargos WHERE empresa_id = ?', [empresaA]);
-    const [[{ departamento }]] = await db.query('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [empresaA]);
+    const [[{ cargo }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS cargo FROM cargos WHERE empresa_id = ?', [empresaA]);
+    const [[{ departamento }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [empresaA]);
 
-    const funcionario = (nome, salario, status, empresa) => inserir(
+    const funcionario = (nome: string, salario: number, status: string, empresa: number) => inserir(
         'INSERT INTO funcionarios (nome, email, salario_base, status, cargo_id, departamento_id, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [nome, `${nome.split(' ')[0].toLowerCase()}@exemplo.invalid`, salario, status, ...(empresa === empresaA ? [cargo, departamento] : [null, null]), empresa]
     );
-    const usuario = (nome, perfil, empresa, funcionarioId) => inserir(
+    const usuario = (nome: string, perfil: string, empresa: number, funcionarioId: number | null) => inserir(
         'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id, funcionario_id) VALUES (?, ?, ?, ?, ?, ?)',
         [nome, `${nome.replace(/\s/g, '.').toLowerCase()}@exemplo.invalid`, 'hash-ficticio', perfil, empresa, funcionarioId]
     );
@@ -57,9 +71,10 @@ test('meuHolerite resolve a identidade pelo vínculo usuário/funcionário', { s
     assert.notEqual(usuarioBruno, bruno);
     assert.ok(usuarioAnaSemColisao > elisa, 'nenhum funcionário tem o id deste usuário');
 
-    const consultar = async (token) => {
+    // O controller só lê id e empresa_id do token; o authMiddleware garante o resto em produção.
+    const consultar = async (token: Partial<Token>) => {
         const res = respostaFalsa();
-        await meuHolerite({ usuario: token }, res);
+        await meuHolerite({ usuario: token } as Request, res as unknown as Response);
         return res;
     };
 

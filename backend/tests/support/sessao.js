@@ -7,7 +7,10 @@ const { emitirToken, tokenCsrf, COOKIE_SESSAO, CABECALHO_CSRF } = require('../..
 
 let contador = 0;
 
-/** @param {unknown} pool @param {{ empresaId: number, perfil: string, funcionarioId?: number | null, senhaHash?: string }} dados */
+/**
+ * @param {any} pool
+ * @param {{ empresaId: number, perfil: string, funcionarioId?: number | null, senhaHash?: string }} opcoes
+ */
 const criarUsuario = async (pool, { empresaId, perfil, funcionarioId = null, senhaHash = 'hash-ficticio' }) => {
     const email = `usuario${process.pid}-${++contador}@exemplo.invalid`;
     const [r] = await pool.query(
@@ -19,7 +22,7 @@ const criarUsuario = async (pool, { empresaId, perfil, funcionarioId = null, sen
 };
 
 // Cabeçalhos de uma requisição autenticada vinda do front-end. Sem token, nenhum cabeçalho.
-/** @param {string} [token] @returns {Record<string, string>} */
+/** @type {(token?: string) => Record<string, string>} */
 const cabecalhosDaSessao = (token) => (token ? {
     Cookie: `${COOKIE_SESSAO}=${token}`,
     [CABECALHO_CSRF]: tokenCsrf(token),

@@ -1,16 +1,23 @@
 // INSS da folha: regra pura em centavos (sem banco) e a API de folha/holerite contra MySQL real.
 // Banco e variáveis em tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST só a parte HTTP é pulada.
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const express = require('express');
-const banco = require('./support/bancoDeTeste');
-const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
-const regras = require('../modules/folha/folha.regras.ts');
-const { TABELAS_INSS } = require('../modules/folha/folha.tabelas.ts');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import express from 'express';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
+import db from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import { folhaRoutes } from '../modules/folha/index.ts';
+import type { HoleriteDoColaborador } from '../modules/folha/folha.service.ts';
+import * as regras from '../modules/folha/folha.regras.ts';
+import { TABELAS_INSS, type TabelaInss } from '../modules/folha/folha.tabelas.ts';
 
 const DIA = '2026-10-02';
-const inss = (salario, dia = DIA, tabelas = TABELAS_INSS) => regras.calcularHolerite(salario, dia, tabelas).inss;
-const duasCasas = (valor) => Math.abs(Math.round(valor * 100) - valor * 100) < 1e-9;
+const inss = (salario: number, dia = DIA, tabelas: readonly TabelaInss[] = TABELAS_INSS) => regras.calcularHolerite(salario, dia, tabelas).inss;
+const duasCasas = (valor: number) => Math.abs(Math.round(valor * 100) - valor * 100) < 1e-9;
 
 test('INSS 2026 bate com a tabela progressiva nos valores de referência', () => {
     assert.equal(inss(1621.00), 121.58);
@@ -89,11 +96,8 @@ test('a tabela publicada tem vigência e faixas crescentes', () => {
 });
 
 const semBanco = banco.skip;
-const db = require('../config/db');
-const authMiddleware = require('../middlewares/authMiddleware');
-const folhaRoutes = require('../routes/folhaRoutes');
-let servidor;
-let baseUrl;
+let servidor: Server | undefined;
+let baseUrl: string;
 
 test.before(async () => {
     if (semBanco) return;
@@ -101,35 +105,36 @@ test.before(async () => {
     const app = express();
     app.use(express.json());
     app.use('/api/folha', authMiddleware, folhaRoutes);
-    await new Promise((resolve) => { servidor = app.listen(0, '127.0.0.1', resolve); });
-    baseUrl = `http://127.0.0.1:${servidor.address().port}/api/folha`;
+    await new Promise<void>((resolve) => { servidor = app.listen(0, '127.0.0.1', () => resolve()); });
+    baseUrl = `http://127.0.0.1:${(servidor!.address() as AddressInfo).port}/api/folha`;
 });
 
 test.after(async () => {
-    if (servidor) await new Promise((resolve) => servidor.close(resolve));
+    const aberto = servidor;
+    if (aberto) await new Promise((resolve) => aberto.close(resolve));
     await db.end();
     if (!semBanco) await banco.encerrar();
 });
 
-const SALARIOS = [
+const SALARIOS: [number, number][] = [
     [1621.00, 121.58], [2900.00, 236.69], [4354.27, 411.11], [6800.00, 753.51], [10000.00, 988.09],
 ];
 
 test('GET /processar e /meu-holerite devolvem INSS em centavos exatos', { skip: semBanco }, async () => {
-    const [{ insertId: empresa }] = await db.query('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia']);
-    const [[{ cargo }]] = await db.query('SELECT MIN(id) AS cargo FROM cargos WHERE empresa_id = ?', [empresa]);
-    const [[{ departamento }]] = await db.query('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [empresa]);
-    const ids = [];
+    const [{ insertId: empresa }] = await db.query<ResultSetHeader>('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia']);
+    const [[{ cargo }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS cargo FROM cargos WHERE empresa_id = ?', [empresa]);
+    const [[{ departamento }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [empresa]);
+    const ids: number[] = [];
     for (const [i, [salario]] of SALARIOS.entries()) {
-        const [r] = await db.query(
+        const [r] = await db.query<ResultSetHeader>(
             'INSERT INTO funcionarios (nome, email, salario_base, status, cargo_id, departamento_id, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [`Pessoa ${i}`, `folha${i}@exemplo.invalid`, salario, 'Ativo', cargo, departamento, empresa]
         );
         ids.push(r.insertId);
     }
-    const chamar = async (usuario, caminho) => {
+    const chamar = async (usuario: { token: string }, caminho: string) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, { headers: cabecalhosDaSessao(usuario.token) });
-        return { status: resposta.status, corpo: await resposta.json() };
+        return { status: resposta.status, corpo: await resposta.json() as HoleriteDoColaborador[] };
     };
 
     const admin = await criarUsuario(db, { empresaId: empresa, perfil: 'Administrador' });
@@ -138,11 +143,12 @@ test('GET /processar e /meu-holerite devolvem INSS em centavos exatos', { skip: 
     assert.equal(folha.length, SALARIOS.length);
     for (const [i, [salario, esperado]] of SALARIOS.entries()) {
         const linha = folha.find((item) => item.id === String(ids[i]));
+        assert.ok(linha, `holerite de ${ids[i]} ausente da folha`);
         assert.equal(linha.baseSalary, salario);
         assert.equal(linha.totalDeductions, esperado);
         assert.equal(linha.deductionsList[0].value, esperado);
         assert.equal(linha.netSalary, regras.emReais(regras.emCentavos(salario) - regras.emCentavos(esperado)));
-        for (const campo of ['baseSalary', 'totalGross', 'totalDeductions', 'netSalary', 'employerCharges']) {
+        for (const campo of ['baseSalary', 'totalGross', 'totalDeductions', 'netSalary', 'employerCharges'] as const) {
             assert.ok(duasCasas(linha[campo]), `${campo} de ${salario} saiu como ${linha[campo]}`);
         }
     }
