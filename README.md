@@ -44,15 +44,16 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 
 ```text
 hrflow-system/
+├── e2e/                   # Fluxos de ponta a ponta (Playwright) e a configuração deles
 ├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*) e guardar-estrutura.mts (guarda de .js/.jsx)
 ├── backend/               # API em TypeScript; estrutura e regras em backend/README.md
 │   ├── modules/           # Um módulo por área (auth, ponto, dashboard, folha, perfil, estrutura, funcionarios, saude)
 │   ├── shared/            # O que mais de uma área usa: config, db (pool, migrations, fixtures), middlewares, schemas, utils
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
-│   ├── tests/             # Testes de integração (MySQL descartável)
+│   ├── tests/             # Testes de integração (MySQL descartável) e o apoio deles em tests/support
 │   ├── types/             # Declarações de tipos que só o tsc usa (express.d.ts)
-│   ├── app.ts             # Monta o app Express
-│   └── server.ts          # Ponto de entrada do Node.js
+│   ├── app.ts             # criarApp: monta o app Express inteiro, sem abrir porta
+│   └── server.ts          # Ponto de entrada do Node.js: escuta a porta e encerra limpo no SIGTERM
 └── frontend/
     ├── src/
     │   ├── components/    # Componentes React (Admin, Portal, UI)
@@ -71,7 +72,7 @@ hrflow-system/
 * [x] **Fase 1:** Autenticação e Perfis de Acesso.
 * [x] **Fase 2:** Gestão de Colaboradores e Estrutura Organizacional.
 * [x] **Fase 3:** Motor Financeiro e Folha de Pagamento Automatizada.
-* [ ] **Fase 4:** Relógio de Ponto Eletrônico (parcial: registro de entradas e saídas, justificativas e histórico já existem; falta o banco de horas).
+* [ ] **Fase 4:** Relógio de Ponto Eletrônico (parcial: registro de entradas e saídas, apuração diária e mensal contra a jornada do colaborador, e justificativas aprovadas ou recusadas pelo RH já existem; faltam banco de horas, feriados e fechamento do mês). A jornada (`carga_horaria_semanal`, `hora_entrada`, `hora_saida`, `tolerancia_min`) fica em `funcionarios`, com padrão de 40 horas, 08:00 às 17:00 e tolerância de 10 minutos; ainda não há tela para editá-la.
 * [ ] **Fase 5:** Geração de relatórios em formato PDF e Dashboard Analítico.
 
 ---
@@ -193,13 +194,31 @@ HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflo
 
 `HRFLOW_TEST_DB_PORT` é opcional (padrão 3306). Sem `HRFLOW_TEST_DB_HOST` os testes são marcados como ignorados, nunca como aprovados.
 
+Os arquivos de teste rodam quatro de cada vez. Antes deles, o `npm test` (`backend/tests/support/executar.ts`) migra um banco molde, e cada arquivo recebe uma cópia dele em vez de reaplicar as migrations; o molde é apagado no fim. Com o MySQL ocioso a suíte do back-end termina em bem menos de 40 s. Para rodar só alguns arquivos, passe-os ao script: `npm test --workspace backend -- tests/pontoRegistro.test.ts`. Um arquivo rodado direto com `node --test` migra o próprio banco.
+
+`npm run test:cobertura` roda os testes do back-end e do front-end com o relatório de cobertura de linhas do back-end (`app.ts`, `server.ts`, `modules/` e `shared/`).
+
 ### Testes do front-end
 
 Os testes do cliente HTTP e da validação da sessão rodam no Node, sem banco e sem navegador (`npm run test` na raiz roda o back-end e depois o front-end; `npm run test --workspace frontend` roda só o front-end).
 
+Os testes de componente (`frontend/tests/*Modal.test.ts`, `protectedRoute.test.ts`, `authContext.test.ts`) renderizam o componente de verdade no jsdom com o Testing Library e a API simulada (`tests/support/componentes.ts`). Procure os elementos pelo papel e pelo nome acessível (`getByRole`), como uma pessoa os veria: assim o teste cai quando um modal perde o `role="dialog"`.
+
+### Testes de ponta a ponta (Playwright)
+
+Dois fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, e o RH cadastra um colaborador e o encontra na folha (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
+
+```bash
+npm run db:setup
+npx playwright install chromium   # uma vez
+npm run e2e
+```
+
+O Playwright sobe a API (porta 3181) e o Vite (porta 3182); `E2E_API_PORT` e `E2E_WEB_PORT` mudam as portas. Os fluxos criam os próprios colaboradores, então rodam de novo sem apagar o banco. No GitHub Actions eles rodam no job `e2e`, que guarda o relatório e os traces quando um fluxo falha.
+
 ### Verificação completa (`verify`)
 
-`npm run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes (back-end e front-end), todas as etapas, e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam.
+`npm run verify` é o comando que a equipe considera obrigatório antes de abrir ou mesclar um pull request: roda `lint`, `typecheck`, `build` e os testes (back-end e front-end), todas as etapas ao mesmo tempo (cerca de 25 s numa máquina de desenvolvimento, com o MySQL ocioso), mostra a saída de cada uma quando ela termina e termina com erro se qualquer uma falhar. Ele exige as variáveis `HRFLOW_TEST_DB_*` da seção anterior; sem `HRFLOW_TEST_DB_HOST` a etapa de testes falha em vez de passar sem ter rodado, e testes ignorados também reprovam. A etapa de testes também reprova se a cobertura de linhas do back-end ficar abaixo de 90% (`PISO_COBERTURA_LINHAS` em `scripts/verify.mjs`) ou se o relatório de cobertura não vier. Os fluxos de ponta a ponta não fazem parte do `verify`: rodam no job `e2e` do CI.
 
 ```bash
 HRFLOW_TEST_DB_HOST=127.0.0.1 HRFLOW_TEST_DB_USER=root HRFLOW_TEST_DB_PASS=hrflow-dev npm run verify

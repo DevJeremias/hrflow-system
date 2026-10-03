@@ -5,13 +5,12 @@
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
-import express from 'express';
 import type { ResultSetHeader } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, tokenDaResposta } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
-import { criarAuthRouter } from '../modules/auth/index.ts';
-import { pararServidor, subirServidor } from './support/servidor.ts';
+import { criarApp } from '../app.ts';
+import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-legada-ficticia';
 const HASH_BCRYPTJS_2B = '$2b$10$RCdzwpKK.eQPnNLbn53EkeZu3B6XsI5PPKl91m5zI0BzwKpMnfgCm';
@@ -33,13 +32,9 @@ describe('login de conta com hash legado', { skip: banco.skip }, () => {
         const [empresa] = await pool.query<ResultSetHeader>("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
         empresaId = empresa.insertId;
 
-        const app = express();
-        app.use('/api/auth', criarAuthRouter({
-            loginPorIp: { windowMs: 60_000, limit: 1000 },
-            loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
-            registroPorIp: { windowMs: 60_000, limit: 1000 },
-            registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
-        }));
+        const app = criarApp({
+            limitesAuth: LIMITES_AUTH_FOLGADOS,
+        });
         ({ server, baseUrl } = await subirServidor(app));
     });
 

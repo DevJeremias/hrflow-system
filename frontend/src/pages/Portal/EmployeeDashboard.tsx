@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { pontoService, PointRecord, HistoryDay, WeeklyTotal } from '../../services/pontoService';
+import { pontoService, PointRecord, HistoryDay, MonthTotals } from '../../services/pontoService';
 import DashboardPunchCard from '../../components/Portal/DashboardPunchCard';
 import DashboardTimeline from '../../components/Portal/DashboardTimeline';
 import DashboardTimeMirror from '../../components/Portal/DashboardTimeMirror';
@@ -23,8 +23,7 @@ const EmployeeDashboard: React.FC = () => {
   });
   
   const [historyData, setHistoryData] = useState<HistoryDay[]>([]);
-  const [weeklyData, setWeeklyData] = useState<WeeklyTotal[]>([]);
-  const [monthlySummary, setMonthlySummary] = useState<any>(null);
+  const [monthTotals, setMonthTotals] = useState<MonthTotals | null>(null);
 
   useEffect(() => {
     if (funcionarioId === null) return;
@@ -32,14 +31,13 @@ const EmployeeDashboard: React.FC = () => {
     Promise.all([
       pontoService.getRegistrosHoje(funcionarioId),
       pontoService.getHistoricoMes(funcionarioId, historyMonth),
-      pontoService.getTotaisSemanais(funcionarioId, historyMonth),
+      pontoService.getTotaisDoMes(funcionarioId, historyMonth),
     ]).then(([hoje, historico, totais]) => {
       if (!ativo) return;
       setLoadError(null);
       setDailyRecords(hoje);
       setHistoryData(historico);
-      setWeeklyData(totais.totals);
-      setMonthlySummary(totais.monthlySummary);
+      setMonthTotals(totais);
     }).catch((error) => {
       if (ativo) setLoadError(mensagemDeErro(error, 'Erro ao carregar o ponto'));
     });
@@ -66,7 +64,8 @@ const EmployeeDashboard: React.FC = () => {
           const newRecord = await pontoService.registrar(tipo, localizacao);
           
           setDailyRecords((registros) => [...registros, newRecord]);
-          
+          // A marcação muda a linha de hoje e os totais do espelho: recarrega o mês, sem esvaziar a tela.
+          setReloadKey((k) => k + 1);
         } catch (error: any) {
           alert(error.message || "Erro ao comunicar com o servidor.");
         } finally {
@@ -82,9 +81,10 @@ const EmployeeDashboard: React.FC = () => {
   };
 
   // O erro sobe para o modal, que o mostra e mantém o texto digitado; a lista só muda após o servidor confirmar.
+  // Enviada ou reenviada, a justificativa volta a ficar pendente para o RH.
   const handleSaveNote = async (id: string, note: string) => {
     await pontoService.salvarJustificativa(id, note);
-    setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note: note.trim() } : day));
+    setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note: note.trim(), noteStatus: 'pendente', noteReply: null } : day));
   };
 
   const firstName = user?.nome?.split(' ')[0] || 'Utilizador';
@@ -117,8 +117,7 @@ const EmployeeDashboard: React.FC = () => {
           month={historyMonth} 
           setMonth={setHistoryMonth} 
           historyData={historyData} 
-          weeklyData={weeklyData}
-          monthlySummary={monthlySummary}
+          monthTotals={monthTotals}
           onSaveNote={handleSaveNote} 
         />
       </div>

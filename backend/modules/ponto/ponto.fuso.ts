@@ -4,6 +4,9 @@
 // do fuso da sessão do MySQL nem do fuso do processo Node.
 export const FUSO = 'America/Belem';
 
+// Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia em Belém.
+export const relogio = { agora: (): number => Date.now() };
+
 const formatadorDia = new Intl.DateTimeFormat('en-CA', {
     timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit',
 });

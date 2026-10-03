@@ -27,7 +27,7 @@ import Profile from './pages/Portal/Profile';
 // para si, e quem não tem senha provisória não tem o que fazer nela. `allowedRoles` restringe por
 // perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e holerite próprios) em
 // qualquer perfil.
-const ProtectedRoute = ({ children, allowedRoles, personalArea = false, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean, trocaDeSenha?: boolean }) => {
+export const ProtectedRoute = ({ children, allowedRoles, personalArea = false, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean, trocaDeSenha?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return null;

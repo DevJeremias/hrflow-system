@@ -11,7 +11,7 @@ import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import { subirServidor, pararServidor } from './support/servidor.ts';
 import db from '../shared/db/pool.ts';
-import { app } from '../app.ts';
+import { criarApp } from '../app.ts';
 import { PERMISSOES } from '../shared/utils/permissoes.ts';
 
 type Identidade = 'Administrador' | 'RH' | 'Colaborador';
@@ -54,7 +54,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        servidor = (await subirServidor(app)).server;
+        servidor = (await subirServidor(criarApp())).server;
         baseUrl = `http://127.0.0.1:${(servidor.address() as import('node:net').AddressInfo).port}`;
 
         empresa = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia Permissoes']);
@@ -154,6 +154,14 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
                 assert.equal((await chamar(rota.metodo, await rota.caminho(), undefined, rota.corpo?.())).status, 401);
             });
         }
+
+        it('decidir justificativa é da gestão: o Colaborador recebe 403 e a gestão chega à regra (404 sem justificativa)', async () => {
+            const corpo = { status: 'aprovada' };
+            assert.equal((await chamar('PATCH', '/api/ponto/justificativas/999999', tokens.Colaborador, corpo)).status, 403);
+            for (const identidade of GESTAO) {
+                assert.equal((await chamar('PATCH', '/api/ponto/justificativas/999999', tokens[identidade], corpo)).status, 404);
+            }
+        });
 
         it('a matriz do código lista só o que as rotas pedem', () => {
             assert.deepEqual(PERMISSOES['usuarios:gerir'], SO_ADMIN);
