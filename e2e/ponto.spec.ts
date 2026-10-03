@@ -17,12 +17,12 @@ test('o colaborador troca a senha provisória, entra, marca a entrada e o regist
 
   // O primeiro acesso só abre a troca de senha; depois dela a pessoa volta ao login com a senha nova.
   await entrar(page, email, SENHA, /\/trocar-senha$/);
-  await page.getByLabel('SENHA PROVISÓRIA').fill(SENHA);
-  await page.getByLabel('NOVA SENHA', { exact: true }).fill(SENHA_NOVA);
-  await page.getByLabel('CONFIRMAR NOVA SENHA').fill(SENHA_NOVA);
-  await page.getByRole('button', { name: 'DEFINIR SENHA' }).click();
+  await page.getByLabel('Senha provisória').fill(SENHA);
+  await page.getByLabel(/^Nova senha/).fill(SENHA_NOVA);
+  await page.getByLabel('Confirmar nova senha').fill(SENHA_NOVA);
+  await page.getByRole('button', { name: 'Definir senha' }).click();
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole('status')).toContainText('Senha definida');
+  await expect(page.getByRole('status').filter({ hasText: 'Senha definida' })).toBeVisible();
 
   await entrar(page, email, SENHA_NOVA, /\/meu-painel$/);
   await expect(page.getByText('Horário de Belém')).toBeVisible();
