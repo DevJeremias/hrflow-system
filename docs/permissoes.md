@@ -35,6 +35,7 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `GET /api/ponto/hoje\|historico\|totais/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
 | `GET /api/dashboard/resumo` | 200 | 200 | 403 |
 | `GET /api/perfil/meus-dados`, `PUT /api/perfil/meus-dados`, `PUT /api/perfil/alterar-senha` | 200 | 200 | 200 |
+| `GET /api/notificacoes`, `POST /api/notificacoes/lidas`, `POST /api/notificacoes/:id/lida` | 200, só os próprios avisos | 200, só os próprios avisos | 200, só os próprios avisos |
 
 Decisões que a tabela esconde:
 

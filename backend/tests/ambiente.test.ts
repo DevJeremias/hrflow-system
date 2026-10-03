@@ -7,13 +7,13 @@ const valido = { DB_HOST: '127.0.0.1', DB_USER: 'root', DB_NAME: 'hrflow_db' };
 
 describe('ambiente da API', () => {
     it('aceita a configuração mínima e usa a porta 3000 quando PORT não existe', () => {
-        assert.deepEqual(lerAmbiente(valido), { porta: 3000, sentryDsn: undefined });
+        assert.deepEqual(lerAmbiente(valido), { porta: 3000, sentryDsn: undefined, email: null });
     });
 
     it('lê PORT e SENTRY_DSN', () => {
         assert.deepEqual(
             lerAmbiente({ ...valido, PORT: '4100', SENTRY_DSN: ' https://chave@sentry.exemplo.invalid/1 ' }),
-            { porta: 4100, sentryDsn: 'https://chave@sentry.exemplo.invalid/1' },
+            { porta: 4100, sentryDsn: 'https://chave@sentry.exemplo.invalid/1', email: null },
         );
         assert.equal(lerAmbiente({ ...valido, SENTRY_DSN: '  ' }).sentryDsn, undefined);
     });
@@ -48,5 +48,38 @@ describe('ambiente da API', () => {
         for (const DB_QUEUE_LIMIT of ['0', '-5', 'muitos']) {
             assert.throws(() => lerAmbiente({ ...valido, DB_QUEUE_LIMIT }), /DB_QUEUE_LIMIT deve ser/);
         }
+    });
+
+    describe('e-mail transacional', () => {
+        const com = { ...valido, EMAIL_TRANSPORT: 'ses', EMAIL_FROM: 'HRFlow <nao-responder@exemplo.com.br>', APP_URL: 'https://hrflow.exemplo.com.br/' };
+
+        it('sem EMAIL_TRANSPORT não há e-mail, e nada mais é exigido', () => {
+            assert.equal(lerAmbiente({ ...valido, EMAIL_FROM: 'lixo', APP_URL: 'lixo' }).email, null);
+            assert.equal(lerAmbiente({ ...valido, EMAIL_TRANSPORT: '  ' }).email, null);
+        });
+
+        it('lê o transporte, o remetente e o endereço do app sem a barra final', () => {
+            assert.deepEqual(lerAmbiente(com).email, {
+                transporte: 'ses', remetente: 'HRFlow <nao-responder@exemplo.com.br>', urlDoApp: 'https://hrflow.exemplo.com.br',
+            });
+            assert.equal(lerAmbiente({ ...com, EMAIL_FROM: 'nao-responder@exemplo.com.br' }).email?.remetente, 'nao-responder@exemplo.com.br');
+            assert.equal(lerAmbiente({ ...com, EMAIL_TRANSPORT: 'log', APP_URL: 'http://localhost:5173' }).email?.transporte, 'log');
+        });
+
+        it('transporte desconhecido, remetente e endereço inválidos impedem a subida, todos de uma vez', () => {
+            assert.throws(() => lerAmbiente({ ...com, EMAIL_TRANSPORT: 'smtp' }), /EMAIL_TRANSPORT deve ser/);
+            assert.throws(() => lerAmbiente({ ...com, EMAIL_FROM: undefined }), /EMAIL_FROM é obrigatória/);
+            assert.throws(() => lerAmbiente({ ...com, EMAIL_FROM: 'sem arroba' }), /EMAIL_FROM é obrigatória/);
+            for (const APP_URL of [undefined, 'hrflow.exemplo.com.br', 'https://hrflow.exemplo.com.br/painel']) {
+                assert.throws(() => lerAmbiente({ ...com, APP_URL }), /APP_URL é obrigatória/, String(APP_URL));
+            }
+            assert.throws(() => lerAmbiente({ ...valido, EMAIL_TRANSPORT: 'ses' }), (erro: unknown) =>
+                erro instanceof ErroDeAmbiente && erro.problemas.length === 2);
+        });
+
+        it('o transporte de log não vale em produção, porque o log guardaria os tokens de redefinição', () => {
+            assert.throws(() => lerAmbiente({ ...com, EMAIL_TRANSPORT: 'log', NODE_ENV: 'production' }), /não é permitido em produção/);
+            assert.equal(lerAmbiente({ ...com, NODE_ENV: 'production' }).email?.transporte, 'ses');
+        });
     });
 });

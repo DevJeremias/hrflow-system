@@ -135,6 +135,8 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'ler justificativas', metodo: 'GET', caminho: () => '/api/ponto/justificativas?mes=2026-03', permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },
             { rotulo: 'ver o próprio perfil', metodo: 'GET', caminho: () => '/api/perfil/meus-dados', permitido: IDENTIDADES },
+            { rotulo: 'ver as próprias notificações', metodo: 'GET', caminho: () => '/api/notificacoes', permitido: IDENTIDADES },
+            { rotulo: 'marcar as próprias notificações como lidas', metodo: 'POST', caminho: () => '/api/notificacoes/lidas', permitido: IDENTIDADES },
         ];
 
         before(async () => {

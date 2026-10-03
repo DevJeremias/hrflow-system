@@ -3,6 +3,7 @@
 import { agoraEmSegundos, mesValido } from '../../shared/utils/fuso.ts';
 import type { Fuso } from '../../shared/utils/fuso.ts';
 import { fusoDaEmpresa } from '../empresa/index.ts';
+import { notificarColaboradores } from '../notificacoes/index.ts';
 import * as regras from './ponto.regras.ts';
 import type { DecisaoDaJustificativa, Jornada, StatusDoDia, TipoRegistro, Validacao } from './ponto.regras.ts';
 import * as repositorio from './ponto.repository.ts';
@@ -374,7 +375,7 @@ export interface DadosDaDecisao extends DecisaoRecebida {
 // do próprio ponto.
 export const decidirJustificativa = async ({ empresaId, id, status, resposta, usuarioId, funcionarioIdDoUsuario }: DadosDaDecisao): Promise<Justificativa> => {
     const respostaValida = exigir(regras.validarDecisao(status, resposta));
-    return repositorio.emTransacao(async (repo) => {
+    const decidida = await repositorio.emTransacao(async (repo) => {
         const atual = await repo.justificativaDaEmpresa(id, empresaId, { travar: true });
         if (!atual) throw new ErroDePonto('inexistente', 'Justificativa não encontrada.');
         if (funcionarioIdDoUsuario !== null && atual.funcionario_id === funcionarioIdDoUsuario) {
@@ -382,5 +383,20 @@ export const decidirJustificativa = async ({ empresaId, id, status, resposta, us
         }
         await repo.decidirJustificativa({ id, empresaId, status, resposta: respostaValida, decididoPor: usuarioId });
         return paraJustificativa((await repo.justificativaDaEmpresa(id, empresaId))!);
+    });
+    await avisarDecisao(empresaId, decidida);
+    return decidida;
+};
+
+const dataPorExtenso = (dia: string): string => dia.split('-').reverse().join('/');
+
+// O colaborador fica sabendo da decisão no sino (e por e-mail, se configurado), com o motivo da recusa.
+const avisarDecisao = (empresaId: number, { funcionario_id, date, status, reply }: Justificativa): Promise<void> => {
+    const aprovada = status === 'aprovada';
+    return notificarColaboradores(empresaId, [funcionario_id], {
+        tipo: 'justificativa',
+        titulo: aprovada ? 'Justificativa aprovada' : 'Justificativa recusada',
+        mensagem: `A sua justificativa do dia ${dataPorExtenso(date)} foi ${aprovada ? 'aprovada' : 'recusada'}.${reply ? ` Resposta do RH: ${reply}` : ''}`,
+        link: '/meu-painel',
     });
 };

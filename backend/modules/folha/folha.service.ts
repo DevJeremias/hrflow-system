@@ -3,6 +3,7 @@
 // conhece HTTP (falhas de regra saem como ErroDeFolha) e só chega ao banco pelo repositório.
 import { relogio, agoraEmSegundos } from '../../shared/utils/fuso.ts';
 import { fusoDaEmpresa } from '../empresa/index.ts';
+import { notificarColaboradores } from '../notificacoes/index.ts';
 import { competenciaDoDia, primeiroDia, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
 import { CODIGO_SALARIO, calcularHolerite, emCentavos, emReais, haTabelaVigente, rubricasDoHolerite } from './folha.regras.ts';
 import * as repositorio from './folha.repository.ts';
@@ -188,7 +189,15 @@ export const fecharFolha = async ({ empresaId, usuarioId, competencia }: { empre
         await repo.fecharFolha(folha.id, usuarioId, empresa);
         return folha.id;
     });
-    return montarFolha((await repositorio.folhaDaCompetencia(empresaId, competencia))!, await repositorio.itensDaFolha(folhaId));
+    const fechada = montarFolha((await repositorio.folhaDaCompetencia(empresaId, competencia))!, await repositorio.itensDaFolha(folhaId));
+    // O holerite só aparece para o colaborador com a folha fechada: é quando ele é avisado.
+    await notificarColaboradores(empresaId, fechada.itens.map((item) => Number(item.id)), {
+        tipo: 'holerite',
+        titulo: `Holerite de ${rotuloDaCompetencia(competencia)} disponível`,
+        mensagem: `O seu holerite da competência ${rotuloDaCompetencia(competencia)} já pode ser consultado.`,
+        link: '/meu-painel/holerites',
+    });
+    return fechada;
 };
 
 const publicado = (item: repositorio.HoleritePublicado): HoleritePublicado => ({
