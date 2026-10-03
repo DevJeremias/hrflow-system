@@ -8,6 +8,7 @@
     "dev": "node --watch server.ts",
     "lint": "eslint . --max-warnings 0",
     "test": "node tests/support/executar.ts",
+    "test:cobertura": "node tests/support/executar.ts --cobertura",
     "typecheck": "tsc"
   },
   "keywords": [],

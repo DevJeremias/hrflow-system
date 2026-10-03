@@ -17,6 +17,7 @@
     "typecheck": "node scripts/run-workspace.mjs frontend typecheck && node scripts/run-workspace.mjs backend typecheck",
     "verify": "node scripts/verify.mjs",
     "test": "node scripts/run-workspace.mjs backend test && node scripts/run-workspace.mjs frontend test",
+    "test:cobertura": "node scripts/run-workspace.mjs backend test:cobertura && node scripts/run-workspace.mjs frontend test",
     "db:create": "node scripts/db.mjs create",
     "db:migrate": "node scripts/db.mjs migrate",
     "db:status": "node scripts/db.mjs status",

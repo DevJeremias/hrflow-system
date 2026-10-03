@@ -1,8 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { skippedCounts } from "./test-summary.mjs";
+import { coverageVerdict, skippedCounts } from "./test-summary.mjs";
 
-// Gate único do que a equipe considera obrigatório: lint, typecheck, build e testes de backend
-// contra um MySQL real e migrado. Roda todas as etapas e falha se qualquer uma falhar.
+// Gate único do que a equipe considera obrigatório: lint, typecheck, build e testes contra um MySQL
+// real e migrado, com piso de cobertura de linhas no backend. Roda todas as etapas e falha se qualquer uma falhar.
+const PISO_COBERTURA_LINHAS = 90;
+
 const isBun = process.env.npm_config_user_agent?.startsWith("bun/");
 const execPath = process.env.npm_execpath ?? (isBun ? "bun" : "npm");
 
@@ -15,20 +17,23 @@ const executar = (script, { capturar = false } = {}) => {
   return result;
 };
 
-// Teste ignorado não prova nada: sem MySQL a etapa falha em vez de passar em silêncio.
+// Teste ignorado não prova nada: sem MySQL a etapa falha em vez de passar em silêncio. A cobertura vale
+// só para o backend (app.ts, server.ts, modules/ e shared/): abaixo do piso, ou sem relatório, a etapa falha.
 const testarBackend = () => {
   if (!process.env.HRFLOW_TEST_DB_HOST) {
     console.error("HRFLOW_TEST_DB_HOST não definido: os testes de backend precisam de um MySQL real (veja README, 'Testes do back-end').");
     return false;
   }
-  const result = executar("test", { capturar: true });
+  const result = executar("test:cobertura", { capturar: true });
   if (result.error || result.status !== 0) return false;
   const resumos = skippedCounts(result.stdout);
   if (resumos.length === 0 || resumos.some((ignorados) => ignorados !== 0)) {
-    console.error(`Os testes de backend ignoraram ${resumos.length === 0 ? "um número desconhecido de" : resumos.join(", ")} casos: verify não aceita testes ignorados.`);
+    console.error(`Os testes ignoraram ${resumos.length === 0 ? "um número desconhecido de" : resumos.join(", ")} casos: verify não aceita testes ignorados.`);
     return false;
   }
-  return true;
+  const cobertura = coverageVerdict(result.stdout, PISO_COBERTURA_LINHAS);
+  (cobertura.ok ? console.log : console.error)(cobertura.message);
+  return cobertura.ok;
 };
 
 const etapas = [
