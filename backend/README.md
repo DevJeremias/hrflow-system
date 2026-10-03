@@ -7,7 +7,7 @@ API REST em Node.js com Express e MySQL. Este README descreve o padrão dos mód
 O back-end está sendo reorganizado como um monólito modular, módulo por módulo. Convivem dois formatos:
 
 * **Código legado em JavaScript (CommonJS):** `controllers/`, `routes/`, `schemas/`, `utils/` e `middlewares/`, que ainda misturam HTTP, regra e SQL no controlador. Nada disso muda até o módulo correspondente ser migrado.
-* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência. Para escrever um módulo novo, copie a estrutura dele.
+* **Módulos em TypeScript:** `modules/<nome>/`, um por área do domínio. O primeiro é `modules/ponto`, a implementação de referência; `modules/dashboard` e `modules/folha` já seguem o padrão. Para escrever um módulo novo, copie a estrutura dele.
 
 Migre um módulo inteiro por vez, sem reescrever os outros.
 
@@ -56,7 +56,7 @@ Os arquivos JavaScript importados por um módulo (`config/db.js`, `schemas/comum
 
 ## Testes
 
-Os testes de integração continuam em `tests/`, em JavaScript, contra um MySQL real (veja o README da raiz). Ao migrar um módulo:
+Os testes de integração ficam em `tests/`, contra um MySQL real (veja o README da raiz). Os já convertidos são `.test.ts` em `tests/modules/`, pasta marcada como módulo ES por um `package.json` próprio (como `modules/`), porque o `tsc` recusa `import` num `.ts` em escopo CommonJS; os demais continuam em JavaScript. Ao migrar um módulo:
 
 * Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os `require` que apontam para os arquivos movidos.
 * Para fixar "agora", o serviço expõe `relogio.agora`; o teste a substitui e a restaura no fim.
