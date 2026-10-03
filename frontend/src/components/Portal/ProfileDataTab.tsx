@@ -1,7 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { Mail, Phone, Building2, Lock, User as UserIcon, Camera, X, Save } from 'lucide-react';
+import React, { useId, useState } from 'react';
+import { Camera, X, Save } from 'lucide-react';
 import { userService, PerfilUsuario, DadosEditaveis } from '../../services/userService';
 import { mensagemDeErro } from '../../utils/erros';
+import ErrorAlert from '../ErrorAlert';
+import Avatar from '../ui/Avatar';
+import Button from '../ui/Button';
+import Field, { Input } from '../ui/Field';
+import { useToast } from '../ui/toastContext';
 
 interface Props {
   perfil: PerfilUsuario;
@@ -15,89 +20,114 @@ const dadosEditaveis = (perfil: PerfilUsuario): DadosEditaveis => ({
   avatar: perfil.avatar ?? ''
 });
 
+const Valor: React.FC<{ rotulo: string; children: React.ReactNode }> = ({ rotulo, children }) => (
+  <div>
+    <dt className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted">{rotulo}</dt>
+    <dd className="rounded-card bg-surface-muted p-4 font-semibold text-ink">{children}</dd>
+  </div>
+);
+
 const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<DadosEditaveis>(() => dadosEditaveis(perfil));
-  const [status, setStatus] = useState({ loading: false, erro: '', sucesso: '' });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState({ loading: false, erro: '' });
+  const idFoto = useId().replace(/:/g, '');
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) return alert("Imagem máxima de 2MB.");
+      if (file.size > 2 * 1024 * 1024) {
+        e.target.value = '';
+        toast.error('Imagem máxima de 2MB.');
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => setEditForm(prev => ({ ...prev, avatar: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSalvar = async () => {
-    setStatus({ loading: true, erro: '', sucesso: '' });
+  const handleSalvar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus({ loading: true, erro: '' });
     try {
       await userService.updateMyProfile(editForm);
-      setStatus({ loading: false, erro: '', sucesso: 'Dados atualizados!' });
+      setStatus({ loading: false, erro: '' });
       setIsEditing(false);
       onUpdate(editForm);
-      setTimeout(() => setStatus({ loading: false, erro: '', sucesso: '' }), 3000);
+      toast.success('Dados atualizados!');
     } catch (error) {
-      setStatus({ loading: false, erro: mensagemDeErro(error, 'Erro ao atualizar dados'), sucesso: '' });
+      setStatus({ loading: false, erro: mensagemDeErro(error, 'Erro ao atualizar dados') });
     }
   };
 
   const handleCancelar = () => {
     setEditForm(dadosEditaveis(perfil));
-    setStatus({ loading: false, erro: '', sucesso: '' });
+    setStatus({ loading: false, erro: '' });
     setIsEditing(false);
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-black text-slate-900">Informações Pessoais</h2>
-        {!isEditing && <button onClick={() => setIsEditing(true)} className="text-sm font-bold text-primary hover:underline">Editar Dados</button>}
+    <form onSubmit={handleSalvar} className="space-y-8 animate-in fade-in duration-300">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-ink">Informações Pessoais</h2>
+        {!isEditing && <Button variant="link" onClick={() => setIsEditing(true)}>Editar Dados</Button>}
       </div>
 
-      {status.erro && <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold">{status.erro}</div>}
-      {status.sucesso && <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-sm font-bold">{status.sucesso}</div>}
+      {status.erro && <ErrorAlert message={status.erro} />}
 
-      <div className="flex items-center gap-6 pb-8 border-b border-slate-100">
-        <div className="relative group">
-          <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-3xl font-black overflow-hidden">
-            {editForm.avatar ? <img src={editForm.avatar} alt="Avatar" className="w-full h-full object-cover" /> : perfil.nome.charAt(0)}
-          </div>
+      <div className="flex items-center gap-6 border-b border-line pb-8">
+        <div className="relative">
+          <Avatar name={perfil.nome} src={editForm.avatar} size="lg" alt="Foto de perfil" />
           {isEditing && (
             <>
-              <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 p-2 bg-slate-900 text-white rounded-full"><Camera size={14} /></button>
-              <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+              {/* O campo de arquivo fica fora da tela, mas focável: o rótulo é o botão da câmera e mostra o foco do campo. */}
+              <input id={idFoto} name="avatar" type="file" accept="image/*" className="peer sr-only" onChange={handleImageUpload} />
+              <label htmlFor={idFoto} className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-ink text-white hover:bg-ink-muted peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand">
+                <Camera size={16} aria-hidden="true" />
+                <span className="sr-only">Alterar foto</span>
+              </label>
             </>
           )}
         </div>
-        <div className="flex-1">
-          {isEditing ? <input type="text" value={editForm.nome} onChange={e => setEditForm({...editForm, nome: e.target.value})} className="w-full max-w-sm p-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-xl" /> : <h2 className="text-2xl font-black text-slate-900">{perfil.nome}</h2>}
-          <p className="text-slate-500 font-medium">{perfil.cargo}</p>
+        <div className="min-w-0 flex-1">
+          {isEditing ? (
+            <Field label="Nome" name="name" required className="max-w-sm">
+              <Input type="text" autoComplete="name" value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: e.target.value })} />
+            </Field>
+          ) : (
+            <p className="text-2xl font-bold text-ink">{perfil.nome}</p>
+          )}
+          <p className="mt-1 font-medium text-ink-muted">{perfil.cargo}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><Mail size={14} className="inline mr-2"/> E-mail</label>
-          {isEditing ? <input type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" /> : <div className="p-4 bg-slate-50 rounded-2xl font-bold">{perfil.email}</div>}
+      {isEditing ? (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Field label="E-mail" name="email" required>
+            <Input type="email" autoComplete="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
+          </Field>
+          {perfil.vinculado && (
+            <Field label="Telefone" name="telefone">
+              <Input type="tel" autoComplete="tel" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} />
+            </Field>
+          )}
         </div>
-        {perfil.vinculado && (
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest"><Phone size={14} className="inline mr-2"/> Telefone</label>
-            {isEditing ? <input type="text" value={editForm.telefone} onChange={e => setEditForm({...editForm, telefone: e.target.value})} className="w-full p-4 bg-slate-50 border rounded-2xl font-bold" /> : <div className="p-4 bg-slate-50 rounded-2xl font-bold">{perfil.telefone || '-'}</div>}
-          </div>
-        )}
-      </div>
+      ) : (
+        <dl className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <Valor rotulo="E-mail">{perfil.email}</Valor>
+          {perfil.vinculado && <Valor rotulo="Telefone">{perfil.telefone || '-'}</Valor>}
+        </dl>
+      )}
 
       {isEditing && (
-        <div className="flex gap-4 pt-6">
-          <button onClick={handleCancelar} className="flex-1 py-4 font-bold text-slate-500 hover:bg-slate-100 rounded-xl"><X size={18} className="inline mr-2" /> Cancelar</button>
-          <button onClick={handleSalvar} disabled={status.loading} className="flex-1 py-4 bg-slate-900 text-white font-black rounded-xl shadow-xl"><Save size={18} className="inline mr-2" /> Guardar</button>
+        <div className="flex gap-4 pt-2">
+          <Button variant="secondary" size="lg" className="flex-1" onClick={handleCancelar} icon={<X size={18} aria-hidden="true" />}>Cancelar</Button>
+          <Button type="submit" size="lg" className="flex-1" loading={status.loading} icon={<Save size={18} aria-hidden="true" />}>Salvar</Button>
         </div>
       )}
-    </div>
+    </form>
   );
 };
 

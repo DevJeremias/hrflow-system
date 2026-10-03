@@ -5,12 +5,19 @@ import DashboardPunchCard from '../../components/Portal/DashboardPunchCard';
 import DashboardTimeline from '../../components/Portal/DashboardTimeline';
 import DashboardTimeMirror from '../../components/Portal/DashboardTimeMirror';
 import ErrorAlert from '../../components/ErrorAlert';
+import PageHeader from '../../components/ui/PageHeader';
+import { useToast } from '../../components/ui/toastContext';
+import { usePageTitle } from '../../hooks/usePageTitle';
 import { mensagemDeErro } from '../../utils/erros';
 import { formatarDataDeBelem, proximosTiposDePonto, type TipoPonto } from '../../utils/ponto';
 
+const primeiraMaiuscula = (texto: string) => texto.charAt(0).toUpperCase() + texto.slice(1);
+
 const EmployeeDashboard: React.FC = () => {
+  usePageTitle('Bater ponto');
   const { user } = useAuth();
-  
+  const toast = useToast();
+
   const funcionarioId = user?.funcionarioId ?? null;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -24,7 +31,7 @@ const EmployeeDashboard: React.FC = () => {
   
   const [historyData, setHistoryData] = useState<HistoryDay[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyTotal[]>([]);
-  const [monthlySummary, setMonthlySummary] = useState<any>(null);
+  const [monthlySummary, setMonthlySummary] = useState<Omit<WeeklyTotal, 'id' | 'weekLabel'> | null>(null);
 
   useEffect(() => {
     if (funcionarioId === null) return;
@@ -50,7 +57,7 @@ const EmployeeDashboard: React.FC = () => {
     setIsRegistering(true);
 
     if (!navigator.geolocation) {
-      alert("O seu navegador não suporta geolocalização.");
+      toast.error("Seu navegador não suporta geolocalização.");
       setIsRegistering(false);
       return;
     }
@@ -66,15 +73,15 @@ const EmployeeDashboard: React.FC = () => {
           const newRecord = await pontoService.registrar(tipo, localizacao);
           
           setDailyRecords((registros) => [...registros, newRecord]);
-          
-        } catch (error: any) {
-          alert(error.message || "Erro ao comunicar com o servidor.");
+          toast.success(`Ponto registrado: ${tipo}.`);
+        } catch (error) {
+          toast.error(mensagemDeErro(error, "Erro ao comunicar com o servidor."));
         } finally {
           setIsRegistering(false);
         }
       },
       () => {
-        alert("Por favor, permita o acesso à sua localização para registrar o ponto.");
+        toast.error("Por favor, permita o acesso à sua localização para registrar o ponto.");
         setIsRegistering(false);
       },
       { enableHighAccuracy: true } 
@@ -87,23 +94,20 @@ const EmployeeDashboard: React.FC = () => {
     setHistoryData(prev => prev.map(day => day.id === id ? { ...day, note: note.trim() } : day));
   };
 
-  const firstName = user?.nome?.split(' ')[0] || 'Utilizador';
-  const formattedDate = formatarDataDeBelem(new Date());
+  const firstName = user?.nome?.split(' ')[0] || 'Usuário';
+  const formattedDate = primeiraMaiuscula(formatarDataDeBelem(new Date()));
   const proximosTipos = proximosTiposDePonto(dailyRecords);
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Olá, {firstName}!</h1>
-        <p className="text-slate-500 font-medium mt-1 capitalize">{formattedDate}</p>
-      </div>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <PageHeader title={`Olá, ${firstName}!`} description={formattedDate} />
 
       {funcionarioId === null && (
         <ErrorAlert message="Seu usuário ainda não está vinculado a um colaborador. Procure o RH para registrar e consultar o ponto." />
       )}
       {loadError && <ErrorAlert message={loadError} onRetry={() => { setLoadError(null); setReloadKey((k) => k + 1); }} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <DashboardPunchCard 
           isRegistering={isRegistering} 
           proximosTipos={proximosTipos}
@@ -112,16 +116,14 @@ const EmployeeDashboard: React.FC = () => {
         <DashboardTimeline records={dailyRecords} />
       </div>
 
-      <div className="space-y-4">
-        <DashboardTimeMirror 
-          month={historyMonth} 
-          setMonth={setHistoryMonth} 
-          historyData={historyData} 
-          weeklyData={weeklyData}
-          monthlySummary={monthlySummary}
-          onSaveNote={handleSaveNote} 
-        />
-      </div>
+      <DashboardTimeMirror
+        month={historyMonth}
+        setMonth={setHistoryMonth}
+        historyData={historyData}
+        weeklyData={weeklyData}
+        monthlySummary={monthlySummary}
+        onSaveNote={handleSaveNote}
+      />
     </div>
   );
 };

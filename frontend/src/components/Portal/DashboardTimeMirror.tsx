@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { Calendar, MessageSquare, PlusCircle, Layers, X, AlertCircle } from 'lucide-react';
+import { Calendar, MessageSquare, PlusCircle, Layers, AlertCircle } from 'lucide-react';
 import { HistoryDay, WeeklyTotal } from '../../services/pontoService';
+import { formatarDataIso } from '../../utils/ponto';
+import Badge, { type BadgeTone } from '../ui/Badge';
+import Button from '../ui/Button';
+import Card, { CardHeader } from '../ui/Card';
+import DataTable, { type Column } from '../ui/DataTable';
+import Field, { Input, Textarea } from '../ui/Field';
+import Modal from '../ui/Modal';
+import ErrorAlert from '../ErrorAlert';
 
 // ==========================================
 // SUBCOMPONENTE: MODAL DE JUSTIFICATIVA
@@ -16,37 +24,37 @@ interface NoteModalProps {
 }
 
 const TimeNoteModal: React.FC<NoteModalProps> = ({ dateRef, noteText, setNoteText, isSaving, error, onClose, onSave }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose} />
-    <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative z-10 p-8 animate-in zoom-in-95 duration-300">
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h3 className="text-xl font-black text-slate-900">Adicionar Justificativa</h3>
-          <p className="text-sm font-bold text-slate-500 mt-1">Ref: {dateRef}</p>
-        </div>
-        <button onClick={onClose} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
-      </div>
-      <div className="space-y-4">
-        <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
-          <p className="text-xs font-bold text-amber-800 flex gap-2">
-            <AlertCircle size={16} className="shrink-0" />
-            Sua justificativa será enviada para o RH e estará sujeita a aprovação do seu gestor.
-          </p>
-        </div>
-        <textarea 
-          value={noteText} onChange={(e) => setNoteText(e.target.value)} disabled={isSaving} maxLength={1000}
+  <Modal
+    title="Adicionar Justificativa"
+    description={`Ref: ${dateRef}`}
+    size="sm"
+    onClose={() => { if (!isSaving) onClose(); }}
+    form={{ onSubmit: (evento) => { evento.preventDefault(); onSave(); } }}
+    footer={(
+      <Button type="submit" fullWidth size="lg" loading={isSaving} disabled={!noteText.trim()}>
+        {isSaving ? 'Enviando...' : 'Enviar Justificativa'}
+      </Button>
+    )}
+  >
+    <div className="space-y-4">
+      <p className="flex gap-2 rounded-control border border-warning-line bg-warning-soft p-4 text-xs font-semibold text-warning">
+        <AlertCircle size={16} aria-hidden="true" className="shrink-0" />
+        Sua justificativa será enviada para o RH e estará sujeita a aprovação do seu gestor.
+      </p>
+      <Field label="Justificativa" name="justificativa">
+        <Textarea
+          data-autofocus
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          disabled={isSaving}
+          maxLength={1000}
+          rows={5}
           placeholder="Ex: Fui ao médico e tenho atestado..."
-          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-primary resize-none h-32 text-sm font-medium text-slate-700"
         />
-        {error && (
-          <p role="alert" className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3">{error}</p>
-        )}
-        <button onClick={onSave} disabled={isSaving || !noteText.trim()} className="w-full py-4 bg-slate-900 hover:bg-primary disabled:opacity-60 disabled:cursor-not-allowed text-white font-black rounded-2xl shadow-xl transition-all active:scale-95">
-          {isSaving ? 'Enviando...' : 'Enviar Justificativa'}
-        </button>
-      </div>
+      </Field>
+      {error && <ErrorAlert message={error} />}
     </div>
-  </div>
+  </Modal>
 );
 
 // ==========================================
@@ -60,6 +68,8 @@ interface Props {
   monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> | null;
   onSaveNote: (id: string, note: string) => Promise<void>;
 }
+
+const STATUS_TOM: Record<string, BadgeTone> = { OK: 'success', Atraso: 'warning' };
 
 const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, weeklyData, monthlySummary, onSaveNote }) => {
   const [selectedDay, setSelectedDay] = useState<HistoryDay | null>(null);
@@ -92,136 +102,89 @@ const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, we
     }
   };
 
+  const ajuste = (valor: string, tom: string) => <span className={`font-semibold ${valor !== '00:00' ? tom : 'text-ink-muted'}`}>{valor}</span>;
+
+  const dayColumns: Column<HistoryDay>[] = [
+    { key: 'date', header: 'Data', cell: (day) => <span className="font-semibold text-ink">{formatarDataIso(day.date)}</span> },
+    { key: 'entry', header: 'Entrada', align: 'center', cell: (day) => day.entry },
+    { key: 'lunchOut', header: 'Pausa', align: 'center', cell: (day) => day.lunchOut },
+    { key: 'lunchIn', header: 'Retorno', align: 'center', cell: (day) => day.lunchIn },
+    { key: 'exit', header: 'Saída', align: 'center', cell: (day) => day.exit },
+    { key: 'totalHours', header: 'Presença', align: 'center', cell: (day) => <span className="font-semibold text-ink">{day.totalHours}</span> },
+    { key: 'negativeAdjust', header: 'Ajuste negativo', align: 'center', cell: (day) => ajuste(day.negativeAdjust, 'text-danger') },
+    { key: 'positiveAdjust', header: 'Ajuste positivo', align: 'center', cell: (day) => ajuste(day.positiveAdjust, 'text-info') },
+    { key: 'status', header: 'Status', align: 'center', cell: (day) => <Badge tone={STATUS_TOM[day.status] ?? 'danger'}>{day.status}</Badge> },
+    {
+      key: 'note',
+      header: 'Justificativa',
+      align: 'right',
+      semRotuloNoCartao: true,
+      cell: (day) => {
+        const data = formatarDataIso(day.date);
+        // O nome acessível contém o texto visível (WCAG 2.5.3) e acrescenta a data, para distinguir um dia do outro.
+        return day.note ? (
+          <Button variant="secondary" size="sm" onClick={() => handleOpenNote(day)} className="max-w-[10rem] justify-start" icon={<MessageSquare size={14} aria-hidden="true" className="shrink-0" />}>
+            <span className="sr-only">Justificativa de {data}: </span>
+            <span className="truncate">{day.note}</span>
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => handleOpenNote(day)} className="whitespace-nowrap" icon={<PlusCircle size={14} aria-hidden="true" />}>
+            Adicionar nota<span className="sr-only"> de {data}</span>
+          </Button>
+        );
+      },
+    },
+  ];
+
+  const resumo = monthlySummary;
+  const weekColumns: Column<WeeklyTotal>[] = [
+    { key: 'week', header: 'Semana', cell: (week) => <span className="font-semibold text-ink">{week.weekLabel}</span>, footer: 'Total Mensal' },
+    { key: 'limit', header: 'Carga horária de trabalho', align: 'center', cell: (week) => week.workloadLimit, footer: resumo?.workloadLimit },
+    { key: 'preset', header: 'Carga horária preestabelecida', align: 'center', cell: (week) => week.workloadPreset, footer: resumo?.workloadPreset },
+    { key: 'done', header: 'Carga horária cumprida', align: 'center', cell: (week) => week.workloadDone, footer: resumo?.workloadDone },
+    { key: 'presence', header: 'Tempo presença', align: 'center', cell: (week) => week.presenceTime, footer: resumo?.presenceTime },
+    { key: 'pending', header: 'Tempo pendente', align: 'center', cell: (week) => week.pendingTime, footer: resumo?.pendingTime },
+    { key: 'excess', header: 'Excedente', align: 'center', cell: (week) => week.excessTime, footer: <span className="text-success">{resumo?.excessTime}</span> },
+    {
+      key: 'balance',
+      header: 'Saldo ajuste diário',
+      align: 'center',
+      cell: (week) => <span className={`font-bold ${week.dailyAdjustBalance.startsWith('-') ? 'text-danger' : 'text-info'}`}>{week.dailyAdjustBalance}</span>,
+      footer: <span className="text-info">{resumo?.dailyAdjustBalance}</span>,
+    },
+  ];
+
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      
-      {/* 1. TABELA DE HISTÓRICO DIÁRIO */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden mt-10">
-        <div className="px-8 py-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center bg-slate-50/50 gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <Card as="section" padding="none" className="overflow-hidden" aria-labelledby="espelho-diario">
+        <div className="flex flex-col items-start justify-between gap-4 border-b border-line bg-surface-muted px-5 py-4 sm:flex-row sm:items-center sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 text-primary rounded-xl"><Calendar size={20} /></div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Espelho de Ponto Diário</h2>
+            <span aria-hidden="true" className="rounded-control bg-brand-soft p-2 text-brand"><Calendar size={20} /></span>
+            <h2 id="espelho-diario" className="text-lg font-bold tracking-tight text-ink">Espelho de Ponto Diário</h2>
           </div>
-          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="bg-white border border-slate-200 text-slate-700 text-sm font-bold py-3 px-5 rounded-xl outline-none focus:border-primary cursor-pointer shadow-sm" />
+          <Field label="Mês de referência" name="mes" hideLabel className="w-full sm:w-52">
+            <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="cursor-pointer font-semibold" />
+          </Field>
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead>
-              <tr className="bg-slate-100/50 border-b border-slate-200 text-[10px] uppercase tracking-widest text-slate-500 font-black">
-                <th className="p-6 text-left border-r border-slate-100" rowSpan={2}>Data</th>
-                <th className="p-4 text-center border-r border-slate-100" colSpan={4}>Registros do Dia</th>
-                <th className="p-4 text-center border-r border-slate-100" rowSpan={2}>Tempo Presença</th>
-                <th className="p-4 text-center border-r border-slate-100 bg-blue-50/30" colSpan={2}>Ajuste Diário</th>
-                <th className="p-6 text-center" rowSpan={2}>Status</th>
-                <th className="p-6 text-right" rowSpan={2}>Justificativa</th>
-              </tr>
-              <tr className="bg-slate-50 border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-                <th className="py-3 px-4 text-center">Entrada</th>
-                <th className="py-3 px-4 text-center">Pausa</th>
-                <th className="py-3 px-4 text-center">Retorno</th>
-                <th className="py-3 px-4 text-center border-r border-slate-100">Saída</th>
-                <th className="py-3 px-4 text-center text-rose-500 bg-rose-50/30 border-r border-slate-100">Negativo</th>
-                <th className="py-3 px-4 text-center text-blue-500 bg-blue-50/30 border-r border-slate-100">Positivo</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm font-medium">
-              {historyData.map((day) => (
-                <tr key={day.id} className="hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 group">
-                  <td className="p-6 font-bold text-slate-900 border-r border-slate-100">{day.date.split('-').reverse().join('/')}</td>
-                  <td className="p-4 text-center text-slate-600">{day.entry}</td>
-                  <td className="p-4 text-center text-slate-600">{day.lunchOut}</td>
-                  <td className="p-4 text-center text-slate-600">{day.lunchIn}</td>
-                  <td className="p-4 text-center text-slate-600 border-r border-slate-100">{day.exit}</td>
-                  <td className="p-4 text-center font-bold text-slate-900 border-r border-slate-100 bg-slate-50/50">{day.totalHours}</td>
-                  <td className={`p-4 text-center font-bold border-r border-slate-100 ${day.negativeAdjust !== '00:00' ? 'text-rose-500' : 'text-slate-400'}`}>{day.negativeAdjust}</td>
-                  <td className={`p-4 text-center font-bold border-r border-slate-100 ${day.positiveAdjust !== '00:00' ? 'text-blue-500' : 'text-slate-400'}`}>{day.positiveAdjust}</td>
-                  <td className="p-6 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${day.status === 'OK' ? 'bg-emerald-50 text-emerald-600' : day.status === 'Atraso' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}`}>{day.status}</span>
-                  </td>
-                  <td className="p-6 text-right">
-                    {day.note ? (
-                      <button onClick={() => handleOpenNote(day)} className="inline-flex items-center gap-2 max-w-[120px] px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-600 hover:text-primary transition-colors text-left float-right">
-                        <MessageSquare size={14} className="shrink-0" /><span className="truncate">{day.note}</span>
-                      </button>
-                    ) : (
-                      <button onClick={() => handleOpenNote(day)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 float-right">
-                        <PlusCircle size={14} /> Adicionar Nota
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-3 xl:p-0">
+          <DataTable caption={`Espelho de ponto diário de ${month}`} columns={dayColumns} rows={historyData} rowKey={(day) => day.id} stackBelow="xl" compact empty={<p className="px-6 py-10 text-center text-sm text-ink-muted">Nenhum registro de ponto neste mês.</p>} />
         </div>
-      </div>
+      </Card>
 
-      {/* 2. TABELA DE TOTAIS SEMANAIS */}
       {weeklyData && weeklyData.length > 0 && monthlySummary && (
-        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden mt-10">
-          <div className="px-8 py-6 border-b border-slate-100 flex items-center gap-3 bg-slate-50/50">
-            <div className="p-2.5 bg-indigo-50 text-primary rounded-xl">
-              <Layers size={20} />
-            </div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">Totais Semanais</h2>
+        <Card as="section" padding="none" className="overflow-hidden">
+          <CardHeader title="Totais Semanais" icon={<Layers size={20} />} />
+          <div className="p-3 xl:p-0">
+            <DataTable caption={`Totais semanais de ${month}`} columns={weekColumns} rows={weeklyData} rowKey={(week) => week.id} stackBelow="xl" compact />
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] uppercase tracking-widest text-slate-500 font-black">
-                  <th className="p-6 font-black text-slate-900">Semana</th>
-                  <th className="p-5 text-center">Carga Horária de Trabalho</th>
-                  <th className="p-5 text-center">Carga Horária Preestabelecida</th>
-                  <th className="p-5 text-center">Carga Horária Cumprida</th>
-                  <th className="p-5 text-center">Tempo Presença</th>
-                  <th className="p-5 text-center">Tempo Pendente</th>
-                  <th className="p-5 text-center">Excedente</th>
-                  <th className="p-5 text-center font-black text-slate-900 border-l border-slate-100">Saldo Ajuste Diário</th>
-                </tr>
-              </thead>
-              <tbody className="text-sm font-medium text-slate-600">
-                {weeklyData.map((week) => (
-                  <tr key={week.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    <td className="p-6 font-bold text-slate-900">{week.weekLabel}</td>
-                    <td className="p-5 text-center">{week.workloadLimit}</td>
-                    <td className="p-5 text-center">{week.workloadPreset}</td>
-                    <td className="p-5 text-center">{week.workloadDone}</td>
-                    <td className="p-5 text-center">{week.presenceTime}</td>
-                    <td className="p-5 text-center">{week.pendingTime}</td>
-                    <td className="p-5 text-center">{week.excessTime}</td>
-                    <td className={`p-5 text-center font-black border-l border-slate-100 ${week.dailyAdjustBalance.startsWith('-') ? 'text-rose-500' : 'text-blue-500'}`}>
-                      {week.dailyAdjustBalance}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-100/40 border-t-2 border-slate-200 text-sm">
-                  <td className="p-6 font-black text-slate-900 uppercase tracking-wider">Total Mensal</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthlySummary.workloadLimit}</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthlySummary.workloadPreset}</td>
-                  <td className="p-6 text-center font-black text-slate-900">{monthlySummary.workloadDone}</td>
-                  <td className="p-6 text-center font-black text-slate-900">{monthlySummary.presenceTime}</td>
-                  <td className="p-6 text-center font-bold text-slate-700">{monthlySummary.pendingTime}</td>
-                  <td className="p-6 text-center font-bold text-emerald-600">{monthlySummary.excessTime}</td>
-                  <td className="p-6 text-center font-black text-blue-500 border-l border-slate-100 text-lg">
-                    {monthlySummary.dailyAdjustBalance}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
+        </Card>
       )}
 
-      {/* 3. MODAL */}
       {selectedDay && (
-        <TimeNoteModal 
-          dateRef={selectedDay.date.split('-').reverse().join('/')} 
-          noteText={noteText} setNoteText={setNoteText} 
-          isSaving={isSaving} error={saveError} onClose={handleClose} onSave={handleSave} 
+        <TimeNoteModal
+          dateRef={formatarDataIso(selectedDay.date)}
+          noteText={noteText} setNoteText={setNoteText}
+          isSaving={isSaving} error={saveError} onClose={handleClose} onSave={handleSave}
         />
       )}
     </div>
