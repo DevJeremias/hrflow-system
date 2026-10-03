@@ -23,11 +23,13 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `PATCH /api/usuarios/:id` | 200 | 403 | 403 |
 | `GET /api/estrutura/departamentos`, `GET /api/estrutura/cargos` | 200 | 200 | 403 |
 | `POST`, `PUT`, `DELETE` em `/api/estrutura/departamentos` e `/api/estrutura/cargos` | 200 | 403 | 403 |
+| `GET /api/empresa` | 200 | 200 | 403 |
+| `PUT /api/empresa` | 200 | 403 | 403 |
 | `GET /api/funcionarios` | 200 | 200 | 403 |
 | `POST /api/funcionarios` (cria Colaborador) | 200 | 200 | 403 |
 | `PUT /api/funcionarios/:id`, `DELETE /api/funcionarios/:id`, `PATCH /api/funcionarios/:id/status`, `POST /api/funcionarios/:id/redefinir-senha` | 200 em qualquer cadastro (status e senha, menos no próprio) | 200 em cadastro de Colaborador; 403 no próprio, no de RH e no de Administrador | 403 |
-| `GET /api/folha/processar` | 200 | 200 | 403 |
-| `GET /api/folha/meu-holerite` | 200 se tem cadastro | 200 se tem cadastro | 200 |
+| `GET /api/folha/competencias/:competencia`, `POST .../processar`, `POST .../fechar` | 200 | 200 | 403 |
+| `GET /api/folha/meu-holerite`, `GET /api/folha/meus-holerites` | 200 se tem cadastro | 200 se tem cadastro | 200 |
 | `GET /api/ponto`, `GET /api/ponto/justificativas` | 200 | 200 | 403 |
 | `POST /api/ponto/registrar`, `PUT /api/ponto/justificativa/:data` | 200 se tem cadastro | 200 se tem cadastro | 200 |
 | `GET /api/ponto/hoje\|historico\|totais/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
@@ -36,7 +38,7 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 
 Decisões que a tabela esconde:
 
-* **O RH lê a estrutura, o Administrador a altera.** O RH precisa dos cargos e departamentos para cadastrar um colaborador; criar, renomear ou apagar continua com o Administrador.
+* **O RH lê a estrutura e os dados da empresa, o Administrador os altera.** O RH precisa dos cargos e departamentos para cadastrar um colaborador e dos dados da empresa para conferir a folha; criar, renomear, apagar ou editar continua com o Administrador.
 * **O RH não se promove nem apaga colegas.** Ele não altera o próprio cadastro (salário, status, qualquer campo; os dados pessoais ele muda em `PUT /api/perfil/meus-dados`) nem o de quem tem conta de RH ou de Administrador. O que o RH pode editar é o cadastro de Colaborador.
 * **Senha provisória**: a conta criada ou redefinida entra com a senha provisória, e a sessão dela só alcança a troca de senha (`PUT /api/perfil/alterar-senha`) até a pessoa definir a própria.
 * **Ninguém exclui o próprio cadastro**, nem o Administrador: a conta cairia junto e a empresa poderia ficar sem quem a administre.
@@ -48,7 +50,7 @@ Decisões que a tabela esconde:
 
 | Item | Administrador | RH | Colaborador |
 | --- | --- | --- | --- |
-| Dashboard, Colaboradores, Folha de Pagamento, Gestão de Ponto | sim | sim | não |
+| Dashboard, Colaboradores, Folha de Pagamento, Empresa, Gestão de Ponto | sim | sim | não |
 | Depto & Cargos, Usuários | sim | não | não |
 | Meu ponto, Meu holerite | se tem cadastro | se tem cadastro | sim |
 | Meu Perfil | sim | sim | sim |

@@ -126,7 +126,11 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'alterar a situação do colaborador', metodo: 'PATCH', caminho: async () => `${await colaboradorAlheio()}/status`, corpo: () => ({ status: 'Férias' }), permitido: GESTAO },
             { rotulo: 'redefinir a senha do colaborador', metodo: 'POST', caminho: async () => `${await colaboradorComAcesso()}/redefinir-senha`, permitido: GESTAO },
 
-            { rotulo: 'processar folha', metodo: 'GET', caminho: () => '/api/folha/processar', permitido: GESTAO },
+            { rotulo: 'consultar empresa', metodo: 'GET', caminho: () => '/api/empresa', permitido: GESTAO },
+            { rotulo: 'alterar empresa', metodo: 'PUT', caminho: () => '/api/empresa', corpo: () => ({ razao_social: 'Empresa Ficticia Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' }), permitido: SO_ADMIN },
+            // Processar vem antes: consultar uma competência ainda não processada responde 404.
+            { rotulo: 'processar a folha da competência', metodo: 'POST', caminho: () => '/api/folha/competencias/2026-10/processar', permitido: GESTAO },
+            { rotulo: 'consultar a folha da competência', metodo: 'GET', caminho: () => '/api/folha/competencias/2026-10', permitido: GESTAO },
             { rotulo: 'ler pontos da empresa', metodo: 'GET', caminho: () => '/api/ponto?mes=2026-03', permitido: GESTAO },
             { rotulo: 'ler justificativas', metodo: 'GET', caminho: () => '/api/ponto/justificativas?mes=2026-03', permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },
@@ -167,6 +171,8 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             assert.deepEqual(PERMISSOES['usuarios:gerir'], SO_ADMIN);
             assert.deepEqual(PERMISSOES['estrutura:gerir'], SO_ADMIN);
             assert.deepEqual(PERMISSOES['estrutura:consultar'], GESTAO);
+            assert.deepEqual(PERMISSOES['empresa:gerir'], SO_ADMIN);
+            assert.deepEqual(PERMISSOES['empresa:consultar'], GESTAO);
             assert.deepEqual(PERMISSOES['colaboradores:gerir'], GESTAO);
             assert.deepEqual(PERMISSOES['folha:processar'], GESTAO);
             assert.deepEqual(PERMISSOES['ponto:consultar-empresa'], GESTAO);
@@ -175,11 +181,16 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
     });
 
     describe('quem tem cadastro de funcionário usa o próprio ponto e holerite em qualquer perfil', () => {
+        // O holerite só existe de folha fechada.
+        before(async () => {
+            assert.equal((await chamar('POST', '/api/folha/competencias/2026-09/processar', tokens.Administrador)).status, 201);
+            assert.equal((await chamar('POST', '/api/folha/competencias/2026-09/fechar', tokens.Administrador)).status, 200);
+        });
+
         for (const rotulo of ['Rita', 'Admin com cadastro', 'Caio']) {
             it(`${rotulo} vê o próprio holerite e bate ponto`, async () => {
-                const holerite = await chamar('GET', '/api/folha/meu-holerite', tokens[rotulo]);
+                const holerite = await chamar('GET', '/api/folha/meu-holerite?competencia=2026-09', tokens[rotulo]);
                 assert.equal(holerite.status, 200, JSON.stringify(holerite.corpo));
-                assert.equal(holerite.corpo.length, 1);
 
                 const ponto = await chamar('POST', '/api/ponto/registrar', tokens[rotulo], { tipo: 'Entrada' });
                 assert.equal(ponto.status, 201, JSON.stringify(ponto.corpo));
@@ -197,7 +208,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
 
         it('o Administrador sem cadastro não tem ponto nem holerite próprios', async () => {
             assert.equal((await chamar('POST', '/api/ponto/registrar', tokens.Administrador, { tipo: 'Entrada' })).status, 403);
-            assert.equal((await chamar('GET', '/api/folha/meu-holerite', tokens.Administrador)).status, 404);
+            assert.equal((await chamar('GET', '/api/folha/meu-holerite?competencia=2026-09', tokens.Administrador)).status, 404);
         });
     });
 

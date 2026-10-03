@@ -336,27 +336,27 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
     });
 
     describe('folha', () => {
-        it('pagina o processamento e informa o total de colaboradores ativos', async () => {
-            await inserir('INSERT INTO funcionarios (nome, email, salario_base, empresa_id) VALUES (?, ?, ?, ?)', ['Folha Um', 'folha.1.validacao@exemplo.invalid', 2000, empresaA]);
-            await inserir('INSERT INTO funcionarios (nome, email, salario_base, empresa_id) VALUES (?, ?, ?, ?)', ['Folha Dois', 'folha.2.validacao@exemplo.invalid', 3000, empresaA]);
-            const total = (await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS total FROM funcionarios WHERE empresa_id = ? AND status = 'Ativo'", [empresaA]))[0][0].total;
-
-            const { status, corpo, cabecalhos } = await chamar('GET', '/api/folha/processar?limite=1');
-            assert.equal(status, 200);
-            assert.equal(corpo.length, 1);
-            assert.equal(Number(cabecalhos.get('x-total-count')), total);
-
-            const completa = await chamar('GET', '/api/folha/processar');
-            assert.equal(completa.corpo.length, total);
+        it('recusa competência fora do formato AAAA-MM com 400 e a mensagem do formato', async () => {
+            for (const invalida of ['2026-13', '2026-1', 'outubro', '2026-10-01']) {
+                for (const [metodo, caminho] of [['GET', `/api/folha/competencias/${invalida}`], ['POST', `/api/folha/competencias/${invalida}/processar`], ['POST', `/api/folha/competencias/${invalida}/fechar`]]) {
+                    const { status, corpo } = await chamar(metodo, caminho);
+                    assert.equal(status, 400, `${metodo} ${caminho}`);
+                    assert.match(corpo.erro, /AAAA-MM/);
+                }
+            }
         });
 
-        it('recusa paginação inválida com 400', async () => {
-            assert.equal((await chamar('GET', '/api/folha/processar?limite=0')).status, 400);
-            assert.equal((await chamar('GET', '/api/folha/processar?pagina=abc')).status, 400);
+        it('exige e valida a competência no holerite individual', async () => {
+            const comoColaborador = { jwt: tokens.colaborador };
+            const semCompetencia = await chamar('GET', '/api/folha/meu-holerite', undefined, comoColaborador);
+            assert.equal(semCompetencia.status, 400);
+            assert.match(semCompetencia.corpo.erro, /AAAA-MM/);
+            assert.equal((await chamar('GET', '/api/folha/meu-holerite?competencia=2026-13', undefined, comoColaborador)).status, 400);
+            assert.equal((await chamar('GET', '/api/folha/meu-holerite?competencia=2026-10', undefined, comoColaborador)).status, 404);
         });
 
-        it('não exige parâmetros no holerite individual', async () => {
-            assert.equal((await chamar('GET', '/api/folha/meu-holerite', undefined, { jwt: tokens.colaborador })).status, 200);
+        it('lista os holerites do colaborador sem parâmetros', async () => {
+            assert.equal((await chamar('GET', '/api/folha/meus-holerites', undefined, { jwt: tokens.colaborador })).status, 200);
         });
     });
 

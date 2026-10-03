@@ -37,8 +37,9 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 
 *   **Gestão Estrutural:** Criação e controle de Departamentos e Cargos (níveis hierárquicos, salários base e gestores).
 *   **Core RH (Colaboradores):** cadastro de funcionários com gestão segmentada de dados (Informações Pessoais, Contratuais e Financeiras) e ciclo de vida completo: Férias, inativação ou desligamento com data e motivo (sem perder o histórico de ponto), reativação, redefinição de senha pelo RH e exclusão apenas de cadastro sem movimento.
-*   **Motor de Folha de Pagamento:** Processamento em lote de todos os salários ativos, aplicando automaticamente as tabelas de dedução de impostos (INSS) e calculando o Custo Bruto, Líquido e Encargos Patronais.
-*   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem e fazerem o download dos seus holerites em tempo real.
+*   **Folha de Pagamento por competência:** o RH escolhe o mês, processa a folha (INSS pela tabela vigente, em centavos, e encargos patronais estimados), confere as pendências e fecha o mês. Folha fechada não muda mais: alterar salário, cargo ou dados da empresa depois não reescreve os holerites já emitidos. PJ e estágio não pagam INSS nem geram encargo CLT; quem está de férias entra na folha; quem foi desligado continua na folha do mês do desligamento e sai a partir do seguinte; quem está sem salário aparece em "pendências".
+*   **Dados da empresa:** razão social, CNPJ e regime tributário, mantidos pelo Administrador na tela Empresa. Aparecem no cabeçalho do holerite, e a folha só fecha com razão social e CNPJ preenchidos.
+*   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem os seus holerites, um por mês fechado, com a empresa e o CNPJ da época.
 
 ## 📂 Estrutura de Diretórios
 
@@ -47,7 +48,7 @@ hrflow-system/
 ├── e2e/                   # Fluxos de ponta a ponta (Playwright) e a configuração deles
 ├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*) e guardar-estrutura.mts (guarda de .js/.jsx)
 ├── backend/               # API em TypeScript; estrutura e regras em backend/README.md
-│   ├── modules/           # Um módulo por área (auth, ponto, dashboard, folha, perfil, estrutura, funcionarios, saude)
+│   ├── modules/           # Um módulo por área (auth, ponto, dashboard, folha, empresa, perfil, estrutura, funcionarios, saude)
 │   ├── shared/            # O que mais de uma área usa: config, db (pool, migrations, fixtures), middlewares, schemas, utils
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
 │   ├── tests/             # Testes de integração (MySQL descartável) e o apoio deles em tests/support

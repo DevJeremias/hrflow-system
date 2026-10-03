@@ -53,8 +53,13 @@ after(async () => {
 });
 
 const holerite = {
-  id: '7', name: 'Ana Souza', role: 'Dev', department: 'Eng', baseSalary: 5000, totalEarnings: 0, totalDeductions: 400,
+  id: '7', name: 'Ana Souza', role: 'Dev', department: 'Eng', contract: 'CLT', baseSalary: 5000, totalEarnings: 0, totalDeductions: 400,
   totalGross: 5000, netSalary: 4600, employerCharges: 1390, earningsList: [], deductionsList: [],
+};
+const empresa = { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181' };
+const folhaAberta = {
+  competencia: '2026-10', status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null, empresa,
+  totais: { bruto: 5000, descontos: 400, liquido: 4600, encargos: 1390 }, itens: [holerite], pendencias: [],
 };
 
 const json = (corpo: unknown, headers: Record<string, string> = {}) =>
@@ -68,13 +73,15 @@ const instalarApi = (perfil: 'Administrador' | 'Colaborador') => {
     chamadas.push(caminho);
     switch (caminho) {
       case '/api/auth/sessao': return json({ id: 1, nome: 'Rita Teste', perfil, empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: perfil === 'Colaborador' ? 7 : null });
-      case '/api/folha/processar': return json([holerite], { 'X-Total-Count': '1' });
-      case '/api/folha/meu-holerite': return json([holerite]);
+      case '/api/folha/meus-holerites': return json([{ ...holerite, competencia: '2026-09', empresa }]);
+      case '/api/empresa': return json({ nome: 'Empresa Ficticia Alfa', razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181', regime_tributario: null });
       case '/api/funcionarios': return json([{ id: 7, nome: 'Ana Souza', email: 'ana@exemplo.invalid', cargo_nome: 'Dev', departamento_nome: 'Eng', status: 'Ativo' }], { 'X-Total-Count': '1' });
       case '/api/estrutura/departamentos': return json([{ id: 1, nome: 'Eng', sigla: 'ENG', descricao: '', gestor: '' }]);
       case '/api/estrutura/cargos': return json([{ id: 1, nome: 'Dev', departamento_nome: 'Eng', nivel: 'Pleno', salario_base: '5000' }]);
       case '/api/perfil/meus-dados': return json({ perfil, vinculado: perfil === 'Colaborador', nome: 'Rita Teste', email: 'rita@exemplo.invalid', avatar: null, telefone: null, cpf: null, data_nascimento: null, data_admissao: null, endereco: null, tipo_contrato: null, nivel: null, banco: null, agencia: null, conta: null, tipo_conta: null, cargo: null, departamento: null });
-      default: return json([]);
+      default:
+        if (caminho.startsWith('/api/folha/competencias/')) return json(folhaAberta);
+        return json([]);
     }
   }) as typeof fetch;
 };
@@ -174,6 +181,7 @@ const telasAdmin: Array<{ rota: string; titulo: RegExp; abrir?: RegExp[] }> = [
   { rota: '/admin/estrutura', titulo: /Eng/, abrir: [/Criar Departamento/] },
   { rota: '/admin/estrutura', titulo: /Eng/, abrir: [/Cargos e Funções/, /Criar Cargo/] },
   { rota: '/admin/folha', titulo: /Ana Souza/ },
+  { rota: '/admin/empresa', titulo: /Razão social/ },
   { rota: '/admin/gestao-ponto', titulo: /Ponto/ },
   { rota: '/admin/perfil', titulo: /Rita Teste/ },
 ];
@@ -193,12 +201,13 @@ for (const tela of telasAdmin) {
   });
 }
 
-test('a folha não oferece fechar mês, lançamento avulso nem escolha de competência', async () => {
+test('a folha oferece escolher a competência, processar de novo e fechar o mês', async () => {
   instalarApi('Administrador');
   const app = await abrirApp(desligada, '/admin/folha');
   const texto = app.host.textContent ?? '';
-  assert.doesNotMatch(texto, /Fechar Mês/);
-  assert.ok(!app.host.querySelector('input[type="month"]'), 'não deve haver seletor de competência');
+  assert.match(texto, /Fechar mês/);
+  assert.match(texto, /Processar novamente/);
+  assert.ok(app.host.querySelector('input[type="month"]'), 'deve haver seletor de competência');
   assert.ok(!app.host.querySelector('[title="Adicionar Lançamento Avulso"]'), 'não deve haver lançamento avulso');
   assert.doesNotMatch(texto, /Abril de 2026/);
   await fechar(app);
@@ -215,17 +224,18 @@ test('o modal de cargo não oferece proventos e descontos padrão', async () => 
   await fechar(app);
 });
 
-test('o holerite do colaborador diz que o demonstrativo usa os dados atuais', async () => {
+test('o holerite do colaborador lista as folhas fechadas, cada uma com a sua competência', async () => {
   instalarApi('Colaborador');
   const app = await abrirApp(desligada, '/meu-painel/holerites');
   const texto = app.host.textContent ?? '';
-  assert.match(texto, /Demonstrativo calculado com os dados atuais/);
-  assert.doesNotMatch(texto, /Histórico/);
+  assert.match(texto, /Holerites das folhas fechadas/);
+  assert.match(texto, /setembro de 2026/);
+  assert.doesNotMatch(texto, /dados atuais|Histórico/);
   await fechar(app);
 });
 
 test('nenhuma rota do app consulta endpoint inexistente', async () => {
-  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/estrutura', '/admin/folha', '/admin/gestao-ponto', '/admin/perfil']],
+  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/perfil']],
     ['Colaborador', ['/meu-painel', '/meu-painel/holerites', '/meu-painel/solicitacoes', '/meu-painel/perfil']]] as const;
   for (const [perfil, lista] of rotas) {
     for (const rota of lista) {

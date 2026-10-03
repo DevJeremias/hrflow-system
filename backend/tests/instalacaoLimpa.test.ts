@@ -1,4 +1,4 @@
-// Percorre os fluxos anunciados pela API (conta, estrutura, colaborador, perfil, ponto e folha)
+// Percorre os fluxos anunciados pela API (conta, empresa, estrutura, colaborador, perfil, ponto e folha)
 // contra um banco recém migrado, sem nenhuma linha preparada à mão: se o schema não sustenta
 // o que os controllers consultam e gravam, este teste quebra.
 // Banco e variáveis em tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST o teste é pulado.
@@ -164,18 +164,34 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(todos.corpo[0].nome_funcionario, 'Colaborador Ficticio');
     });
 
-    it('processa a folha da empresa e entrega o holerite individual', async () => {
-        const folha = await chamar('GET', '/api/folha/processar', estado.admin);
-        assert.equal(folha.corpo.length, 1);
-        assert.equal(folha.corpo[0].role, 'Analista de Operações');
-        assert.equal(folha.corpo[0].baseSalary, 4300);
+    it('o administrador completa os dados legais da empresa', async () => {
+        const antes = await chamar('GET', '/api/empresa', estado.admin);
+        assert.equal(antes.corpo.nome, 'Empresa Ficticia Limpa');
+        assert.equal(antes.corpo.cnpj, null);
 
-        const holerite = await chamar('GET', '/api/folha/meu-holerite', estado.colaborador);
-        assert.equal(holerite.status, 200);
-        assert.equal(holerite.corpo[0].id, String(estado.funcionario));
+        const salvo = await chamar('PUT', '/api/empresa', estado.admin, { razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' });
+        assert.equal(salvo.status, 200);
+        assert.deepEqual(salvo.corpo, { nome: 'Empresa Ficticia Limpa', razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11222333000181', regime_tributario: 'Simples Nacional' });
     });
 
-    it('edita o colaborador, põe de férias e recusa excluir quem já tem ponto; sem movimento a exclusão leva o login junto', async () => {
+    it('processa e fecha a folha da competência e entrega o holerite individual', async () => {
+        const competencia = mesLocal(Math.floor(Date.now() / 1000));
+        const processada = await chamar('POST', `/api/folha/competencias/${competencia}/processar`, estado.admin);
+        assert.equal(processada.status, 201);
+        assert.equal(processada.corpo.itens.length, 1);
+        assert.equal(processada.corpo.itens[0].role, 'Analista de Operações');
+        assert.equal(processada.corpo.itens[0].baseSalary, 4300);
+
+        assert.equal((await chamar('GET', `/api/folha/meu-holerite?competencia=${competencia}`, estado.colaborador)).status, 404, 'folha aberta não aparece para o colaborador');
+        assert.equal((await chamar('POST', `/api/folha/competencias/${competencia}/fechar`, estado.admin)).status, 200);
+
+        const holerite = await chamar('GET', `/api/folha/meu-holerite?competencia=${competencia}`, estado.colaborador);
+        assert.equal(holerite.status, 200);
+        assert.equal(holerite.corpo.id, String(estado.funcionario));
+        assert.deepEqual(holerite.corpo.empresa, { razaoSocial: 'Empresa Ficticia Limpa Ltda', cnpj: '11222333000181' });
+    });
+
+    it('edita o colaborador, põe de férias e recusa excluir quem já tem ponto ou holerite; sem movimento a exclusão leva o login junto', async () => {
         const edicao = await chamar('PUT', `/api/funcionarios/${estado.funcionario}`, estado.admin, {
             nome: 'Colaborador Ficticio', email: 'colaborador@limpa.exemplo.invalid', cargo_id: estado.cargo,
             departamento_id: estado.departamento, tipo_contrato: 'CLT', salario_base: 4300,
@@ -187,7 +203,10 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         const [[{ antes }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS antes FROM registro_pontos');
         assert.equal(antes, 4, 'o ponto continua guardado');
 
+        // O produto não oferece apagar ponto nem folha fechada: a limpeza é só do teste.
         await pool.query('DELETE FROM registro_pontos');
+        assert.equal((await chamar('DELETE', `/api/funcionarios/${estado.funcionario}`, estado.admin)).status, 409, 'o holerite emitido também protege');
+        await pool.query('DELETE FROM folhas');
         assert.equal((await chamar('DELETE', `/api/funcionarios/${estado.funcionario}`, estado.admin)).status, 200);
         const [[{ usuarios }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS usuarios FROM usuarios WHERE funcionario_id IS NOT NULL');
         assert.equal(usuarios, 0);

@@ -12,6 +12,9 @@ export const PERMISSOES = {
     // Contas de acesso (RH e Administrador nascem aqui) e a estrutura da empresa.
     'usuarios:gerir': SO_ADMINISTRADOR,
     'estrutura:gerir': SO_ADMINISTRADOR,
+    // Os dados da empresa (razão social, CNPJ) alimentam a folha: o RH consulta, o Administrador altera.
+    'empresa:gerir': SO_ADMINISTRADOR,
+    'empresa:consultar': GESTAO,
     // O RH precisa dos cargos e departamentos para cadastrar colaboradores.
     'estrutura:consultar': GESTAO,
     // O alcance sobre cada cadastro (RH não toca RH, Administrador nem o próprio) é o de podeGerirCadastro.

@@ -100,7 +100,7 @@ test('o RH com cadastro abre Meu ponto e Meu holerite; o menu mostra a área del
     globalThis.fetch = apiFalsa(sessoes.rita);
     const { host, fechar } = await abrir(caminho);
     assert.match(titulo(host), tela, caminho);
-    assert.deepEqual(itensDoMenu(host), ['Dashboard', 'Colaboradores', 'Folha de Pagamento', 'Gestão de Ponto', 'Meu ponto', 'Meu holerite', 'Meu Perfil']);
+    assert.deepEqual(itensDoMenu(host), ['Dashboard', 'Colaboradores', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Meu ponto', 'Meu holerite', 'Meu Perfil']);
     await fechar();
   }
 });
@@ -135,7 +135,7 @@ test('no dashboard do RH, departamentos e cargos não levam à tela que ele não
 test('o Administrador vê Usuários e Depto & Cargos no menu', async () => {
   globalThis.fetch = apiFalsa(sessoes.admin);
   const { host, fechar } = await abrir('/admin');
-  assert.deepEqual(itensDoMenu(host), ['Dashboard', 'Colaboradores', 'Depto & Cargos', 'Folha de Pagamento', 'Gestão de Ponto', 'Usuários', 'Meu Perfil']);
+  assert.deepEqual(itensDoMenu(host), ['Dashboard', 'Colaboradores', 'Depto & Cargos', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Usuários', 'Meu Perfil']);
   await fechar();
 });
 

@@ -16,6 +16,7 @@ import Employees from './pages/Admin/Employees';
 import DepartmentsRoles from './pages/Admin/OrgStructure';
 import Payroll from './pages/Admin/Payroll';
 import Users from './pages/Admin/Users';
+import Company from './pages/Admin/Company';
 import TimeTracking from './pages/Admin/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
 
 import EmployeeHome from './pages/Portal/EmployeeDashboard'; 
@@ -83,6 +84,7 @@ function App() {
         <Route path="colaboradores" element={<Employees />} />
         <Route path="estrutura" element={<ProtectedRoute allowedRoles={['Administrador']}><DepartmentsRoles /></ProtectedRoute>} />
         <Route path="folha" element={<Payroll />} />
+        <Route path="empresa" element={<Company />} />
         <Route path="gestao-ponto" element={<TimeTracking />} /> {/* ROTA OFICIALIZADA */}
         <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
         <Route path="perfil" element={<Profile />} />
