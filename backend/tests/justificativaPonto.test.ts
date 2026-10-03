@@ -148,9 +148,11 @@ test('o histórico inclui justificativa de um dia sem nenhuma marcação', { ski
 
     const { status, corpo } = await chamar('GET', `/historico/${ctx.outro}?mes=${MES}`, ctx.tokenOutro);
     assert.equal(status, 200);
+    // Sem aprovação do RH o dia continua falta: a justificativa só aparece, pendente, ao lado dele.
     assert.deepEqual(corpo.find((dia: any) => dia.date === diaSemPonto), {
         id: diaSemPonto, date: diaSemPonto, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
-        totalHours: '--:--', status: 'OK', note: 'Ausência justificada sem marcação.', negativeAdjust: '00:00', positiveAdjust: '00:00',
+        totalHours: '--:--', status: 'falta', open: false, delay: '00:00', note: 'Ausência justificada sem marcação.',
+        noteStatus: 'pendente', noteReply: null, negativeAdjust: '08:00', positiveAdjust: '00:00',
     });
 });
 

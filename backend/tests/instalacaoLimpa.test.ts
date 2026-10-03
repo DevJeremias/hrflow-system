@@ -168,8 +168,8 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
         const mes = mesLocal(Math.floor(Date.now() / 1000));
         const historico = await chamar('GET', `/api/ponto/historico/${estado.funcionario}?mes=${mes}`, estado.admin);
-        assert.equal(historico.corpo.length, 1);
-        assert.notEqual(historico.corpo[0].exit, '--:--');
+        const marcados = historico.corpo.filter((d: any) => d.exit !== '--:--');
+        assert.equal(marcados.length, 1);
 
         const todos = await chamar('GET', `/api/ponto?mes=${mes}`, estado.admin);
         assert.equal(todos.corpo.length, 4);

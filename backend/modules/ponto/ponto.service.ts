@@ -2,14 +2,13 @@
 // (falhas de regra saem como ErroDePonto) e só chega ao banco pelo repositório.
 import * as fuso from './ponto.fuso.ts';
 import * as regras from './ponto.regras.ts';
-import type { TipoRegistro, Validacao } from './ponto.regras.ts';
+import type { DecisaoDaJustificativa, Jornada, StatusDoDia, TipoRegistro, Validacao } from './ponto.regras.ts';
 import * as repositorio from './ponto.repository.ts';
 import { ErroDePonto } from './ponto.erros.ts';
-import type { ConsultaDePontosDaEmpresa } from './ponto.schemas.ts';
+import type { ConsultaDePontosDaEmpresa, ConsultaDeJustificativas, DecisaoRecebida } from './ponto.schemas.ts';
 
-// Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia em Belém.
-export const relogio = { agora: (): number => Date.now() };
-const agoraEmSegundos = (): number => Math.floor(relogio.agora() / 1000);
+export { relogio } from './ponto.fuso.ts';
+const agoraEmSegundos = (): number => Math.floor(fuso.relogio.agora() / 1000);
 
 const intervaloDoDia = (segundos: number): fuso.Intervalo => fuso.limitesDoDia(fuso.diaLocal(segundos));
 
@@ -38,6 +37,9 @@ export interface RegistroMarcado {
     date: string;
 }
 
+// Um dia do espelho. `open` marca o dia ainda sem apuração (futuro, hoje sem saída ou antes da
+// admissão); `delay` e os ajustes são 'HH:MM'. `note` é a justificativa do colaborador e
+// `noteStatus` e `noteReply`, o que o RH decidiu sobre ela.
 export interface DiaDoHistorico {
     id: string;
     date: string;
@@ -46,8 +48,12 @@ export interface DiaDoHistorico {
     lunchIn: string;
     exit: string;
     totalHours: string;
-    status: string;
+    status: StatusDoDia;
+    open: boolean;
+    delay: string;
     note: string;
+    noteStatus: DecisaoDaJustificativa | null;
+    noteReply: string | null;
     negativeAdjust: string;
     positiveAdjust: string;
 }
@@ -58,6 +64,10 @@ export interface Justificativa {
     nome_funcionario: string;
     date: string;
     note: string;
+    status: DecisaoDaJustificativa;
+    reply: string | null;
+    decidedBy: string | null;
+    decidedAt: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -132,53 +142,137 @@ export const listarPontosHoje = async ({ empresaId, funcionarioId }: ConsultaDoC
     return pontos.map((p) => montarRegistro(p.id, p.tipo_registro, p.instante));
 };
 
-export const listarHistorico = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }): Promise<DiaDoHistorico[]> => {
+const minutoDoDia = (segundos: number): number => {
+    const [horas, minutos] = fuso.horaLocal(segundos).split(':').map(Number);
+    return horas * 60 + minutos;
+};
+
+// Cada dia 'AAAA-MM-DD' do mês 'AAAA-MM', do primeiro ao último.
+const diasDoMes = (mes: string): string[] => {
+    const [ano, m] = mes.split('-').map(Number);
+    const ultimo = new Date(Date.UTC(ano, m, 0)).getUTCDate();
+    return Array.from({ length: ultimo }, (_, i) => `${mes}-${String(i + 1).padStart(2, '0')}`);
+};
+
+interface JornadaDoMes extends Jornada {
+    cargaSemanalHoras: number;
+    entrada: string;
+    saida: string;
+}
+
+// Lê o mês inteiro do colaborador e apura cada dia, inclusive os sem marcação.
+const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }) => {
     if (!fuso.mesValido(mes)) {
         throw new ErroDePonto('invalido', 'Informe o mês no formato AAAA-MM (ex.: 2026-03).');
     }
     const { inicio, fim } = fuso.limitesDoMes(mes);
     const { de, ate } = datasDoMes(mes);
 
-    const pontos = await repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim);
-    const justificativas = await repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate);
-    const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j.texto]));
+    const [registro, pontos, justificativas] = await Promise.all([
+        repositorio.jornadaDoColaborador(funcionarioId, empresaId),
+        repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
+        repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
+    ]);
+    if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
 
-    const dias: Record<string, DiaDoHistorico> = {};
+    const cargaSemanalHoras = Number(registro.carga_semanal);
+    const jornada: JornadaDoMes = {
+        cargaSemanalHoras,
+        entrada: registro.entrada,
+        saida: registro.saida,
+        entradaMin: registro.entrada_min,
+        toleranciaMin: registro.tolerancia_min,
+        cargaDiariaMin: regras.cargaDiariaMin(cargaSemanalHoras),
+    };
 
-    justificativas.forEach((j) => {
-        dias[j.dia] = {
-            id: j.dia, date: j.dia, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
-            totalHours: '--:--', status: 'OK', note: j.texto, negativeAdjust: '00:00', positiveAdjust: '00:00'
-        };
-    });
+    const marcacoesDoDia = new Map<string, regras.Marcacao[]>();
+    for (const p of pontos) {
+        const dia = fuso.diaLocal(p.instante);
+        marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(p.instante) }]);
+    }
+    const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j]));
 
-    pontos.forEach(p => {
-        const dataStr = fuso.diaLocal(p.instante);
-        const horaStr = fuso.horaLocal(p.instante).slice(0, 5);
-
-        if (!dias[dataStr]) {
-            dias[dataStr] = {
-                id: dataStr, date: dataStr, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
-                totalHours: '--:--', status: 'OK', note: justificativaDoDia.get(dataStr) ?? (p.observacao || ''), negativeAdjust: '00:00', positiveAdjust: '00:00'
-            };
-        }
-
-        if (p.tipo_registro === 'Entrada') dias[dataStr].entry = horaStr;
-        else if (p.tipo_registro === 'Pausa Almoço') dias[dataStr].lunchOut = horaStr;
-        else if (p.tipo_registro === 'Retorno Almoço') dias[dataStr].lunchIn = horaStr;
-        else if (p.tipo_registro === 'Saída') dias[dataStr].exit = horaStr;
-    });
-
-    return Object.values(dias);
+    const dias = regras.apurarMes(
+        diasDoMes(mes).map((data) => ({
+            data,
+            marcacoes: marcacoesDoDia.get(data) ?? [],
+            justificativa: justificativaDoDia.get(data)?.status ?? null,
+        })),
+        jornada,
+        { hoje: fuso.diaLocal(agoraEmSegundos()), admissao: registro.admissao }
+    );
+    return { dias, jornada, justificativaDoDia };
 };
 
-// Ainda sem cálculo: devolve a estrutura que a tela espera com os valores em branco.
-export const listarTotais = () => ({
-    totals: [
-        { id: 'w1', weekLabel: 'Semana Atual', workloadLimit: '44:00', workloadPreset: '44:00', workloadDone: '--:--', presenceTime: '--:--', pendingTime: '--:--', excessTime: '--:--', hoursBank: '--:--', dailyAdjustBalance: '--:--' }
-    ],
-    monthlySummary: { workloadLimit: '220:00', workloadPreset: '220:00', workloadDone: '--:--', presenceTime: '--:--', pendingTime: '--:--', excessTime: '--:--', hoursBank: '--:--', dailyAdjustBalance: '--:--' }
+export const listarHistorico = async (consulta: ConsultaDoColaborador & { mes: unknown }): Promise<DiaDoHistorico[]> => {
+    const { dias, justificativaDoDia } = await apurarOMes(consulta);
+    return dias.map((dia) => {
+        const justificativa = justificativaDoDia.get(dia.data);
+        return {
+            id: dia.data,
+            date: dia.data,
+            entry: regras.formatarHorario(dia.marcas.entrada),
+            lunchOut: regras.formatarHorario(dia.marcas.pausa),
+            lunchIn: regras.formatarHorario(dia.marcas.retorno),
+            exit: regras.formatarHorario(dia.marcas.saida),
+            totalHours: regras.formatarHorario(dia.trabalhadoMin),
+            status: dia.statusFinal,
+            open: dia.aberto,
+            delay: regras.formatarMinutos(dia.atrasoMin),
+            note: justificativa?.texto ?? '',
+            noteStatus: justificativa?.status ?? null,
+            noteReply: justificativa?.resposta ?? null,
+            negativeAdjust: regras.formatarMinutos(dia.pendenteMin),
+            positiveAdjust: regras.formatarMinutos(dia.excedenteMin),
+        };
+    });
+};
+
+// O que a tela de totais mostra de um período: horas em 'HH:MM', ocorrências em contagem.
+export interface TotaisDoPeriodo {
+    workloadLimit: string;
+    workloadDone: string;
+    pendingTime: string;
+    excessTime: string;
+    delayTime: string;
+    absences: number;
+    incompleteDays: number;
+}
+
+export interface SemanaDoTotal extends TotaisDoPeriodo {
+    id: string;
+    weekLabel: string;
+}
+
+const paraTotais = (totais: regras.Totais): TotaisDoPeriodo => ({
+    workloadLimit: regras.formatarMinutos(totais.previstoMin),
+    workloadDone: regras.formatarMinutos(totais.trabalhadoMin),
+    pendingTime: regras.formatarMinutos(totais.pendenteMin),
+    excessTime: regras.formatarMinutos(totais.excedenteMin),
+    delayTime: regras.formatarMinutos(totais.atrasoMin),
+    absences: totais.faltas,
+    incompleteDays: totais.incompletos,
 });
+
+const diaEMes = (data: string): string => data.slice(8) + '/' + data.slice(5, 7);
+
+export const listarTotais = async (consulta: ConsultaDoColaborador & { mes: unknown }): Promise<{
+    workSchedule: { weeklyHours: number; entry: string; exit: string; toleranceMinutes: number };
+    totals: SemanaDoTotal[];
+    monthlySummary: TotaisDoPeriodo;
+}> => {
+    const { dias, jornada } = await apurarOMes(consulta);
+    const { semanas, mes } = regras.totalizarMes(dias);
+    return {
+        workSchedule: { weeklyHours: jornada.cargaSemanalHoras, entry: jornada.entrada, exit: jornada.saida, toleranceMinutes: jornada.toleranciaMin },
+        totals: semanas.map(({ de, ate, ...totais }) => ({
+            id: de,
+            weekLabel: de === ate ? diaEMes(de) : `${diaEMes(de)} a ${diaEMes(ate)}`,
+            ...paraTotais(totais),
+        })),
+        monthlySummary: paraTotais(mes),
+    };
+};
 
 export interface PontoDaEmpresa {
     id: number;
@@ -218,27 +312,65 @@ export interface DadosDaJustificativa {
     texto: string;
 }
 
-// O colaborador e a empresa vêm do token: o corpo e a URL só dizem o dia e o texto.
-export const enviarJustificativa = async ({ empresaId, funcionarioId, data, texto }: DadosDaJustificativa): Promise<Pick<Justificativa, 'date' | 'note' | 'updatedAt'>> => {
+// O colaborador e a empresa vêm do token: o corpo e a URL só dizem o dia e o texto. Uma justificativa
+// aprovada fecha o dia; uma recusada pode ser reenviada e volta a ficar pendente para o RH.
+export const enviarJustificativa = async ({ empresaId, funcionarioId, data, texto }: DadosDaJustificativa): Promise<Pick<Justificativa, 'date' | 'note' | 'status' | 'updatedAt'>> => {
     if (!funcionarioId) {
         throw new ErroDePonto('proibido', 'Acesso negado. Apenas colaboradores vinculados podem justificar o ponto.');
     }
-    if (!await repositorio.colaboradorExiste(funcionarioId, empresaId)) {
-        throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
-    }
 
-    await repositorio.salvarJustificativa({ empresaId, funcionarioId, data, texto });
-    const atualizadoEm = await repositorio.instanteDaJustificativa(funcionarioId, data);
-    return { date: data, note: texto, updatedAt: paraIso(atualizadoEm) };
+    const atualizadoEm = await repositorio.emTransacao(async (repo) => {
+        if (!await repo.colaboradorExiste(funcionarioId, empresaId, { travar: true })) {
+            throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
+        }
+        if (await repo.statusDaJustificativa(funcionarioId, data, { travar: true }) === 'aprovada') {
+            throw new ErroDePonto('conflito', 'O RH já aprovou a justificativa deste dia e ela não pode mais ser alterada.');
+        }
+        await repo.salvarJustificativa({ empresaId, funcionarioId, data, texto });
+        return repo.instanteDaJustificativa(funcionarioId, data);
+    });
+    return { date: data, note: texto, status: 'pendente', updatedAt: paraIso(atualizadoEm) };
 };
 
-export const listarJustificativas = async ({ empresaId, mes, funcionarioId }: { empresaId: number; mes: string; funcionarioId: number | null }): Promise<Justificativa[]> => {
-    const { de, ate } = datasDoMes(mes);
-    const linhas = await repositorio.justificativasDaEmpresa({ empresaId, de, ate, funcionarioId });
+const paraJustificativa = ({ criado, atualizado, decidido, decidido_por_nome, resposta, ...j }: repositorio.JustificativaDaEmpresa): Justificativa => ({
+    id: j.id,
+    funcionario_id: j.funcionario_id,
+    nome_funcionario: j.nome_funcionario,
+    date: j.date,
+    note: j.note,
+    status: j.status,
+    reply: resposta,
+    decidedBy: decidido_por_nome,
+    decidedAt: decidido === null ? null : paraIso(decidido),
+    createdAt: paraIso(criado),
+    updatedAt: paraIso(atualizado),
+});
 
-    return linhas.map(({ criado, atualizado, ...j }) => ({
-        ...j,
-        createdAt: paraIso(criado),
-        updatedAt: paraIso(atualizado),
-    }));
+export const listarJustificativas = async ({ empresaId, mes, funcionarioId, status }: { empresaId: number } & ConsultaDeJustificativas): Promise<Justificativa[]> => {
+    const { de, ate } = datasDoMes(mes);
+    const linhas = await repositorio.justificativasDaEmpresa({ empresaId, de, ate, funcionarioId, status });
+    return linhas.map(paraJustificativa);
+};
+
+export interface DadosDaDecisao extends DecisaoRecebida {
+    empresaId: number;
+    id: number;
+    // Quem decide: o usuário e o colaborador a que ele está vinculado, se houver.
+    usuarioId: number;
+    funcionarioIdDoUsuario: number | null;
+}
+
+// Quem decide vem do token. O RH pode mudar a decisão depois, mas nunca decide a justificativa
+// do próprio ponto.
+export const decidirJustificativa = async ({ empresaId, id, status, resposta, usuarioId, funcionarioIdDoUsuario }: DadosDaDecisao): Promise<Justificativa> => {
+    const respostaValida = exigir(regras.validarDecisao(status, resposta));
+    return repositorio.emTransacao(async (repo) => {
+        const atual = await repo.justificativaDaEmpresa(id, empresaId, { travar: true });
+        if (!atual) throw new ErroDePonto('inexistente', 'Justificativa não encontrada.');
+        if (funcionarioIdDoUsuario !== null && atual.funcionario_id === funcionarioIdDoUsuario) {
+            throw new ErroDePonto('proibido', 'Você não pode decidir a justificativa do seu próprio ponto.');
+        }
+        await repo.decidirJustificativa({ id, empresaId, status, resposta: respostaValida, decididoPor: usuarioId });
+        return paraJustificativa((await repo.justificativaDaEmpresa(id, empresaId))!);
+    });
 };
