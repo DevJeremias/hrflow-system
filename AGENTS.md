@@ -11,4 +11,6 @@ Todas as chamadas HTTP do front-end passam por `frontend/src/services/httpClient
 
 A API requer MySQL. O schema vive em migrations numeradas em `backend/migrations`; `npm run db:setup` na raiz cria o banco do zero, aplica as migrations e carrega fixtures sintéticas (passo a passo no README).
 
-A configuração JWT também tem uma armadilha conhecida: com `JWT_SECRET` vazio, o login emite um token usando um fallback diferente do usado na verificação, e a própria aplicação rejeita esse token.
+`JWT_SECRET` é obrigatório (mínimo de 32 bytes) e não há fallback: sem ele a API não sobe.
+
+O gerenciador de pacotes é o npm, com um único `package-lock.json` na raiz. O gate de qualidade é `npm run verify` (lint, typecheck, build e testes de backend), que exige um MySQL descartável apontado por `HRFLOW_TEST_DB_HOST`, `HRFLOW_TEST_DB_USER` e `HRFLOW_TEST_DB_PASS`. Commits seguem Conventional Commits (commitlint no CI) e a `main` só recebe PR com o check `verify` verde.
