@@ -1,5 +1,5 @@
 import { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../shared/schemas/comum.ts';
-import { LIMITES } from '../auth/auth.schemas.ts';
+import { LIMITES } from '../../shared/schemas/validadores.ts';
 
 const STATUS = ['Ativo', 'Inativo', 'Férias'] as const;
 const TIPOS_CONTRATO = ['CLT', 'PJ', 'Estágio', 'Temporário'] as const;

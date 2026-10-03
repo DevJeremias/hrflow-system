@@ -1,5 +1,5 @@
 import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } from '../../shared/schemas/comum.ts';
-import { LIMITES } from '../auth/auth.schemas.ts';
+import { LIMITES } from '../../shared/schemas/validadores.ts';
 import { validarAvatar } from '../funcionarios/index.ts';
 
 const avatar = campo((valor: unknown) => {
