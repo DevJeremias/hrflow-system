@@ -3,7 +3,7 @@
 // emTransacao, numa conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../config/db.js';
-import { cargoDaEmpresa, departamentoDaEmpresa } from '../../utils/referenciasEmpresa.js';
+import { cargoDaEmpresa, departamentoDaEmpresa } from '../estrutura/index.ts';
 import type { DadosDoFuncionario, Status } from './funcionarios.schemas.ts';
 
 // Linha de funcionarios (SELECT f.*) com os nomes do cargo e do departamento da mesma empresa.

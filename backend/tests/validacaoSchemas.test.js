@@ -2,7 +2,7 @@
 // erros do MySQL. Funções puras: não precisam de banco.
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const estrutura = require('../schemas/estruturaSchemas');
+const estrutura = require('../modules/estrutura/estrutura.schemas.ts');
 const { atualizarMeusDados, alterarSenha } = require('../modules/perfil/perfil.schemas.ts');
 const { paginacao } = require('../schemas/paginacao');
 const { TAMANHO_MAXIMO_BYTES } = require('../modules/funcionarios/index.ts');
