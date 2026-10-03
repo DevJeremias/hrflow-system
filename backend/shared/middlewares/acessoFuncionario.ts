@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 
-// Rotas com :funcionarioId: Administrador e RH enxergam qualquer colaborador da empresa; os demais
+// Rotas com :funcionarioId (ponto, saldo de férias): Administrador e RH enxergam qualquer colaborador da empresa; os demais
 // perfis só o próprio vínculo. Roda depois do authMiddleware, que preenche req.usuario.
 export const verificarAcessoFuncionario = (req: Request<{ funcionarioId: string }>, res: Response, next: NextFunction) => {
     if (!req.usuario) throw new Error('req.usuario ausente: a rota precisa do authMiddleware.');

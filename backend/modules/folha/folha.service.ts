@@ -2,8 +2,9 @@
 // processamento que pode se repetir enquanto a folha está aberta e o fechamento que a trava. Não
 // conhece HTTP (falhas de regra saem como ErroDeFolha) e só chega ao banco pelo repositório.
 import { relogio, diaLocal } from '../ponto/index.ts';
+import { feriasAprovadasNoPeriodo } from '../ausencias/index.ts';
 import { competenciaDoDia, primeiroDia, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
-import { CODIGO_SALARIO, calcularHolerite, emCentavos, emReais, haTabelaVigente, rubricasDoHolerite } from './folha.regras.ts';
+import { CODIGO_SALARIO, calcularHolerite, emCentavos, emReais, haTabelaVigente, rubricasDoHolerite, tercoDeFeriasEmCentavos } from './folha.regras.ts';
 import * as repositorio from './folha.repository.ts';
 import type { ColaboradorDaFolha, DadosDaEmpresa, FolhaGravada, ItemGravado, NovoItem, Pendencia, StatusDaFolha } from './folha.repository.ts';
 import { ErroDeFolha } from './folha.erros.ts';
@@ -113,7 +114,7 @@ const montarFolha = (folha: FolhaGravada, itens: ItemGravado[]): FolhaDaCompeten
 
 // Separa quem entra na folha de quem fica pendente. Salário ausente ou zero não vira holerite de
 // R$ 0,00: o colaborador aparece nas pendências até alguém cadastrar o salário.
-const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string): { itens: NovoItem[]; pendencias: Pendencia[] } => {
+const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string, diasDeFerias: ReadonlyMap<number, number>): { itens: NovoItem[]; pendencias: Pendencia[] } => {
     const itens: NovoItem[] = [];
     const pendencias: Pendencia[] = [];
     for (const colaborador of colaboradores) {
@@ -122,7 +123,8 @@ const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string): { ite
             pendencias.push({ funcionarioId: colaborador.id, nome: colaborador.nome, motivo: MOTIVO_SEM_SALARIO });
             continue;
         }
-        const holerite = calcularHolerite(salario, primeiroDia(competencia), undefined, colaborador.tipo_contrato);
+        const dias = diasDeFerias.get(colaborador.id) ?? 0;
+        const holerite = calcularHolerite(salario, primeiroDia(competencia), undefined, colaborador.tipo_contrato, dias);
         itens.push({
             funcionarioId: colaborador.id,
             nome: colaborador.nome,
@@ -133,7 +135,7 @@ const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string): { ite
             inss: holerite.inss,
             liquido: holerite.netSalary,
             encargos: holerite.employerCharges,
-            rubricas: rubricasDoHolerite(holerite),
+            rubricas: rubricasDoHolerite(holerite, emReais(tercoDeFeriasEmCentavos(emCentavos(salario), dias, colaborador.tipo_contrato))),
         });
     }
     return { itens, pendencias };
@@ -165,7 +167,9 @@ export const processarFolha = async ({ empresaId, competencia }: { empresaId: nu
         if (folha.status === 'fechada') {
             throw new ErroDeFolha('conflito', `A folha de ${rotuloDaCompetencia(competencia)} está fechada e não pode ser processada de novo.`);
         }
-        const { itens, pendencias } = apurar(await repo.colaboradoresDaCompetencia(empresaId, primeiroDia(competencia), ultimoDia(competencia)), competencia);
+        // O terço de férias vem das férias aprovadas que caem na competência (modules/ausencias).
+        const diasDeFerias = await feriasAprovadasNoPeriodo(empresaId, primeiroDia(competencia), ultimoDia(competencia));
+        const { itens, pendencias } = apurar(await repo.colaboradoresDaCompetencia(empresaId, primeiroDia(competencia), ultimoDia(competencia)), competencia, diasDeFerias);
         await repo.gravarProcessamento(folha.id, empresaId, itens, pendencias, await dadosDaEmpresa(repo, empresaId));
         return { criada, folhaId: folha.id };
     });

@@ -18,6 +18,7 @@ import { estruturaRoutes } from './modules/estrutura/index.ts';
 import { folhaRoutes } from './modules/folha/index.ts';
 import { usuariosRoutes } from './modules/usuarios/index.ts';
 import { empresaRoutes } from './modules/empresa/index.ts';
+import { ausenciasRoutes, LIMITE_DO_CORPO_DE_AUSENCIAS } from './modules/ausencias/index.ts';
 
 // Importação do Middleware de Proteção
 import authMiddleware from './shared/middlewares/authMiddleware.ts';
@@ -56,6 +57,10 @@ export const criarApp = ({ db = pool, limitesAuth, trustProxy = process.env.TRUS
 
     // Autenticação vem antes do parser global: tem corpo pequeno e limite próprio (shared/middlewares/limitesAuth.ts)
     app.use('/api/auth', criarAuthRouter(limitesAuth));
+
+    // O anexo de uma ausência viaja em base64 no JSON e tem 5 MB de limite próprio (validado pela rota):
+    // o corpo ganha folga maior que a global, só aqui e só depois da autenticação.
+    app.use('/api/ausencias', authMiddleware, express.json({ limit: LIMITE_DO_CORPO_DE_AUSENCIAS }), ausenciasRoutes);
 
     // O maior corpo legítimo é o avatar em base64: 2 MB de imagem viram cerca de 2,7 MB de texto (modules/funcionarios/funcionarios.avatar.ts)
     app.use(express.json({ limit: '4mb' }));

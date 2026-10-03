@@ -168,10 +168,11 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
     const { inicio, fim } = fuso.limitesDoMes(mes);
     const { de, ate } = datasDoMes(mes);
 
-    const [registro, pontos, justificativas] = await Promise.all([
+    const [registro, pontos, justificativas, ausencias] = await Promise.all([
         repositorio.jornadaDoColaborador(funcionarioId, empresaId),
         repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
         repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
+        repositorio.ausenciasAprovadasDoColaborador(funcionarioId, empresaId, de, ate),
     ]);
     if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
 
@@ -191,12 +192,14 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
         marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(p.instante) }]);
     }
     const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j]));
+    // Dia útil coberto por férias ou afastamento aprovado: abonado como a justificativa aprovada, não é falta.
+    const emAusencia = (data: string): boolean => !regras.ehFimDeSemana(data) && ausencias.some((a) => a.inicio <= data && data <= a.fim);
 
     const dias = regras.apurarMes(
         diasDoMes(mes).map((data) => ({
             data,
             marcacoes: marcacoesDoDia.get(data) ?? [],
-            justificativa: justificativaDoDia.get(data)?.status ?? null,
+            justificativa: justificativaDoDia.get(data)?.status ?? (emAusencia(data) ? 'aprovada' : null),
         })),
         jornada,
         { hoje: fuso.diaLocal(agoraEmSegundos()), admissao: registro.admissao }

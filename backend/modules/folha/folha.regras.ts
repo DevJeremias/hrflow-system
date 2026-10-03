@@ -45,6 +45,18 @@ export const calcularInssEmCentavos = (salarioCentavos: number, tabela: TabelaIn
 export const haTabelaVigente = (dia: string, tabelas: readonly TabelaInss[] = TABELAS_INSS): boolean =>
     tabelas.some((tabela) => tabela.vigencia_inicio <= dia);
 
+const DIAS_DO_MES_COMERCIAL = 30;
+
+// O terço constitucional de férias (CF, art. 7º, XVII): um terço do salário dos dias de férias que
+// caem na competência, a 1/30 do salário por dia. Só quem tem vínculo CLT o recebe. O pagamento
+// antecipado, até dois dias antes de as férias começarem, não é modelado: o terço entra na folha do
+// mês em que os dias de férias caem.
+export const tercoDeFeriasEmCentavos = (salarioCentavos: number, diasDeFerias: number, tipoContrato: string | null): number => {
+    if (!temVinculoClt(tipoContrato) || !(salarioCentavos > 0) || !(diasDeFerias > 0)) return 0;
+    const dias = Math.min(diasDeFerias, DIAS_DO_MES_COMERCIAL);
+    return centavosDe(salarioCentavos * dias * 1000 / (DIAS_DO_MES_COMERCIAL * 3));
+};
+
 export interface Holerite {
     baseSalary: number;
     inss: number;
@@ -57,15 +69,18 @@ export const calcularHolerite = (
     dia: string = new Date().toISOString().slice(0, 10),
     tabelas: readonly TabelaInss[] = TABELAS_INSS,
     tipoContrato: string | null = null,
+    diasDeFerias = 0,
 ): Holerite => {
     const bruto = emCentavos(salario);
     const clt = temVinculoClt(tipoContrato);
-    const inss = clt ? calcularInssEmCentavos(bruto, tabelaVigente(dia, tabelas)) : 0;
+    // O terço de férias integra a base do INSS e a dos encargos, como o salário.
+    const terco = tercoDeFeriasEmCentavos(bruto, diasDeFerias, tipoContrato);
+    const inss = clt ? calcularInssEmCentavos(bruto + terco, tabelaVigente(dia, tabelas)) : 0;
     return {
         baseSalary: emReais(bruto),
         inss: emReais(inss),
-        netSalary: emReais(bruto - inss),
-        employerCharges: emReais(clt ? centavosDe(bruto * ENCARGOS_PATRONAIS) : 0),
+        netSalary: emReais(bruto + terco - inss),
+        employerCharges: emReais(clt ? centavosDe((bruto + terco) * ENCARGOS_PATRONAIS) : 0),
     };
 };
 
@@ -78,9 +93,12 @@ export interface Rubrica {
 }
 
 export const CODIGO_SALARIO = 'SALARIO';
+export const CODIGO_TERCO_DE_FERIAS = 'FERIAS_TERCO';
 
-// As rubricas que o cálculo gera hoje: o salário e, para quem tem vínculo CLT, o INSS.
-export const rubricasDoHolerite = ({ baseSalary, inss }: Holerite): Rubrica[] => [
+// As rubricas que o cálculo gera hoje: o salário, o terço de férias quando há (`tercoDeFerias`, em
+// reais) e, para quem tem vínculo CLT, o INSS.
+export const rubricasDoHolerite = ({ baseSalary, inss }: Holerite, tercoDeFerias = 0): Rubrica[] => [
     { codigo: CODIGO_SALARIO, descricao: 'Salário Base', tipo: 'provento', valor: baseSalary },
+    ...(tercoDeFerias > 0 ? [{ codigo: CODIGO_TERCO_DE_FERIAS, descricao: 'Terço Constitucional de Férias', tipo: 'provento' as const, valor: tercoDeFerias }] : []),
     ...(inss > 0 ? [{ codigo: 'INSS', descricao: 'Desconto INSS', tipo: 'desconto' as const, valor: inss }] : []),
 ];

@@ -8,6 +8,12 @@ const TIPOS_CONTA = ['Corrente', 'Poupanca', 'Salario'] as const;
 
 export type Status = typeof STATUS[number];
 
+// A situação que a listagem mostra e aceita como filtro: o status gravado ou Afastado, que vem
+// de uma licença aprovada e nunca é gravado (modules/ausencias).
+const SITUACOES = [...STATUS, 'Afastado'] as const;
+
+export type Situacao = typeof SITUACOES[number];
+
 const cpf = padrao(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/, 'CPF', 'ter 11 dígitos, com ou sem pontuação (000.000.000-00)');
 
 const umAnoDepois = (): string => {
@@ -62,7 +68,7 @@ const busca = campo((valor: unknown) => {
 // Página, busca livre (nome, e-mail, CPF, cargo e departamento) e filtros da listagem.
 export const consultaDeFuncionarios = paginacao.extend({
     busca,
-    status: opcional(enumerado('Status', STATUS)),
+    status: opcional(enumerado('Status', SITUACOES)),
     departamento_id: opcional(inteiroPositivo('Departamento')),
 });
 
@@ -135,7 +141,7 @@ export interface Paginacao {
 
 export interface FiltrosDeFuncionarios {
     busca: string | null;
-    status: Status | null;
+    status: Situacao | null;
     departamento_id: number | null;
 }
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import * as pontoController from './ponto.controller.ts';
 import { exigirPermissao } from '../../shared/middlewares/roleMiddleware.ts';
-import { verificarAcessoFuncionario } from '../funcionarios/index.ts';
+import { verificarAcessoFuncionario } from '../../shared/middlewares/acessoFuncionario.ts';
 import validarEntrada from '../../shared/middlewares/validarEntrada.ts';
 import { decidirJustificativa, diaDaJustificativa, enviarJustificativa, consultarJustificativas, consultarPontosDaEmpresa, idDaJustificativa } from './ponto.schemas.ts';
 
