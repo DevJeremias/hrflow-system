@@ -36,10 +36,11 @@ describe('ambiente da API', () => {
         });
     });
 
-    it('recusa porta fora de 1 a 65535 ou com texto', () => {
-        for (const PORT of ['0', '65536', '-1', '30x0', '3000.5']) {
+    it('recusa porta fora de 0 a 65535 ou com texto; PORT=0 pede ao sistema uma porta livre', () => {
+        for (const PORT of ['65536', '-1', '30x0', '3000.5']) {
             assert.throws(() => lerAmbiente({ ...valido, PORT }), /PORT deve ser/, PORT);
         }
+        assert.equal(lerAmbiente({ ...valido, PORT: '0' }).porta, 0);
     });
 
     it('DB_PASS pode ser vazia, e os limites do pool, quando informados, são inteiros positivos', () => {

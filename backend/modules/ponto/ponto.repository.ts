@@ -3,7 +3,7 @@
 // conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
-import type { TipoRegistro } from './ponto.regras.ts';
+import type { DecisaoDaJustificativa, TipoRegistro } from './ponto.regras.ts';
 
 export interface UltimoRegistro extends RowDataPacket {
     tipo_registro: TipoRegistro;
@@ -24,9 +24,21 @@ export interface RegistroDaEmpresa extends RegistroDoColaborador {
     nome_funcionario: string;
 }
 
+export interface JornadaDoColaborador extends RowDataPacket {
+    carga_semanal: string;
+    entrada: string;
+    saida: string;
+    entrada_min: number;
+    tolerancia_min: number;
+    // 'AAAA-MM-DD', ou null quando a admissão não foi informada.
+    admissao: string | null;
+}
+
 export interface JustificativaDoDia extends RowDataPacket {
     dia: string;
     texto: string;
+    status: DecisaoDaJustificativa;
+    resposta: string | null;
 }
 
 export interface JustificativaDaEmpresa extends RowDataPacket {
@@ -35,6 +47,10 @@ export interface JustificativaDaEmpresa extends RowDataPacket {
     nome_funcionario: string;
     date: string;
     note: string;
+    status: DecisaoDaJustificativa;
+    resposta: string | null;
+    decidido_por_nome: string | null;
+    decidido: number | null;
     criado: number;
     atualizado: number;
 }
@@ -73,7 +89,26 @@ export interface FiltroDeJustificativas {
     de: string;
     ate: string;
     funcionarioId: number | null;
+    status: DecisaoDaJustificativa | null;
 }
+
+export interface DecisaoRegistrada {
+    id: number;
+    empresaId: number;
+    status: 'aprovada' | 'recusada';
+    resposta: string | null;
+    decididoPor: number;
+}
+
+// Colunas e junções que a lista do RH e a leitura de uma justificativa compartilham.
+const SELECT_DA_JUSTIFICATIVA = `SELECT j.id, j.funcionario_id, f.nome AS nome_funcionario,
+                    DATE_FORMAT(j.data_referencia, '%Y-%m-%d') AS date, j.texto AS note,
+                    j.status, j.resposta, u.nome AS decidido_por_nome,
+                    UNIX_TIMESTAMP(j.decidido_em) AS decidido,
+                    UNIX_TIMESTAMP(j.criado_em) AS criado, UNIX_TIMESTAMP(j.atualizado_em) AS atualizado
+             FROM justificativas_ponto j
+             JOIN funcionarios f ON f.id = j.funcionario_id AND f.empresa_id = j.empresa_id
+             LEFT JOIN usuarios u ON u.id = j.decidido_por`;
 
 // O LIKE trata % e _ como curingas: o texto digitado vale literalmente.
 const textoDeBusca = (busca: string): string => `%${busca.replace(/[\\%_]/g, '\\$&')}%`;
@@ -173,7 +208,7 @@ const criarRepositorio = (executor: Connection) => ({
     // Justificativas do colaborador com data de referência em [de, ate), datas 'AAAA-MM-DD'.
     async justificativasDoColaborador(funcionarioId: number | string, empresaId: number, de: string, ate: string): Promise<JustificativaDoDia[]> {
         const [justificativas] = await executor.query<JustificativaDoDia[]>(
-            `SELECT DATE_FORMAT(data_referencia, '%Y-%m-%d') AS dia, texto
+            `SELECT DATE_FORMAT(data_referencia, '%Y-%m-%d') AS dia, texto, status, resposta
              FROM justificativas_ponto
              WHERE funcionario_id = ? AND empresa_id = ? AND data_referencia >= ? AND data_referencia < ?`,
             [funcionarioId, empresaId, de, ate]
@@ -181,12 +216,22 @@ const criarRepositorio = (executor: Connection) => ({
         return justificativas;
     },
 
-    // Uma justificativa por colaborador e dia: reenviar substitui o texto.
+    // Estado atual da justificativa do dia (undefined se não houver), com `travar` até o fim da transação.
+    async statusDaJustificativa(funcionarioId: number, data: string, { travar = false } = {}): Promise<DecisaoDaJustificativa | undefined> {
+        const [linhas] = await executor.query<(RowDataPacket & { status: DecisaoDaJustificativa })[]>(
+            `SELECT status FROM justificativas_ponto WHERE funcionario_id = ? AND data_referencia = ?${travar ? ' FOR UPDATE' : ''}`,
+            [funcionarioId, data]
+        );
+        return linhas[0]?.status;
+    },
+
+    // Uma justificativa por colaborador e dia: reenviar substitui o texto e a devolve ao RH como
+    // pendente, apagando a decisão anterior (o serviço já recusou o reenvio de uma aprovada).
     async salvarJustificativa({ empresaId, funcionarioId, data, texto }: NovaJustificativa): Promise<void> {
         await executor.query(
             `INSERT INTO justificativas_ponto (empresa_id, funcionario_id, data_referencia, texto)
              VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE texto = VALUES(texto)`,
+             ON DUPLICATE KEY UPDATE texto = VALUES(texto), status = 'pendente', decidido_por = NULL, decidido_em = NULL, resposta = NULL`,
             [empresaId, funcionarioId, data, texto]
         );
     },
@@ -200,26 +245,55 @@ const criarRepositorio = (executor: Connection) => ({
         return salva.instante;
     },
 
-    // Justificativas da empresa em [de, ate), de todos os colaboradores ou só de `funcionarioId`.
-    async justificativasDaEmpresa({ empresaId, de, ate, funcionarioId }: FiltroDeJustificativas): Promise<JustificativaDaEmpresa[]> {
+    // Justificativas da empresa em [de, ate), de todos os colaboradores ou só de `funcionarioId`, e só
+    // do `status` pedido quando houver.
+    async justificativasDaEmpresa({ empresaId, de, ate, funcionarioId, status }: FiltroDeJustificativas): Promise<JustificativaDaEmpresa[]> {
         const filtros = ['j.empresa_id = ?', 'j.data_referencia >= ?', 'j.data_referencia < ?'];
         const valores: Array<number | string> = [empresaId, de, ate];
         if (funcionarioId) {
             filtros.push('j.funcionario_id = ?');
             valores.push(funcionarioId);
         }
+        if (status) {
+            filtros.push('j.status = ?');
+            valores.push(status);
+        }
 
         const [linhas] = await executor.query<JustificativaDaEmpresa[]>(
-            `SELECT j.id, j.funcionario_id, f.nome AS nome_funcionario,
-                    DATE_FORMAT(j.data_referencia, '%Y-%m-%d') AS date, j.texto AS note,
-                    UNIX_TIMESTAMP(j.criado_em) AS criado, UNIX_TIMESTAMP(j.atualizado_em) AS atualizado
-             FROM justificativas_ponto j
-             JOIN funcionarios f ON f.id = j.funcionario_id AND f.empresa_id = j.empresa_id
+            `${SELECT_DA_JUSTIFICATIVA}
              WHERE ${filtros.join(' AND ')}
              ORDER BY j.data_referencia DESC, f.nome ASC, j.id ASC`,
             valores
         );
         return linhas;
+    },
+
+    async justificativaDaEmpresa(id: number, empresaId: number, { travar = false } = {}): Promise<JustificativaDaEmpresa | undefined> {
+        const [linhas] = await executor.query<JustificativaDaEmpresa[]>(
+            `${SELECT_DA_JUSTIFICATIVA}
+             WHERE j.id = ? AND j.empresa_id = ?${travar ? ' FOR UPDATE OF j' : ''}`,
+            [id, empresaId]
+        );
+        return linhas[0];
+    },
+
+    async decidirJustificativa({ id, empresaId, status, resposta, decididoPor }: DecisaoRegistrada): Promise<void> {
+        await executor.query(
+            `UPDATE justificativas_ponto
+             SET status = ?, resposta = ?, decidido_por = ?, decidido_em = CURRENT_TIMESTAMP
+             WHERE id = ? AND empresa_id = ?`,
+            [status, resposta, decididoPor, id, empresaId]
+        );
+    },
+
+    async jornadaDoColaborador(funcionarioId: number | string, empresaId: number): Promise<JornadaDoColaborador | undefined> {
+        const [linhas] = await executor.query<JornadaDoColaborador[]>(
+            `SELECT carga_horaria_semanal AS carga_semanal, TIME_FORMAT(hora_entrada, '%H:%i') AS entrada,
+                    TIME_FORMAT(hora_saida, '%H:%i') AS saida, TIME_TO_SEC(hora_entrada) DIV 60 AS entrada_min, tolerancia_min, DATE_FORMAT(data_admissao, '%Y-%m-%d') AS admissao
+             FROM funcionarios WHERE id = ? AND empresa_id = ?`,
+            [funcionarioId, empresaId]
+        );
+        return linhas[0];
     },
 });
 
@@ -252,4 +326,8 @@ export const {
     salvarJustificativa,
     instanteDaJustificativa,
     justificativasDaEmpresa,
+    justificativaDaEmpresa,
+    decidirJustificativa,
+    statusDaJustificativa,
+    jornadaDoColaborador,
 } = criarRepositorio(db);

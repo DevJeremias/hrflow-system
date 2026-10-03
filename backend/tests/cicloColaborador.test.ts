@@ -18,6 +18,7 @@ import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { folhaRoutes } from '../modules/folha/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 import { gerarSenhaProvisoria } from '../modules/funcionarios/funcionarios.regras.ts';
+import { mesLocal } from '../modules/ponto/ponto.fuso.ts';
 import { validarSenhaDeRegistro } from '../shared/schemas/validadores.ts';
 
 describe('ciclo de vida do colaborador (B-13)', { skip: banco.skip }, () => {
@@ -248,7 +249,12 @@ describe('ciclo de vida do colaborador (B-13)', { skip: banco.skip }, () => {
     });
 
     describe('folha', () => {
-        const nomesNaFolha = async (token = tokenAdmin) => (await chamar('GET', '/api/folha/processar?limite=100', token)).corpo.map((h: { id: string }) => Number(h.id));
+        // Processa a competência pela API e devolve os colaboradores que entraram nela.
+        const nomesNaFolha = async (competencia: string, token = tokenAdmin) => {
+            const { status, corpo } = await chamar('POST', `/api/folha/competencias/${competencia}/processar`, token);
+            assert.ok(status === 200 || status === 201, JSON.stringify(corpo));
+            return corpo.itens.map((h: { id: string }) => Number(h.id));
+        };
 
         it('quem foi desligado neste mês segue na folha dele; a partir do mês seguinte sai', async () => {
             const { id: ativo } = await novoColaborador();
@@ -257,13 +263,20 @@ describe('ciclo de vida do colaborador (B-13)', { skip: banco.skip }, () => {
             const hoje = new Date().toISOString().slice(0, 10);
             const mesPassado = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 1, 15)).toISOString().slice(0, 10);
             await pool.query('UPDATE funcionarios SET data_admissao = ? WHERE id IN (?, ?)', ['2020-01-01', desligadoHoje, desligadoNoMesPassado]);
+            // Sem salário a pessoa vira pendência, não holerite: a folha só lista quem tem o que pagar.
+            await pool.query('UPDATE funcionarios SET salario_base = 3000 WHERE id IN (?, ?, ?)', [ativo, desligadoHoje, desligadoNoMesPassado]);
             assert.equal((await desligar(desligadoHoje, tokenAdmin, { data_desligamento: hoje })).status, 200);
             assert.equal((await desligar(desligadoNoMesPassado, tokenAdmin, { data_desligamento: mesPassado })).status, 200);
 
-            const folha = await nomesNaFolha();
-            assert.ok(folha.includes(ativo));
-            assert.ok(folha.includes(desligadoHoje), 'o mês do desligamento ainda é pago');
-            assert.ok(!folha.includes(desligadoNoMesPassado), 'a competência seguinte ao desligamento não o inclui');
+            try {
+                const folha = await nomesNaFolha(mesLocal(Math.floor(Date.now() / 1000)));
+                assert.ok(folha.includes(ativo));
+                assert.ok(folha.includes(desligadoHoje), 'o mês do desligamento ainda é pago');
+                assert.ok(!folha.includes(desligadoNoMesPassado), 'a competência seguinte ao desligamento não o inclui');
+            } finally {
+                // Quem tem holerite não pode ser excluído: a folha do teste não deve travar os cenários seguintes.
+                await pool.query('DELETE FROM folhas');
+            }
         });
     });
 
@@ -304,7 +317,7 @@ describe('ciclo de vida do colaborador (B-13)', { skip: banco.skip }, () => {
             assert.equal(sessao.status, 200);
             assert.equal(sessao.corpo.senha_provisoria, true);
 
-            for (const [metodo, caminho] of [['GET', '/api/perfil/meus-dados'], ['PUT', '/api/perfil/meus-dados'], ['GET', '/api/folha/meu-holerite'], ['GET', '/api/funcionarios']]) {
+            for (const [metodo, caminho] of [['GET', '/api/perfil/meus-dados'], ['PUT', '/api/perfil/meus-dados'], ['GET', '/api/folha/meus-holerites'], ['GET', '/api/funcionarios']]) {
                 const bloqueada = await chamar(metodo, caminho, token, metodo === 'PUT' ? { nome: 'x', email } : undefined);
                 assert.equal(bloqueada.status, 403, `${metodo} ${caminho}`);
                 assert.equal(bloqueada.corpo.senhaProvisoria, true);
@@ -323,7 +336,7 @@ describe('ciclo de vida do colaborador (B-13)', { skip: banco.skip }, () => {
             assert.equal(nova.status, 200);
             assert.equal(nova.corpo.senhaProvisoria, false);
             assert.equal((await chamar('GET', '/api/perfil/meus-dados', nova.token)).status, 200);
-            assert.equal((await chamar('GET', '/api/folha/meu-holerite', nova.token)).status, 200);
+            assert.equal((await chamar('GET', '/api/folha/meus-holerites', nova.token)).status, 200);
         });
 
         it('o cadastro novo também nasce com senha provisória', async () => {

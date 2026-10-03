@@ -15,6 +15,7 @@ import Dashboard from './pages/Admin/Dashboard';
 import Employees from './pages/Admin/Employees';
 import DepartmentsRoles from './pages/Admin/OrgStructure';
 import Payroll from './pages/Admin/Payroll';
+import Company from './pages/Admin/Company';
 import TimeTracking from './pages/Admin/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
 
 import EmployeeHome from './pages/Portal/EmployeeDashboard'; 
@@ -32,7 +33,7 @@ const SessionLoading = () => (
 
 // `trocaDeSenha` marca a única rota de quem entrou com senha provisória: ela leva todas as outras
 // para si, e quem não tem senha provisória não tem o que fazer nela.
-const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], trocaDeSenha?: boolean }) => {
+export const ProtectedRoute = ({ children, allowedRoles, trocaDeSenha = false }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], trocaDeSenha?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return <SessionLoading />;
@@ -84,6 +85,7 @@ function App() {
         <Route path="colaboradores" element={<Employees />} />
         <Route path="estrutura" element={<DepartmentsRoles />} />
         <Route path="folha" element={<Payroll />} />
+        <Route path="empresa" element={<Company />} />
         <Route path="gestao-ponto" element={<TimeTracking />} /> {/* ROTA OFICIALIZADA */}
         <Route path="perfil" element={<Profile />} />
       </Route>

@@ -34,5 +34,3 @@ export const criarRouter = (limites?: Parameters<typeof criarLimitadores>[0]) =>
     router.use(tratarErroDeCorpo);
     return router;
 };
-
-export const authRoutes = criarRouter();

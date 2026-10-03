@@ -5,13 +5,11 @@ import test from 'node:test';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import assert from 'node:assert/strict';
-import express from 'express';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { pontoRoutes } from '../modules/ponto/index.ts';
+import { criarApp } from '../app.ts';
 import { relogio } from '../modules/ponto/ponto.service.ts';
 import * as fuso from '../modules/ponto/ponto.fuso.ts';
 import type { ResultSetHeader } from 'mysql2/promise';
@@ -85,9 +83,7 @@ test.before(async () => {
     ctx.tokenAdmin = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Administrador' })).token;
     ctx.tokenColaborador = (await criarUsuario(db, { empresaId: ctx.empresaA, perfil: 'Colaborador', funcionarioId: ctx.alvo })).token;
 
-    const app = express();
-    app.use(express.json());
-    app.use('/api/ponto', authMiddleware, pontoRoutes);
+    const app = criarApp();
     await new Promise((resolve) => { servidor = app.listen(0, '127.0.0.1', resolve); });
     baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api/ponto`;
 });
@@ -119,16 +115,16 @@ test('Administrador sem vínculo de funcionário consulta os pontos de hoje do c
 test('RH consulta o histórico do colaborador pedido, não o próprio', { skip: semBanco }, async () => {
     const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, ctx.tokenRH);
     assert.equal(status, 200);
-    assert.deepEqual(corpo.map((d: any) => d.date), [DIA]);
-    assert.notEqual(corpo[0].entry, '--:--');
-    assert.notEqual(corpo[0].exit, '--:--');
-    assert.equal(corpo[0].lunchOut, '--:--');
+    const marcados = corpo.filter((d: any) => d.entry !== '--:--');
+    assert.deepEqual(marcados.map((d: any) => d.date), [DIA]);
+    assert.notEqual(marcados[0].exit, '--:--');
+    assert.equal(marcados[0].lunchOut, '--:--');
 });
 
 test('Administrador sem vínculo consulta o histórico do colaborador', { skip: semBanco }, async () => {
     const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, ctx.tokenAdmin);
     assert.equal(status, 200);
-    assert.deepEqual(corpo.map((d: any) => d.date), [DIA]);
+    assert.deepEqual(corpo.filter((d: any) => d.entry !== '--:--').map((d: any) => d.date), [DIA]);
 });
 
 test('o filtro por empresa continua valendo para perfis privilegiados', { skip: semBanco }, async () => {
@@ -137,8 +133,7 @@ test('o filtro por empresa continua valendo para perfis privilegiados', { skip: 
     const historico = await get(`/historico/${ctx.deOutraEmpresa}?mes=${MES}`, usuario);
     assert.equal(hoje.status, 200);
     assert.deepEqual(hoje.corpo, []);
-    assert.equal(historico.status, 200);
-    assert.deepEqual(historico.corpo, []);
+    assert.equal(historico.status, 404);
 });
 
 test('Colaborador continua restrito ao próprio vínculo', { skip: semBanco }, async () => {

@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import * as service from './ponto.service.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { TipoDeErro } from './ponto.erros.ts';
-import type { ConsultaDeJustificativas, ConsultaDePontosDaEmpresa, CorpoDaJustificativa, DiaDaJustificativa } from './ponto.schemas.ts';
+import type { ConsultaDeJustificativas, ConsultaDePontosDaEmpresa, CorpoDaJustificativa, DecisaoRecebida, DiaDaJustificativa, IdDaJustificativa } from './ponto.schemas.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -67,8 +67,17 @@ export const listarHistorico = async (req: RequisicaoDoColaborador, res: Respons
     }
 };
 
-export const listarTotais = (_req: RequisicaoDoColaborador, res: Response) => {
-    res.json(service.listarTotais());
+export const listarTotais = async (req: RequisicaoDoColaborador, res: Response) => {
+    try {
+        const totais = await service.listarTotais({
+            empresaId: usuarioDe(req).empresa_id,
+            funcionarioId: req.params.funcionarioId,
+            mes: req.query.mes,
+        });
+        res.json(totais);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao buscar os totais do mês.');
+    }
 };
 
 export const listarPontos = async (req: Request, res: Response) => {
@@ -97,9 +106,23 @@ export const enviarJustificativa = async (req: Request, res: Response) => {
 
 export const listarJustificativas = async (req: Request, res: Response) => {
     try {
-        const { mes, funcionarioId } = entradaDe<ConsultaDeJustificativas>(req, 'query');
-        res.json(await service.listarJustificativas({ empresaId: usuarioDe(req).empresa_id, mes, funcionarioId }));
+        const consulta = entradaDe<ConsultaDeJustificativas>(req, 'query');
+        res.json(await service.listarJustificativas({ empresaId: usuarioDe(req).empresa_id, ...consulta }));
     } catch (erro) {
         responderFalha(res, erro, 'Erro interno ao buscar as justificativas.');
+    }
+};
+
+export const decidirJustificativa = async (req: Request, res: Response) => {
+    try {
+        const { empresa_id, id: usuarioId, funcionario_id } = usuarioDe(req);
+        const { id } = entradaDe<IdDaJustificativa>(req, 'params');
+        const { status, resposta } = entradaDe<DecisaoRecebida>(req, 'body');
+        const justificativa = await service.decidirJustificativa({
+            empresaId: empresa_id, id, status, resposta, usuarioId, funcionarioIdDoUsuario: funcionario_id,
+        });
+        res.json(justificativa);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro interno ao decidir a justificativa.');
     }
 };

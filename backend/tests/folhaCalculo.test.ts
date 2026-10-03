@@ -1,17 +1,15 @@
-// INSS da folha: regra pura em centavos (sem banco) e a API de folha/holerite contra MySQL real.
+// INSS e encargos da folha: regra pura em centavos (sem banco) e a API de folha/holerite contra MySQL real.
 // Banco e variáveis em tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST só a parte HTTP é pulada.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import express from 'express';
-import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
+import { criarEmpresa, criarFuncionario, criarColaborador } from './support/empresas.ts';
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { folhaRoutes } from '../modules/folha/index.ts';
-import type { HoleriteDoColaborador } from '../modules/folha/folha.service.ts';
+import { criarApp } from '../app.ts';
+import type { FolhaDaCompetencia, HoleritePublicado } from '../modules/folha/folha.service.ts';
 import * as regras from '../modules/folha/folha.regras.ts';
 import { TABELAS_INSS, type TabelaInss } from '../modules/folha/folha.tabelas.ts';
 
@@ -95,6 +93,34 @@ test('a tabela publicada tem vigência e faixas crescentes', () => {
     }
 });
 
+test('PJ e estágio não pagam INSS nem geram encargo CLT; os demais contratos seguem a regra geral', () => {
+    for (const contrato of ['PJ', 'Estágio']) {
+        const h = regras.calcularHolerite(3000, DIA, TABELAS_INSS, contrato);
+        assert.deepEqual(h, { baseSalary: 3000, inss: 0, netSalary: 3000, employerCharges: 0 }, contrato);
+        assert.equal(regras.temVinculoClt(contrato), false);
+    }
+    for (const contrato of ['CLT', 'Temporário', null]) {
+        const h = regras.calcularHolerite(2900, DIA, TABELAS_INSS, contrato);
+        assert.deepEqual(h, { baseSalary: 2900, inss: 236.69, netSalary: 2663.31, employerCharges: 806.2 }, String(contrato));
+        assert.equal(regras.temVinculoClt(contrato), true);
+    }
+});
+
+test('as rubricas trazem o salário e, só com INSS, o desconto', () => {
+    assert.deepEqual(regras.rubricasDoHolerite(regras.calcularHolerite(2900, DIA)), [
+        { codigo: 'SALARIO', descricao: 'Salário Base', tipo: 'provento', valor: 2900 },
+        { codigo: 'INSS', descricao: 'Desconto INSS', tipo: 'desconto', valor: 236.69 },
+    ]);
+    assert.deepEqual(regras.rubricasDoHolerite(regras.calcularHolerite(3000, DIA, TABELAS_INSS, 'PJ')), [
+        { codigo: 'SALARIO', descricao: 'Salário Base', tipo: 'provento', valor: 3000 },
+    ]);
+});
+
+test('só há folha onde há tabela de INSS vigente', () => {
+    assert.equal(regras.haTabelaVigente('2026-01-01'), true);
+    assert.equal(regras.haTabelaVigente('2025-12-31'), false);
+});
+
 const semBanco = banco.skip;
 let servidor: Server | undefined;
 let baseUrl: string;
@@ -102,9 +128,7 @@ let baseUrl: string;
 test.before(async () => {
     if (semBanco) return;
     await banco.preparar();
-    const app = express();
-    app.use(express.json());
-    app.use('/api/folha', authMiddleware, folhaRoutes);
+    const app = criarApp();
     await new Promise<void>((resolve) => { servidor = app.listen(0, '127.0.0.1', () => resolve()); });
     baseUrl = `http://127.0.0.1:${(servidor!.address() as AddressInfo).port}/api/folha`;
 });
@@ -120,30 +144,25 @@ const SALARIOS: [number, number][] = [
     [1621.00, 121.58], [2900.00, 236.69], [4354.27, 411.11], [6800.00, 753.51], [10000.00, 988.09],
 ];
 
-test('GET /processar e /meu-holerite devolvem INSS em centavos exatos', { skip: semBanco }, async () => {
-    const [{ insertId: empresa }] = await db.query<ResultSetHeader>('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia']);
-    const [[{ cargo }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS cargo FROM cargos WHERE empresa_id = ?', [empresa]);
-    const [[{ departamento }]] = await db.query<RowDataPacket[]>('SELECT MIN(id) AS departamento FROM departamentos WHERE empresa_id = ?', [empresa]);
-    const ids: number[] = [];
+test('a folha processada e o holerite do colaborador trazem o INSS em centavos exatos', { skip: semBanco }, async () => {
+    const { empresaId } = await criarEmpresa(db);
+    const colaboradores: Awaited<ReturnType<typeof criarColaborador>>[] = [];
     for (const [i, [salario]] of SALARIOS.entries()) {
-        const [r] = await db.query<ResultSetHeader>(
-            'INSERT INTO funcionarios (nome, email, salario_base, status, cargo_id, departamento_id, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [`Pessoa ${i}`, `folha${i}@exemplo.invalid`, salario, 'Ativo', cargo, departamento, empresa]
-        );
-        ids.push(r.insertId);
+        colaboradores.push(await criarColaborador(db, empresaId, { nome: `Pessoa ${i}`, salario }));
     }
-    const chamar = async (usuario: { token: string }, caminho: string) => {
-        const resposta = await fetch(`${baseUrl}${caminho}`, { headers: cabecalhosDaSessao(usuario.token) });
-        return { status: resposta.status, corpo: await resposta.json() as HoleriteDoColaborador[] };
+    const chamar = async (metodo: string, usuario: { token: string }, caminho: string) => {
+        const resposta = await fetch(`${baseUrl}${caminho}`, { method: metodo, headers: cabecalhosDaSessao(usuario.token) });
+        return { status: resposta.status, corpo: await resposta.json() };
     };
 
-    const admin = await criarUsuario(db, { empresaId: empresa, perfil: 'Administrador' });
-    const { status, corpo: folha } = await chamar(admin, '/processar');
-    assert.equal(status, 200);
-    assert.equal(folha.length, SALARIOS.length);
+    const admin = await criarUsuario(db, { empresaId, perfil: 'Administrador' });
+    const processada = await chamar('POST', admin, '/competencias/2026-10/processar');
+    assert.equal(processada.status, 201);
+    const folha = processada.corpo as FolhaDaCompetencia;
+    assert.equal(folha.itens.length, SALARIOS.length);
     for (const [i, [salario, esperado]] of SALARIOS.entries()) {
-        const linha = folha.find((item) => item.id === String(ids[i]));
-        assert.ok(linha, `holerite de ${ids[i]} ausente da folha`);
+        const linha = folha.itens.find((item) => item.id === String(colaboradores[i].funcionarioId));
+        assert.ok(linha, `holerite de ${colaboradores[i].funcionarioId} ausente da folha`);
         assert.equal(linha.baseSalary, salario);
         assert.equal(linha.totalDeductions, esperado);
         assert.equal(linha.deductionsList[0].value, esperado);
@@ -152,12 +171,13 @@ test('GET /processar e /meu-holerite devolvem INSS em centavos exatos', { skip: 
             assert.ok(duasCasas(linha[campo]), `${campo} de ${salario} saiu como ${linha[campo]}`);
         }
     }
+    for (const total of Object.values(folha.totais)) assert.ok(duasCasas(total), `total ${total}`);
 
+    assert.equal((await chamar('POST', admin, '/competencias/2026-10/fechar')).status, 200);
     for (const [i, [, esperado]] of SALARIOS.entries()) {
-        const colaborador = await criarUsuario(db, { empresaId: empresa, perfil: 'Colaborador', funcionarioId: ids[i] });
-        const res = await chamar(colaborador, '/meu-holerite');
+        const res = await chamar('GET', colaboradores[i], '/meu-holerite?competencia=2026-10');
         assert.equal(res.status, 200);
-        assert.equal(res.corpo[0].totalDeductions, esperado);
-        assert.ok(duasCasas(res.corpo[0].employerCharges));
+        assert.equal((res.corpo as HoleritePublicado).totalDeductions, esperado);
+        assert.ok(duasCasas((res.corpo as HoleritePublicado).employerCharges));
     }
 });

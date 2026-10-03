@@ -42,9 +42,10 @@ export const lerAmbiente = (env: NodeJS.ProcessEnv = process.env): Ambiente => {
         if (valor && inteiroEntre(valor, 1, 10000) === null) problemas.push(`${nome} deve ser um inteiro positivo.`);
     }
 
+    // PORT=0 deixa o sistema escolher uma porta livre (os testes do server.ts usam).
     const textoDaPorta = env.PORT?.trim();
-    const porta = textoDaPorta ? inteiroEntre(textoDaPorta, 1, 65535) : PORTA_PADRAO;
-    if (porta === null) problemas.push('PORT deve ser um número de porta entre 1 e 65535.');
+    const porta = textoDaPorta ? inteiroEntre(textoDaPorta, 0, 65535) : PORTA_PADRAO;
+    if (porta === null) problemas.push('PORT deve ser um número de porta entre 0 e 65535.');
 
     if (problemas.length > 0 || porta === null) throw new ErroDeAmbiente(problemas);
     return { porta, sentryDsn: env.SENTRY_DSN?.trim() || undefined };

@@ -9,6 +9,12 @@ export interface PointRecord {
   date: string; 
 }
 
+export type DayStatus = 'ok' | 'atraso' | 'incompleto' | 'falta' | 'justificado' | 'fim_de_semana';
+
+export type JustificationStatus = 'pendente' | 'aprovada' | 'recusada';
+
+// `open` marca o dia ainda sem apuração (futuro, hoje sem saída ou antes da admissão); `delay` e os
+// ajustes são 'HH:MM'; `note*` é a justificativa do colaborador e o que o RH decidiu sobre ela.
 export interface HistoryDay {
   id: string;
   date: string; 
@@ -17,8 +23,12 @@ export interface HistoryDay {
   lunchIn: string;
   exit: string;
   totalHours: string;
-  status: 'OK' | 'Atraso' | 'Falta' | 'Incompleto';
+  status: DayStatus;
+  open: boolean;
+  delay: string;
   note: string;
+  noteStatus: JustificationStatus | null;
+  noteReply: string | null;
   negativeAdjust: string;
   positiveAdjust: string;
 }
@@ -44,17 +54,51 @@ export interface CompanyPointPage {
   total: number;
 }
 
-export interface WeeklyTotal {
-  id: string;
-  weekLabel: string;
+export interface PeriodTotals {
   workloadLimit: string;
-  workloadPreset: string;
   workloadDone: string;
-  presenceTime: string;
   pendingTime: string;
   excessTime: string;
-  hoursBank: string;
-  dailyAdjustBalance: string;
+  delayTime: string;
+  absences: number;
+  incompleteDays: number;
+}
+
+export interface WeeklyTotal extends PeriodTotals {
+  id: string;
+  weekLabel: string;
+}
+
+export interface WorkSchedule {
+  weeklyHours: number;
+  entry: string;
+  exit: string;
+  toleranceMinutes: number;
+}
+
+export interface MonthTotals {
+  workSchedule: WorkSchedule;
+  totals: WeeklyTotal[];
+  monthlySummary: PeriodTotals;
+}
+
+export interface Justification {
+  id: number;
+  funcionario_id: number;
+  nome_funcionario: string;
+  date: string;
+  note: string;
+  status: JustificationStatus;
+  reply: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JustificationDecision {
+  status: 'aprovada' | 'recusada';
+  resposta?: string;
 }
 
 // A rota correta (no singular) do seu Back-end
@@ -100,7 +144,9 @@ export const pontoService = {
   },
 
   getHistoricoMes: async (funcionarioId: number, month: string): Promise<HistoryDay[]> => {
-    return await httpClient(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar o histórico do mês' });
+    const data = await httpClient<HistoryDay[]>(`${API_URL}/historico/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar o histórico do mês' });
+    if (!Array.isArray(data)) throw new Error('Resposta inválida ao buscar o histórico do mês');
+    return data;
   },
 
   // Resolve só depois que o servidor confirma a gravação; qualquer falha propaga como HttpError.
@@ -112,7 +158,27 @@ export const pontoService = {
     });
   },
 
-  getTotaisSemanais: async (funcionarioId: number, month: string): Promise<{ totals: WeeklyTotal[], monthlySummary: Omit<WeeklyTotal, 'id' | 'weekLabel'> }> => {
-    return await httpClient(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar os totais do mês' });
+  getTotaisDoMes: async (funcionarioId: number, month: string): Promise<MonthTotals> => {
+    const data = await httpClient<MonthTotals>(`${API_URL}/totais/${funcionarioId}?mes=${month}`, { auth: true, errorMessage: 'Erro ao buscar os totais do mês' });
+    if (!Array.isArray(data?.totals) || !data.monthlySummary || !data.workSchedule) throw new Error('Resposta inválida ao buscar os totais do mês');
+    return data;
+  },
+
+  // Justificativas do mês de todos os colaboradores da empresa, só do `status` pedido quando houver.
+  getJustificativas: async (mes: string, status?: JustificationStatus): Promise<Justification[]> => {
+    const params = new URLSearchParams({ mes });
+    if (status) params.set('status', status);
+    const data = await httpClient<Justification[]>(`${API_URL}/justificativas?${params}`, { auth: true, errorMessage: 'Erro ao buscar as justificativas' });
+    if (!Array.isArray(data)) throw new Error('Resposta inválida ao buscar as justificativas');
+    return data;
+  },
+
+  // Resolve com a justificativa já decidida; a recusa precisa do motivo (o servidor recusa sem ele).
+  decidirJustificativa: async (id: number, decisao: JustificationDecision): Promise<Justification> => {
+    return await httpClient(`${API_URL}/justificativas/${id}`, {
+      method: 'PATCH',
+      auth: true,
+      body: JSON.stringify(decisao)
+    });
   }
 };

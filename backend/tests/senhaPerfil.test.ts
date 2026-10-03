@@ -8,12 +8,10 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import bcrypt from 'bcrypt';
-import express from 'express';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
+import { criarApp } from '../app.ts';
 
 describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {
     const senhaAtual = 'senha-atual-ficticia';
@@ -36,9 +34,7 @@ describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use(express.json());
-        app.use('/api/perfil', authMiddleware, perfilRoutes);
+        const app = criarApp();
         server = http.createServer(app);
         await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
         baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

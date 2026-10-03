@@ -14,9 +14,11 @@
     "build": "node scripts/run-workspace.mjs frontend build",
     "guard:estrutura": "node scripts/guardar-estrutura.mts",
     "lint": "node scripts/guardar-estrutura.mts && node scripts/run-workspace.mjs frontend lint && node scripts/run-workspace.mjs backend lint",
-    "typecheck": "node scripts/run-workspace.mjs frontend typecheck && node scripts/run-workspace.mjs backend typecheck",
+    "typecheck": "node scripts/run-workspace.mjs frontend typecheck && node scripts/run-workspace.mjs backend typecheck && tsc -p e2e",
     "verify": "node scripts/verify.mjs",
     "test": "node scripts/run-workspace.mjs backend test && node scripts/run-workspace.mjs frontend test",
+    "test:cobertura": "node scripts/run-workspace.mjs backend test:cobertura && node scripts/run-workspace.mjs frontend test",
+    "e2e": "playwright test --config e2e/playwright.config.ts",
     "db:create": "node scripts/db.mjs create",
     "db:migrate": "node scripts/db.mjs migrate",
     "db:status": "node scripts/db.mjs status",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
-    "@commitlint/config-conventional": "^21.2.3"
+    "@commitlint/config-conventional": "^21.2.3",
+    "@playwright/test": "^1.63.0"
   }
 }

@@ -2,6 +2,7 @@
 // testar o banco na partida.
 // O dotenv vem primeiro: o pool e o segredo JWT leem o ambiente ao serem carregados.
 import 'dotenv/config';
+import type { AddressInfo } from 'node:net';
 import db from './shared/db/pool.ts';
 import { lerAmbiente } from './shared/config/ambiente.ts';
 import logger from './shared/observabilidade/logger.ts';
@@ -33,16 +34,18 @@ try {
     await iniciarSentry(sentryDsn);
 
     // O app (e com ele o segredo JWT) só é carregado depois de o ambiente ser conferido.
-    const { app } = await import('./app.ts');
+    const { criarApp } = await import('./app.ts');
 
     db.query('SELECT 1 + 1 AS result')
-        .then(() => logger.info('Banco de dados: conexão testada e funcionando'))
+        .then(() => logger.info('Banco de Dados: Conexão testada e funcionando!'))
         .catch((err: Error) => logger.error({ err }, 'Banco de dados: a conexão de teste falhou'));
 
-    const server = app.listen(porta, (erro?: Error) => {
+    const server = criarApp().listen(porta, (erro?: Error) => {
         // Express 5 entrega ao callback o erro de abrir a porta (EADDRINUSE, EACCES).
         if (erro) return void abortar(erro, `Não foi possível abrir a porta ${porta}`);
-        logger.info({ porta }, 'Servidor rodando');
+        // PORT=0 deixa o sistema escolher a porta: o log diz qual foi.
+        const { port } = server.address() as AddressInfo;
+        logger.info({ porta: port }, `Servidor rodando na porta ${port}`);
     });
 
     encerrar = criarEncerramento({ server, pool: db, logger, aoFinal: descarregarSentry });

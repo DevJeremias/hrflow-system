@@ -5,13 +5,11 @@ import test from 'node:test';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import assert from 'node:assert/strict';
-import express from 'express';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 
 import db from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { pontoRoutes } from '../modules/ponto/index.ts';
+import { criarApp } from '../app.ts';
 import * as fuso from '../modules/ponto/ponto.fuso.ts';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
@@ -76,9 +74,7 @@ test.before(async () => {
     ctx.tokenOutraEmpresa = await token(ctx.empresaB, 'Colaborador', ctx.deOutraEmpresa);
     ctx.tokenRHOutraEmpresa = await token(ctx.empresaB, 'RH', null);
 
-    const app = express();
-    app.use(express.json());
-    app.use('/api/ponto', authMiddleware, pontoRoutes);
+    const app = criarApp();
     await new Promise((resolve) => { servidor = app.listen(0, '127.0.0.1', resolve); });
     baseUrl = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}/api/ponto`;
 });
@@ -148,9 +144,11 @@ test('o histórico inclui justificativa de um dia sem nenhuma marcação', { ski
 
     const { status, corpo } = await chamar('GET', `/historico/${ctx.outro}?mes=${MES}`, ctx.tokenOutro);
     assert.equal(status, 200);
+    // Sem aprovação do RH o dia continua falta: a justificativa só aparece, pendente, ao lado dele.
     assert.deepEqual(corpo.find((dia: any) => dia.date === diaSemPonto), {
         id: diaSemPonto, date: diaSemPonto, entry: '--:--', lunchOut: '--:--', lunchIn: '--:--', exit: '--:--',
-        totalHours: '--:--', status: 'OK', note: 'Ausência justificada sem marcação.', negativeAdjust: '00:00', positiveAdjust: '00:00',
+        totalHours: '--:--', status: 'falta', open: false, delay: '00:00', note: 'Ausência justificada sem marcação.',
+        noteStatus: 'pendente', noteReply: null, negativeAdjust: '08:00', positiveAdjust: '00:00',
     });
 });
 

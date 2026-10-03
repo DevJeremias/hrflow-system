@@ -20,7 +20,7 @@ Object.assign(process.env, {
     DB_HOST: '127.0.0.1', DB_PORT: String(portaFechada), DB_USER: 'root', DB_PASS: 'x', DB_NAME: 'hrflow_inexistente',
     JWT_SECRET: crypto.randomBytes(32).toString('hex'), LOG_LEVEL: 'silent',
 });
-const { app } = await import('../app.ts');
+const { criarApp } = await import('../app.ts');
 const { default: pool } = await import('../shared/db/pool.ts');
 const { emitirToken } = await import('../modules/auth/auth.sessao.ts');
 const { cabecalhosDaSessao } = await import('./support/sessao.ts');
@@ -34,7 +34,7 @@ describe('banco indisponível', () => {
     const token = emitirToken({ id: 1, perfil: 'Administrador', empresa_id: 1, funcionario_id: null, sessao_versao: 1 }, 'Admin Ficticio');
 
     before(async () => {
-        ({ server, baseUrl } = await subirServidor(app));
+        ({ server, baseUrl } = await subirServidor(criarApp()));
     });
 
     after(async () => {
