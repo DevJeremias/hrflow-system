@@ -126,6 +126,14 @@ A sessão (8 horas, revogada na troca de senha, na inativação e na exclusão) 
 * `POST /api/auth/logout` é público para que uma sessão expirada também consiga limpar os cookies.
 * A senha que o RH define no cadastro, ou gera em `POST /api/funcionarios/:id/redefinir-senha`, é provisória (`usuarios.senha_provisoria`). Com ela a sessão só alcança `GET /api/auth/sessao` e `PUT /api/perfil/alterar-senha`; o resto responde 403 até a troca, e o front-end leva a pessoa à tela `/trocar-senha`. A redefinição devolve a senha uma única vez (o banco guarda só o hash) e derruba as sessões abertas. Quem esqueceu a senha pede o link na tela de login (`/esqueci-senha`): com o e-mail configurado (`EMAIL_TRANSPORT`, `EMAIL_FROM` e `APP_URL`, ver `backend/.env.example`), `POST /api/auth/esqueci-senha` manda um e-mail em pt-BR com um token de uso único e validade de 1 hora (guardado só como hash em `redefinicoes_de_senha`) e `POST /api/auth/redefinir-senha` o consome, troca a senha e derruba as sessões abertas. A resposta é a mesma exista ou não a conta; sem e-mail configurado a rota responde 501 e a pessoa procura o RH.
 
+### Cadastro de colaboradores
+
+* O CPF é validado pelos dígitos verificadores, gravado só com os 11 dígitos e único por empresa (a mesma pessoa pode ser colaboradora de duas): repetido na mesma empresa, a API responde 409. O PIS/PASEP, o CEP e a UF também são conferidos. A migration 0016 normaliza os CPFs que já existem e `npm run db:audit` lista antes, só por id, os cadastros que quebrariam as chaves únicas novas (CPF repetido, nome de departamento ou de cargo repetido).
+* A edição é `PATCH /api/funcionarios/:id` e muda só os campos enviados (`null` ou texto vazio limpa o campo). `PUT` não existe mais nesta rota.
+* Os dependentes ficam em `/api/funcionarios/:id/dependentes` (listar, criar, `PUT` e `DELETE` por dependente) e seguem o alcance sobre o cadastro (veja `docs/permissoes.md`).
+* `POST /api/funcionarios/importar` recebe a planilha como texto (`Content-Type: text/csv`, até 2 MB e 500 linhas; vírgula, ponto e vírgula ou tabulação; datas dd/mm/aaaa ou aaaa-mm-dd; salário `3.500,50` ou `3500.50`). Departamento e cargo vão pelo nome. Cada linha vale por si: as válidas são criadas, com senha provisória, e as inválidas voltam com o número da linha e o motivo. As senhas provisórias só existem nessa resposta (`Cache-Control: no-store`).
+* O cadastro de empresa (`POST /api/auth/registrar`) exige CNPJ válido e único e a confirmação da senha.
+
 ### Monitoramento
 
 Dois endpoints públicos, sem sessão, para monitor e health check de contêiner:
@@ -171,7 +179,7 @@ Os passos podem ser rodados separadamente:
 | `npm run db:status` | mostra o estado de cada migration |
 | `npm run db:audit` | procura dados que violariam as constraints novas, sem alterar nada |
 | `npm run db:seed` | carrega as fixtures (não repete se já estiverem carregadas) |
-| `npm run db:reset --confirmar` | **apaga o banco inteiro** e refaz tudo; só para desenvolvimento |
+| `npm run db:reset -- --banco=<DB_NAME>` | **apaga o banco inteiro** e refaz tudo; só para desenvolvimento: exige o nome do banco e recusa `DB_HOST` que não seja local |
 
 Regras das migrations:
 

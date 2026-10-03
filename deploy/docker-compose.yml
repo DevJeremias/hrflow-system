@@ -1,0 +1,92 @@
+# As imagens são compiladas na máquina, no SHA exato que o CI aprovou (update.sh), e etiquetadas com ele.
+# Layout na máquina: /opt/hrflow/{repo,deploy,state}. Segredos em /opt/hrflow/deploy/.env (modo 600, fora do git).
+# A versão em execução (IMAGE_TAG, o SHA do commit) vem de /opt/hrflow/state/release.env, escrito por update.sh
+# e rollback.sh. Use ./compose.sh no lugar de `docker compose`: ele carrega os dois arquivos.
+name: hrflow
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?}
+      MYSQL_DATABASE: ${DB_NAME:?}
+      MYSQL_USER: ${DB_USER:?}
+      MYSQL_PASSWORD: ${DB_PASS:?}
+    # Afinado para 1 GiB de RAM: sem log binário (dispensa SUPER para os triggers), sem performance_schema.
+    command:
+      - --skip-log-bin
+      - --performance-schema=OFF
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=40
+      - --character-set-server=utf8mb4
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  api:
+    build:
+      context: ../repo
+      dockerfile: deploy/api.Dockerfile
+    image: hrflow-api:${IMAGE_TAG:?}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER:?}
+      DB_PASS: ${DB_PASS:?}
+      DB_NAME: ${DB_NAME:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      TRUST_PROXY: "1"
+      # /api/health devolve esta versão: é como o deploy e o workflow sabem o que está no ar.
+      APP_VERSION: ${IMAGE_TAG:?}
+    # /api/ready consulta o banco: o contêiner só vira healthy se a API consegue atender de verdade.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Sem "ports": a API só é alcançável pela rede interna, através do Caddy.
+
+  web:
+    # O Caddyfile vai dentro da imagem: a versão da SPA, a do proxy e a do rollback andam juntas.
+    build:
+      context: ../repo
+      dockerfile: deploy/web.Dockerfile
+    image: hrflow-web:${IMAGE_TAG:?}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?}
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:-hrflow.calliari.dev}
+    ports:
+      - "${HRFLOW_HTTP_PORT:-80}:80"
+      - "${HRFLOW_HTTPS_PORT:-443}:443"
+    # Sem isto o --wait volta com o Caddy ainda subindo e o primeiro /api/ready recusa a conexão.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 443"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  mysql-data:
+  caddy-data:
+  caddy-config:

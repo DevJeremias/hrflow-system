@@ -82,8 +82,8 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
     describe('funcionários', () => {
         it('cria o colaborador com todos os campos normalizados', async () => {
             const entrada = novoFuncionario({
-                cpf: '000.000.000-01', telefone: '(00) 90000-0000', data_nascimento: '1990-05-17', data_admissao: '2024-02-29',
-                endereco: 'Rua Ficticia, 1', banco: 'Banco Ficticio', agencia: '0001', conta: '12345-6', tipo_conta: 'Poupanca',
+                cpf: '529.982.247-25', telefone: '(00) 90000-0000', data_nascimento: '1990-05-17', data_admissao: '2024-02-29',
+                logradouro: 'Rua Ficticia', banco: 'Banco Ficticio', agencia: '0001', conta: '12345-6', tipo_conta: 'Poupanca',
                 cargo_id: cargoA, departamento_id: deptoA, tipo_contrato: 'Estágio', salario_base: '3500.50',
             });
             const { status } = await chamar('POST', '/api/funcionarios', entrada);
@@ -97,7 +97,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
 
         it('aceita o payload que o formulário do front-end envia, com campos em branco', async () => {
             const { status } = await chamar('POST', '/api/funcionarios', novoFuncionario({
-                cpf: '', telefone: '', data_nascimento: '', data_admissao: '', endereco: '', banco: '', agencia: '', conta: '',
+                cpf: '', telefone: '', data_nascimento: '', data_admissao: '', logradouro: '', banco: '', agencia: '', conta: '',
                 tipo_conta: '', nivel: 'Pleno', tipo_contrato: 'CLT', salario_base: '', cargo_id: null, departamento_id: null, status: 'Ativo',
             }));
             assert.equal(status, 201);
@@ -111,17 +111,17 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
 
             const { senha, ...dados } = entrada;
             assert.ok(senha);
-            assert.equal((await chamar('PUT', `/api/funcionarios/${criado.id}`, { ...dados, nivel: 'Sênior' })).status, 200);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${criado.id}`, { ...dados, nivel: 'Sênior' })).status, 200);
             const [[editado]] = await pool.query<RowDataPacket[]>('SELECT nivel FROM funcionarios WHERE id = ?', [criado.id]);
             assert.equal(editado.nivel, 'Sênior');
         });
 
         it('recusa com 400 o campo que a API não conhece, em vez de descartá-lo', async () => {
-            for (const [metodo, caminho, extra] of [['POST', '/api/funcionarios', novoFuncionario({ rg: '1234567' })], ['PUT', `/api/funcionarios/${funcionarioColaborador}`, { nome: 'Pessoa', email: 'x.desconhecido@exemplo.invalid', perfil: 'Administrador' }]] as [string, string, unknown][]) {
+            for (const [metodo, caminho, extra] of [['POST', '/api/funcionarios', novoFuncionario({ rg_extra: '1234567' })], ['PATCH', `/api/funcionarios/${funcionarioColaborador}`, { nome: 'Pessoa', email: 'x.desconhecido@exemplo.invalid', perfil: 'Administrador' }]] as [string, string, unknown][]) {
                 const funcionarios = await contar('funcionarios');
                 const { status, corpo } = await chamar(metodo, caminho, extra);
                 assert.equal(status, 400, metodo);
-                assert.match(corpo.erro, /campo desconhecido: (rg|perfil)/i);
+                assert.match(corpo.erro, /campo desconhecido: (rg_extra|perfil)/i);
                 assert.equal(await contar('funcionarios'), funcionarios);
             }
         });
@@ -174,7 +174,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
             const id = await inserir('INSERT INTO funcionarios (nome, email, empresa_id) VALUES (?, ?, ?)', ['Pessoa Edicao', 'edicao.validacao@exemplo.invalid', empresaA]);
             const corpoBase = { nome: 'Pessoa Edicao', email: 'edicao.validacao@exemplo.invalid' };
 
-            const edicao = await chamar('PUT', `/api/funcionarios/${id}`, { ...corpoBase, salario_base: '1200' });
+            const edicao = await chamar('PATCH', `/api/funcionarios/${id}`, { ...corpoBase, salario_base: '1200' });
             assert.equal(edicao.status, 200);
             const ferias = await chamar('PATCH', `/api/funcionarios/${id}/status`, { status: 'Férias' });
             assert.equal(ferias.status, 200);
@@ -190,8 +190,8 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
         it('responde 404 ao atualizar ou remover funcionário inexistente ou de outra empresa', async () => {
             const deOutraEmpresa = await inserir('INSERT INTO funcionarios (nome, email, empresa_id) VALUES (?, ?, ?)', ['Pessoa B', 'b.validacao@exemplo.invalid', empresaB]);
             const entrada = { nome: 'Pessoa', email: 'x.validacao@exemplo.invalid' };
-            assert.equal((await chamar('PUT', '/api/funcionarios/999999', entrada)).status, 404);
-            assert.equal((await chamar('PUT', `/api/funcionarios/${deOutraEmpresa}`, entrada)).status, 404);
+            assert.equal((await chamar('PATCH', '/api/funcionarios/999999', entrada)).status, 404);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${deOutraEmpresa}`, entrada)).status, 404);
             assert.equal((await chamar('DELETE', '/api/funcionarios/999999')).status, 404);
             const [[intacto]] = await pool.query<RowDataPacket[]>('SELECT nome FROM funcionarios WHERE id = ?', [deOutraEmpresa]);
             assert.equal(intacto.nome, 'Pessoa B');
@@ -199,7 +199,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
 
         it('recusa id da rota que não é um inteiro positivo', async () => {
             for (const id of ['abc', '0', '-3', '1.5', '99999999999']) {
-                const { status, corpo } = await chamar('PUT', `/api/funcionarios/${id}`, { nome: 'a', email: 'a@b.co' });
+                const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${id}`, { nome: 'a', email: 'a@b.co' });
                 assert.equal(status, 400, id);
                 assert.match(corpo.erro, /Identificador/);
             }
@@ -210,7 +210,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
             const id = await inserir('INSERT INTO funcionarios (nome, email, empresa_id) VALUES (?, ?, ?)', ['Pessoa Dup', 'dup.validacao@exemplo.invalid', empresaA]);
             await inserir('INSERT INTO usuarios (nome, email, senha, perfil, empresa_id, funcionario_id) VALUES (?, ?, ?, ?, ?, ?)',
                 ['Pessoa Dup', 'dup.validacao@exemplo.invalid', 'hash-ficticio', 'Colaborador', empresaA, id]);
-            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${id}`, { nome: 'Pessoa Dup', email: 'colab.validacao@exemplo.invalid' });
+            const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${id}`, { nome: 'Pessoa Dup', email: 'colab.validacao@exemplo.invalid' });
             assert.equal(status, 409);
             assert.match(corpo.erro, /e-mail/i);
             assert.deepEqual(corpo.detalhes.map((detalhe: any) => detalhe.campo), ['email']);

@@ -57,23 +57,29 @@ const verificarCampos = (raiz: ParentNode, esperados: string[]) => {
 
 const abrirAba = async (nome: RegExp) => { await clicar(botaoPorTexto(dialogo(), nome)); await esperar(); };
 
-test('colaborador: as três abas têm todo campo com label, id e name, e seguem o padrão de abas', async () => {
+test('colaborador: as cinco abas têm todo campo com label, id e name, e seguem o padrão de abas', async () => {
   await abrirTela(Employees);
   await clicar(botaoPorTexto(document, /Adicionar Colaborador/));
   await esperar();
 
   const abas = [...dialogo().querySelectorAll<HTMLElement>('[role="tab"]')];
-  assert.deepEqual(abas.map((a) => a.textContent), ['Pessoal', 'Contrato', 'Financeiro']);
+  assert.deepEqual(abas.map((a) => a.textContent), ['Pessoal', 'Documentos', 'Contrato', 'Financeiro', 'Dependentes']);
   assert.equal(porRole(dialogo(), 'tablist')?.getAttribute('aria-label'), 'Seções do cadastro');
 
-  verificarCampos(dialogo(), ['nomeCompleto', 'emailPessoal', 'telefone', 'cpf', 'dataNascimento', 'senhaAcesso', 'enderecoCompleto']);
+  verificarCampos(dialogo(), [
+    'nomeCompleto', 'emailPessoal', 'telefone', 'dataNascimento', 'senhaAcesso', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf',
+    'contatoEmergenciaNome', 'contatoEmergenciaTelefone', 'contatoEmergenciaParentesco',
+  ]);
   assert.equal(abas[0].getAttribute('aria-selected'), 'true');
   assert.equal(porRole(dialogo(), 'tabpanel')?.getAttribute('aria-labelledby'), abas[0].id);
 
+  await abrirAba(/Documentos/);
+  verificarCampos(dialogo(), ['cpf', 'rg', 'pis', 'ctps']);
+
   await abrirAba(/Contrato/);
-  verificarCampos(dialogo(), ['dataAdmissao', 'cargoId', 'nivel', 'departamentoId', 'tipoContrato', 'salarioBase']);
+  verificarCampos(dialogo(), ['matricula', 'dataAdmissao', 'cargoId', 'nivel', 'departamentoId', 'tipoContrato', 'salarioBase']);
   assert.equal(dialogo().querySelector('[role="tab"][aria-selected="true"]')?.textContent, 'Contrato');
-  assert.equal(porRole(dialogo(), 'tabpanel')?.getAttribute('aria-labelledby'), abas[1].id);
+  assert.equal(porRole(dialogo(), 'tabpanel')?.getAttribute('aria-labelledby'), abas[2].id);
 
   await abrirAba(/Financeiro/);
   verificarCampos(dialogo(), ['banco', 'agencia', 'conta', 'tipoConta']);

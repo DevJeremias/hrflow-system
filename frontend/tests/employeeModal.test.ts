@@ -74,10 +74,10 @@ test('fechado, não renderiza nada', async () => {
   assert.equal(document.body.textContent?.replace(/\s+/g, ''), '');
 });
 
-test('cadastro novo: mostra as três abas e pede a senha de acesso', async () => {
+test('cadastro novo: mostra as cinco abas e pede a senha de acesso', async () => {
   await abrir();
   assert.ok(screen.getByRole('heading', { name: 'Novo Colaborador' }));
-  for (const nome of [/Pessoal/i, /Contrato/i, /Financeiro/i]) assert.ok(aba(nome));
+  for (const nome of [/Pessoal/i, /Documentos/i, /Contrato/i, /Financeiro/i, /Dependentes/i]) assert.ok(aba(nome));
   assert.equal(campo('senhaAcesso').getAttribute('type'), 'password');
 });
 

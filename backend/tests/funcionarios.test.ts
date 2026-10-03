@@ -65,8 +65,13 @@ describe('funcionários', { skip: banco.skip }, () => {
         const rotas: Array<[string, string, unknown]> = [
             ['GET', '/api/funcionarios', undefined],
             ['POST', '/api/funcionarios', { nome: 'x', email: 'x@exemplo.invalid', senha: 'senha-ficticia' }],
-            ['PUT', '/api/funcionarios/1', { nome: 'x', email: 'x@exemplo.invalid' }],
+            ['PATCH', '/api/funcionarios/1', { nome: 'x' }],
             ['DELETE', '/api/funcionarios/1', undefined],
+            ['POST', '/api/funcionarios/importar', undefined],
+            ['GET', '/api/funcionarios/1/dependentes', undefined],
+            ['POST', '/api/funcionarios/1/dependentes', { nome: 'x', parentesco: 'Outro', data_nascimento: '2020-01-01' }],
+            ['PUT', '/api/funcionarios/1/dependentes/1', { nome: 'x', parentesco: 'Outro', data_nascimento: '2020-01-01' }],
+            ['DELETE', '/api/funcionarios/1/dependentes/1', undefined],
         ];
 
         for (const [metodo, caminho, corpo] of rotas) {
@@ -87,7 +92,7 @@ describe('funcionários', { skip: banco.skip }, () => {
 
     describe('cadastro', () => {
         it('cria o colaborador Ativo com acesso próprio, senha em hash e mensagem de sucesso', async () => {
-            const entrada = novoCadastro({ cpf: '000.000.000-01', salario_base: '3500.50', status: 'Inativo' });
+            const entrada = novoCadastro({ cpf: '529.982.247-25', salario_base: '3500.50', status: 'Inativo' });
             const { status, corpo } = await chamar('POST', '/api/funcionarios', tokens.admin, entrada);
             assert.equal(status, 201);
             assert.deepEqual(corpo, { mensagem: 'Colaborador e credenciais de acesso criados com sucesso!' });
@@ -160,7 +165,7 @@ describe('funcionários', { skip: banco.skip }, () => {
             const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
 
             const novoEmail = `editado.${pessoa.id}@exemplo.invalid`;
-            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Editado', email: novoEmail });
+            const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Editado', email: novoEmail });
             assert.equal(status, 200);
             assert.deepEqual(corpo, { mensagem: 'Funcionário atualizado com sucesso!' });
 
@@ -171,12 +176,12 @@ describe('funcionários', { skip: banco.skip }, () => {
             assert.equal(acesso.email, novoEmail);
         });
 
-        it('o status só muda por PATCH /:id/status: no PUT é campo desconhecido e nada muda', async () => {
+        it('o status só muda por PATCH /:id/status: na edição de dados é campo desconhecido e nada muda', async () => {
             const entrada = novoCadastro();
             await chamar('POST', '/api/funcionarios', tokens.admin, entrada);
             const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
 
-            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: entrada.nome, email: entrada.email, status: 'Inativo' });
+            const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: entrada.nome, email: entrada.email, status: 'Inativo' });
             assert.equal(status, 400);
             assert.match(corpo.erro, /Campo desconhecido: status/);
             assert.equal((await consultar('SELECT status FROM funcionarios WHERE id = ?', [pessoa.id]))[0].status, 'Ativo');
@@ -188,14 +193,14 @@ describe('funcionários', { skip: banco.skip }, () => {
             const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
             await chamar('PATCH', `/api/funcionarios/${pessoa.id}/status`, tokens.admin, { status: 'Inativo', data_desligamento: '2026-01-10', motivo_desligamento: 'Fim do contrato' });
 
-            assert.equal((await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Novo', email: entrada.email })).status, 200);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Nome Novo', email: entrada.email })).status, 200);
             assert.equal((await consultar('SELECT status FROM funcionarios WHERE id = ?', [pessoa.id]))[0].status, 'Inativo');
         });
 
         it('funcionário inexistente ou de outra empresa é 404 e nada é alterado', async () => {
             const deB = await inserirFuncionario('Pessoa de B', 'pessoa.b.funcionarios@exemplo.invalid', empresaB);
             for (const id of [999999, deB]) {
-                const { status, corpo } = await chamar('PUT', `/api/funcionarios/${id}`, tokens.admin, { nome: 'Invasor', email: 'invasor@exemplo.invalid' });
+                const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${id}`, tokens.admin, { nome: 'Invasor', email: 'invasor@exemplo.invalid' });
                 assert.equal(status, 404);
                 assert.equal(corpo.erro, 'Funcionário não encontrado.');
             }
@@ -207,7 +212,7 @@ describe('funcionários', { skip: banco.skip }, () => {
             await chamar('POST', '/api/funcionarios', tokens.admin, entrada);
             const [pessoa] = await consultar('SELECT id FROM funcionarios WHERE email = ?', [entrada.email]);
             const [cargoDeB] = await consultar('SELECT MIN(id) AS id FROM cargos WHERE empresa_id = ?', [empresaB]);
-            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Outro Nome', email: entrada.email, cargo_id: cargoDeB.id });
+            const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${pessoa.id}`, tokens.admin, { nome: 'Outro Nome', email: entrada.email, cargo_id: cargoDeB.id });
             assert.equal(status, 400);
             assert.equal(corpo.erro, 'Cargo não encontrado nesta empresa.');
             assert.equal((await consultar('SELECT nome FROM funcionarios WHERE id = ?', [pessoa.id]))[0].nome, entrada.nome);

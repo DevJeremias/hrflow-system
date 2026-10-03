@@ -54,7 +54,22 @@ export interface FuncionarioApi {
   data_nascimento: string | null;
   data_desligamento: string | null;
   motivo_desligamento: string | null;
+  // Texto livre de antes do endereço em colunas: só leitura.
   endereco: string | null;
+  matricula: string | null;
+  rg: string | null;
+  pis: string | null;
+  ctps: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  contato_emergencia_nome: string | null;
+  contato_emergencia_telefone: string | null;
+  contato_emergencia_parentesco: string | null;
   banco: string | null;
   agencia: string | null;
   conta: string | null;
@@ -76,15 +91,28 @@ export interface ConsultaDeFuncionariosApi {
   departamento_id?: number;
 }
 
-// Corpo de POST /api/funcionarios e PUT /api/funcionarios/:id.
-export interface CorpoDeFuncionarioApi {
+// Os dados do cadastro de um colaborador, como a API os recebe.
+export interface DadosDeFuncionarioApi {
   nome: string;
   cpf: string;
   email: string;
   telefone: string;
   data_admissao: string;
   data_nascimento: string;
-  endereco: string;
+  matricula: string;
+  rg: string;
+  pis: string;
+  ctps: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  contato_emergencia_nome: string;
+  contato_emergencia_telefone: string;
+  contato_emergencia_parentesco: string;
   banco: string;
   agencia: string;
   conta: string;
@@ -94,8 +122,41 @@ export interface CorpoDeFuncionarioApi {
   salario_base: string;
   cargo_id: number | null;
   departamento_id: number | null;
-  // Só no cadastro.
+}
+
+// Corpo de POST /api/funcionarios: os dados e a senha provisória.
+export interface CorpoDeFuncionarioApi extends DadosDeFuncionarioApi {
   senha?: string;
+}
+
+// Corpo de PATCH /api/funcionarios/:id: só os campos que mudaram.
+export type CorpoDeEdicaoApi = Partial<DadosDeFuncionarioApi>;
+
+// Itens e corpo de /api/funcionarios/:id/dependentes.
+export type ParentescoApi = 'Filho(a)' | 'Cônjuge' | 'Enteado(a)' | 'Pai ou mãe' | 'Outro';
+
+export interface DependenteApi {
+  id: number;
+  nome: string;
+  parentesco: ParentescoApi;
+  data_nascimento: string;
+  cpf: string | null;
+}
+
+export interface CorpoDeDependenteApi {
+  nome: string;
+  parentesco: string;
+  data_nascimento: string;
+  cpf: string;
+}
+
+// Resposta de POST /api/funcionarios/importar: o que foi criado e o que ficou de fora, linha a linha.
+export interface RelatorioDeImportacaoApi {
+  total: number;
+  criados: number;
+  erros: { linha: number; nome: string | null; motivo: string }[];
+  // As senhas provisórias só existem nesta resposta.
+  credenciais: { linha: number; nome: string; email: string; senha_provisoria: string }[];
 }
 
 // Corpo de PATCH /api/funcionarios/:id/status. Inativar exige data e motivo do desligamento.

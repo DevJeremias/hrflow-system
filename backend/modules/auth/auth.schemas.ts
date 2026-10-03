@@ -4,6 +4,7 @@
 // { erro }, sem a lista `detalhes` que o validarEntrada acrescentaria. As regras de texto, e-mail
 // e senha são as de shared/schemas/validadores.ts, que também valem para shared/schemas/comum.ts.
 import { LIMITES, validarTexto, validarEmail, validarSenhaDeRegistro } from '../../shared/schemas/validadores.ts';
+import { normalizarCnpj } from '../empresa/index.ts';
 
 // Cada validador devolve { dados } quando aceita a entrada e { erro } com a mensagem para o
 // usuário quando recusa.
@@ -12,6 +13,8 @@ export type Validacao<T> = { erro: string; dados?: undefined } | { dados: T; err
 // O que cada validador entrega em req.dadosValidados.body.
 export interface DadosDeRegistro {
     nomeEmpresa: string;
+    // Só os 14 dígitos.
+    cnpj: string;
     nomeAdmin: string;
     email: string;
     senha: string;
@@ -36,19 +39,32 @@ export const LINK_INVALIDO = 'Este link de redefinição é inválido ou expirou
 const ehObjeto = (corpo: unknown): corpo is Record<string, unknown> =>
     corpo !== null && typeof corpo === 'object' && !Array.isArray(corpo);
 
+const validarCnpj = (cnpj: unknown): string | null => {
+    if (typeof cnpj !== 'string' || cnpj.trim() === '') return 'CNPJ é obrigatório.';
+    return normalizarCnpj(cnpj) ? null : 'CNPJ inválido: confira os 14 dígitos.';
+};
+
+const validarConfirmacao = (senha: unknown, confirmacao: unknown): string | null => {
+    if (typeof confirmacao !== 'string' || confirmacao === '') return 'Confirme a senha.';
+    return confirmacao === senha ? null : 'A confirmação da senha não confere.';
+};
+
 export const validarRegistro = (corpo: unknown): Validacao<DadosDeRegistro> => {
     if (!ehObjeto(corpo)) return { erro: 'Envie os dados do cadastro em JSON.' };
-    const { nomeEmpresa, nomeAdmin, email, senha } = corpo;
+    const { nomeEmpresa, cnpj, nomeAdmin, email, senha, confirmacaoSenha } = corpo;
 
     const erro = validarTexto(nomeEmpresa, 'Nome da empresa', LIMITES.nome)
+        || validarCnpj(cnpj)
         || validarTexto(nomeAdmin, 'Nome do administrador', LIMITES.nome)
         || validarEmail(email)
-        || validarSenhaDeRegistro(senha);
+        || validarSenhaDeRegistro(senha)
+        || validarConfirmacao(senha, confirmacaoSenha);
     if (erro) return { erro };
 
     return {
         dados: {
             nomeEmpresa: (nomeEmpresa as string).trim(),
+            cnpj: normalizarCnpj(cnpj as string) as string,
             nomeAdmin: (nomeAdmin as string).trim(),
             email: (email as string).trim().toLowerCase(),
             senha: senha as string,

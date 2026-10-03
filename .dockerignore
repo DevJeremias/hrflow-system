@@ -1,0 +1,11 @@
+# Contexto dos builds de deploy/api.Dockerfile e deploy/web.Dockerfile: só o que as imagens copiam.
+.git
+.github
+**/node_modules
+**/dist
+**/.env
+**/coverage
+e2e
+docs
+deploy/*
+!deploy/Caddyfile
