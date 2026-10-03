@@ -25,10 +25,10 @@ Use `./compose.sh` no lugar de `docker compose`: ele carrega o `.env` e a versã
 
 **Mesclar uma PR na main é publicar.** Não há passo manual:
 
-1. O CI roda na main. Verde, o `deploy.yml` compila as imagens (arm64) e as envia ao GHCR com a tag igual ao SHA.
-2. Em até 2 minutos a máquina (`hrflow-deploy.timer`) vê o CI verde e as imagens, tira um dump, migra, sobe e confere
-   `/api/health` (tem de trazer o SHA) e `/api/ready` (200).
-3. O job `publicado` do workflow Deploy espera o site dizer que roda o SHA e falha se isso não acontecer em 20 minutos;
+1. O CI roda na main.
+2. Em até 2 minutos depois do CI verde, a máquina (`hrflow-deploy.timer`) compila as imagens daquele SHA, tira um dump,
+   migra, sobe e confere `/api/health` (tem de trazer o SHA) e `/api/ready` (200). O build na t4g.micro leva alguns minutos.
+3. O workflow Deploy espera o site dizer que roda o SHA e falha se isso não acontecer em 30 minutos;
    depois exige `/api/ready` em 200 em até 60 s.
 
 Ver o que a máquina fez: `journalctl -u hrflow-deploy.service -n 50 --no-pager` (cada tentativa, cada recusa e cada rollback).
@@ -36,25 +36,24 @@ Estado: `cat /opt/hrflow/state/{current-sha,previous-sha,failed-sha}`.
 
 Workflow Deploy vermelho com a versão antiga no ar significa que a máquina não publicou. Causas comuns:
 
-* **Imagem não baixa** (GHCR privado). Os pacotes `hrflow-api` e `hrflow-web` precisam ser públicos (GitHub, Packages,
-  Package settings, visibilidade). Se não puderem, faça `docker login ghcr.io` como `ec2-user` com um token de
-  leitura de pacotes.
+* **Build falhou** (memória, disco, rede): nada em execução foi tocado e a máquina gravou `failed-sha`. O erro está no journal.
+  Confira `df -h /` e `free -m`; a máquina guarda as 4 últimas versões das imagens (`docker images`).
 * **Migração ou subida falhou**: a máquina voltou ao SHA anterior sozinha e gravou `failed-sha` (não tenta o mesmo SHA de novo).
   O erro está no journal. Corrija na main com um commit novo.
 * **CI vermelho ou ainda rodando**: a máquina espera e não publica.
 
 Republicar à mão (por exemplo depois de apagar `failed-sha` por uma causa externa): `rm /opt/hrflow/state/failed-sha`, e o
-próximo ciclo tenta de novo; ou `./update.sh <sha>`. O `workflow_dispatch` do Deploy refaz as imagens de um SHA.
+próximo ciclo tenta de novo; ou `./update.sh <sha>`. O `workflow_dispatch` do Deploy só refaz a espera por um SHA.
 
 ## Voltar a versão anterior
 
 ```bash
 cd /opt/hrflow/deploy
 ./rollback.sh            # volta para state/previous-sha
-./rollback.sh <sha>      # ou para um SHA específico (40 caracteres) ainda no disco ou no GHCR
+./rollback.sh <sha>      # ou para um SHA específico da main (40 caracteres); se a imagem sumiu do disco, é recompilada
 ```
 
-Leva segundos quando a imagem ainda está na máquina (as 4 últimas versões ficam) e não compila nada. Ele não mexe no
+Leva segundos quando a imagem ainda está na máquina (as 4 últimas versões ficam); só recompila se ela já foi removida. Ele não mexe no
 banco: as migrações só acrescentam, então a versão anterior roda sobre o esquema novo. Rodar `rollback.sh` de novo
 desfaz o rollback. **Atenção:** depois de um rollback manual, o timer republica a cabeça da main se ela for diferente do
 SHA em execução. Para segurar a versão antiga enquanto se corrige, pare o timer: `sudo systemctl stop hrflow-deploy.timer`
@@ -63,10 +62,10 @@ e religue com `start` quando a main estiver boa.
 Se o esquema do banco é que precisa voltar, restaure o dump `state/dumps/pre-<sha>-*.sql.gz` (próxima seção).
 
 Ensaio registrado, na máquina de produção em 2026-10-03: `rollback.sh <sha>` para outra versão e de volta levou 23 s cada
-trecho (imagens já no disco, nada baixado), com `/api/ready` em 200 logo ao terminar. Num ensaio local do `update.sh` e do
+trecho (imagens já no disco, nada compilado), com `/api/ready` em 200 logo ao terminar. Num ensaio local do `update.sh` e do
 `auto-deploy.sh` (imagens locais), publicar uma versão nova levou 14 s e a migração com falha, a subida que não fica
 saudável e a imagem quebrada voltaram sozinhas à versão anterior em 5 a 12 s. Tudo bem abaixo de 2 minutos. O primeiro
-rollback depois de uma publicação com imagens baixadas do GHCR entra na tabela de [testes registrados](#testes-registrados).
+rollback depois de uma publicação feita pelo timer entra na tabela de [testes registrados](#testes-registrados).
 
 ## Restaurar o banco
 
@@ -126,8 +125,8 @@ sudo /opt/hrflow/deploy/install-deploy.sh      # registra o SHA em execução e 
 systemctl list-timers hrflow-deploy.timer --no-pager
 ```
 
-Numa máquina que ainda roda imagens compiladas ali (`hrflow-api:latest`), o script as etiqueta com o SHA em execução para
-que o rollback da primeira publicação tenha para onde voltar.
+Numa máquina que ainda roda as imagens antigas (`hrflow-api:latest`), o script as etiqueta com o SHA em execução (a web, também com o
+Caddyfile dentro) para que o rollback da primeira publicação tenha para onde voltar.
 
 ## Rotacionar segredos
 
@@ -200,7 +199,7 @@ e SAML do IAM; criar role, usuário e Lambda funciona.
 
 * Dono da conta AWS, do domínio `calliari.dev` e do repositório: Daniel Calliari (alertas do Budget chegam por e-mail a ele).
 * Repositório: `DevJeremias/hrflow-system` (escrita, sem admin: não há secrets nem proteção de branch configuráveis por quem desenvolve).
-* Quem muda DNS (A, CAA) ou a visibilidade dos pacotes do GHCR é o dono.
+* Quem muda DNS (A, CAA) é o dono.
 
 ## Próximos passos conhecidos (não feitos)
 

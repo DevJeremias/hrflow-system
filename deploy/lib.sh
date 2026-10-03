@@ -6,7 +6,6 @@ RAIZ="${HRFLOW_HOME:-/opt/hrflow}"
 DEPLOY_DIR="$RAIZ/deploy"
 REPO_DIR="$RAIZ/repo"
 ESTADO_DIR="$RAIZ/state"
-PREFIXO_IMAGENS="${HRFLOW_IMAGE_PREFIX:-ghcr.io/devjeremias}"
 URL_PUBLICA="${HRFLOW_PUBLIC_URL:-https://hrflow.calliari.dev}"
 
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
@@ -15,6 +14,14 @@ log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 # e rollback.sh). Uma IMAGE_TAG já no ambiente vence os dois arquivos, e é assim que update.sh escolhe a versão nova.
 compose() {
   docker compose --project-directory "$DEPLOY_DIR" --env-file "$DEPLOY_DIR/.env" --env-file "$ESTADO_DIR/release.env" "$@"
+}
+
+# Compila na máquina as imagens do commit $1, que update.sh já conferiu estar na main e com o CI verde (auto-deploy.sh).
+# O clone em $REPO_DIR serve só de contexto de build: fica sempre num checkout destacado do SHA.
+construir() {
+  local sha="$1"
+  git -C "$REPO_DIR" checkout --quiet --detach "$sha"
+  IMAGE_TAG="$sha" compose build api web
 }
 
 sha_valido() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }

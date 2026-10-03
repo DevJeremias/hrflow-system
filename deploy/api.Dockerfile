@@ -1,4 +1,4 @@
-# Contexto de build: a raiz do repositório (CI: docker build -f deploy/api.Dockerfile .).
+# Contexto de build: a raiz do repositório (docker-compose.yml: context ../repo, dockerfile deploy/api.Dockerfile).
 FROM node:22-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app

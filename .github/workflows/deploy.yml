@@ -1,13 +1,13 @@
 name: Deploy
 
-# Publicar é mesclar na main. Com o CI verde na main, este workflow compila as imagens (arm64, a arquitetura da
-# máquina) e as envia ao GHCR com a tag igual ao SHA. A máquina de produção não recebe comando daqui: o timer
-# hrflow-deploy.timer dela vê o CI verde, baixa a imagem do SHA, faz dump, migra, sobe e confere /api/ready
-# (deploy/auto-deploy.sh). O job "publicado" espera https://hrflow.calliari.dev dizer que roda este SHA e falha
-# se não disser. A conta AWS da organização bloqueia provedor OIDC por SCP, por isso não há role nem secret aqui.
+# Publicar é mesclar na main. A máquina de produção não recebe comando daqui: o timer hrflow-deploy.timer dela vê o
+# CI verde na main, compila as imagens naquele SHA, faz dump, migra, sobe e confere /api/ready (deploy/auto-deploy.sh);
+# se não ficar saudável, volta à versão anterior. Este workflow só acompanha: com o CI verde, espera
+# https://hrflow.calliari.dev dizer que roda o SHA mesclado e falha, de forma visível, se isso não acontecer no prazo
+# ou se /api/ready não responder 200 em 60 s. A conta AWS da organização bloqueia provedor OIDC por SCP, por isso não
+# há role nem secret aqui, e nenhuma imagem é publicada em registro: o pacote do GHCR ficaria na conta do dono.
 #
-# workflow_dispatch refaz a publicação de um SHA da main (padrão: a cabeça dela), por exemplo se o job falhou
-# por falta de imagem. Passos e rollback: docs/runbook.md.
+# workflow_dispatch só refaz a espera por um SHA da main (padrão: a cabeça dela). Passos e rollback: docs/runbook.md.
 
 on:
   workflow_run:
@@ -23,7 +23,7 @@ on:
 permissions:
   contents: read
 
-# Uma publicação por vez, e nunca cortar uma em andamento: a máquina pode estar no meio da migração.
+# Uma espera por vez, e nunca cortar uma em andamento.
 concurrency:
   group: deploy-producao
   cancel-in-progress: false
@@ -33,55 +33,17 @@ env:
   URL_PUBLICA: https://hrflow.calliari.dev
 
 jobs:
-  imagens:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: write
-
-    strategy:
-      fail-fast: true
-      matrix:
-        imagem: [api, web]
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ env.SHA }}
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          file: deploy/${{ matrix.imagem }}.Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: ghcr.io/devjeremias/hrflow-${{ matrix.imagem }}:${{ env.SHA }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.revision=${{ env.SHA }}
-          cache-from: type=gha,scope=${{ matrix.imagem }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.imagem }}
-
   publicado:
-    needs: imagens
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      # A máquina olha o GitHub a cada 2 minutos; baixar, migrar e subir leva mais alguns. 20 minutos é folga.
+      # A máquina olha o GitHub a cada 2 minutos; compilar as imagens na t4g.micro, migrar e subir leva mais alguns.
+      # 30 minutos é folga.
       - name: Espera a produção rodar este SHA
         run: |
-          fim=$((SECONDS + 1200))
+          fim=$((SECONDS + 1800))
           versao=
           while [ "$SECONDS" -lt "$fim" ]; do
             versao="$(curl -fsS --max-time 10 "$URL_PUBLICA/api/health" 2>/dev/null | jq -r '.versao // empty' || true)"
@@ -90,7 +52,7 @@ jobs:
             sleep 15
           done
           if [ "$versao" != "$SHA" ]; then
-            echo "::error::$URL_PUBLICA não passou a rodar ${SHA:0:12} em 20 minutos (no ar: ${versao:-sem resposta}). Se a versão no ar é a anterior, a máquina recusou ou desfez a publicação: veja 'journalctl -u hrflow-deploy.service' (runbook, Incidente). Se o pacote hrflow-api/hrflow-web no GHCR é privado, a máquina não consegue baixá-lo."
+            echo "::error::$URL_PUBLICA não passou a rodar ${SHA:0:12} em 30 minutos (no ar: ${versao:-sem resposta}). Se a versão no ar é a anterior, a máquina recusou ou desfez a publicação (build, migração ou saúde): veja 'journalctl -u hrflow-deploy.service' na máquina (runbook, Incidente)."
             exit 1
           fi
 

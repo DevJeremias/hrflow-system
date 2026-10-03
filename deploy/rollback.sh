@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Volta a versão em execução para <sha> (padrão: a anterior, em state/previous-sha), sem compilar e sem baixar
-# nada quando a imagem ainda está na máquina (as 4 últimas ficam). Não mexe no banco.
+# Volta a versão em execução para <sha> (padrão: a anterior, em state/previous-sha), sem compilar quando a
+# imagem do SHA ainda está na máquina (as 4 últimas ficam; se faltar, ele a compila). Não mexe no banco.
 # Uso: /opt/hrflow/deploy/rollback.sh [sha de 40 caracteres]
 # As migrações só acrescentam (não há "down"): a versão anterior roda sobre o esquema novo. Se o esquema é que
 # precisa voltar, restaure o dump state/dumps/pre-<sha>-*.sql.gz (runbook, "Restaurar").
@@ -16,7 +16,7 @@ log "rollback de ${atual:-?} para ${alvo}"
 
 export IMAGE_TAG="$alvo"
 for imagem in hrflow-api hrflow-web; do
-  docker image inspect "$PREFIXO_IMAGENS/$imagem:$alvo" >/dev/null 2>&1 || { compose pull --quiet api web; break; }
+  docker image inspect "$imagem:$alvo" >/dev/null 2>&1 || { git -C "$REPO_DIR" fetch --quiet origin main; construir "$alvo"; break; }
 done
 
 printf 'IMAGE_TAG=%s\n' "$alvo" > "$ESTADO_DIR/release.env"

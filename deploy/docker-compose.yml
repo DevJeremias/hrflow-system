@@ -1,3 +1,4 @@
+# As imagens são compiladas na máquina, no SHA exato que o CI aprovou (update.sh), e etiquetadas com ele.
 # Layout na máquina: /opt/hrflow/{repo,deploy,state}. Segredos em /opt/hrflow/deploy/.env (modo 600, fora do git).
 # A versão em execução (IMAGE_TAG, o SHA do commit) vem de /opt/hrflow/state/release.env, escrito por update.sh
 # e rollback.sh. Use ./compose.sh no lugar de `docker compose`: ele carrega os dois arquivos.
@@ -29,7 +30,10 @@ services:
       start_period: 40s
 
   api:
-    image: ${HRFLOW_IMAGE_PREFIX:-ghcr.io/devjeremias}/hrflow-api:${IMAGE_TAG:?}
+    build:
+      context: ../repo
+      dockerfile: deploy/api.Dockerfile
+    image: hrflow-api:${IMAGE_TAG:?}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -57,7 +61,10 @@ services:
 
   web:
     # O Caddyfile vai dentro da imagem: a versão da SPA, a do proxy e a do rollback andam juntas.
-    image: ${HRFLOW_IMAGE_PREFIX:-ghcr.io/devjeremias}/hrflow-web:${IMAGE_TAG:?}
+    build:
+      context: ../repo
+      dockerfile: deploy/web.Dockerfile
+    image: hrflow-web:${IMAGE_TAG:?}
     restart: unless-stopped
     depends_on:
       api:

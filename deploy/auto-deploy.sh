@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Deploy por pull: o hrflow-deploy.timer chama este script a cada 2 minutos. Ele não recebe nada de fora (a máquina
 # não aceita comando do GitHub): pergunta ao GitHub público qual é a cabeça da main e se o CI daquele commit passou.
-# Só publica quando (1) o CI do commit terminou em success, (2) as imagens da tag <sha> já estão no GHCR e (3) o
-# SHA difere do que roda. Publica aquele SHA, não "a main de agora". Se a versão nova não responder em /api/ready
+# Só publica quando (1) o CI do commit terminou em success, (2) o SHA difere do que roda. Publica aquele SHA (compilando-o
+# na máquina), não "a main de agora". Se a versão nova não responder em /api/ready
 # com o próprio SHA em /api/health, volta à anterior e termina com erro (o workflow de publicação então falha).
 # Opcional: um token só de leitura em /opt/hrflow/deploy/github.token, se o limite anônimo da API apertar.
 set -euo pipefail
@@ -41,11 +41,6 @@ case "$conclusao" in
   sem-execucao|em-andamento) avisar "${cabeca:0:12}: CI ainda não terminou ($conclusao)"; exit 0 ;;
   *) avisar "${cabeca:0:12}: CI terminou em $conclusao, não publico"; exit 0 ;;
 esac
-
-for imagem in hrflow-api hrflow-web; do
-  docker manifest inspect "$PREFIXO_IMAGENS/$imagem:$cabeca" >/dev/null 2>&1 \
-    || { avisar "${cabeca:0:12}: CI verde, mas $imagem:$cabeca ainda não está no GHCR"; exit 0; }
-done
 
 # Responde com o SHA esperado e o banco pronto? Pergunta ao Caddy local pelo nome público (testa TLS e proxy).
 saudavel() {

@@ -7,5 +7,5 @@ After=network-online.target docker.service
 Type=oneshot
 User=ec2-user
 ExecStart=/opt/hrflow/deploy/auto-deploy.sh
-# Imagem grande e migração lenta cabem; passar disso é travamento.
-TimeoutStartSec=20min
+# O build das imagens na t4g.micro e uma migração lenta cabem; passar disso é travamento.
+TimeoutStartSec=30min

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Publica a versão <sha> na máquina: arquivos de deploy do commit, imagens do GHCR, dump, migrações e restart.
-# A máquina não compila nada: as imagens vêm prontas do CI (.github/workflows/deploy.yml), com a tag igual ao SHA.
+# Publica a versão <sha> na máquina: arquivos de deploy do commit, imagens compiladas nesse SHA, dump, migrações e restart.
+# O SHA é o que o CI aprovou na main (auto-deploy.sh); as imagens ficam etiquetadas com ele, e é isso que o rollback usa.
 # Uso: /opt/hrflow/deploy/update.sh <sha de 40 caracteres>   (chamado pelo auto-deploy.sh, ou à mão em incidente)
 # Falhou? ./rollback.sh volta à versão anterior (auto-deploy.sh já faz isso sozinho).
 set -euo pipefail
@@ -32,7 +32,8 @@ if [ "$mudou" = 1 ] && [ -z "${HRFLOW_SINCRONIZADO:-}" ]; then
 fi
 
 export IMAGE_TAG="$sha"
-compose pull --quiet api web
+# Compila antes de tocar em qualquer coisa em execução: build que falha não derruba nada.
+construir "$sha"
 
 compose up -d --wait mysql
 # Dump antes de migrar: se uma migração sair errada, é daqui que se volta (runbook, "Restaurar").
@@ -52,8 +53,8 @@ printf '%s\n' "$sha" > "$ESTADO_DIR/current-sha"
 
 # Guarda as 4 versões mais recentes de cada imagem (a atual, a anterior e as duas antes): o que sobra só ocupa disco.
 for imagem in hrflow-api hrflow-web; do
-  docker images --format '{{.Tag}}' "$PREFIXO_IMAGENS/$imagem" | grep -E '^[0-9a-f]{40}$' | tail -n +5 \
-    | xargs -r -I{} docker rmi "$PREFIXO_IMAGENS/$imagem:{}" >/dev/null 2>&1 || true
+  docker images --format '{{.Tag}}' "$imagem" | grep -E '^[0-9a-f]{40}$' | tail -n +5 \
+    | xargs -r -I{} docker rmi "$imagem:{}" >/dev/null 2>&1 || true
 done
 docker image prune -f >/dev/null
 

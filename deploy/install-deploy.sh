@@ -14,15 +14,15 @@ sha_valido "$sha" || { echo "SHA inválido: $sha" >&2; exit 1; }
 install -d -o ec2-user -g ec2-user "$ESTADO_DIR"
 if [ ! -s "$ESTADO_DIR/current-sha" ]; then
   for imagem in hrflow-api hrflow-web; do
-    docker image inspect "$PREFIXO_IMAGENS/$imagem:$sha" >/dev/null 2>&1 && continue
+    docker image inspect "$imagem:$sha" >/dev/null 2>&1 && continue
     docker image inspect "$imagem:latest" >/dev/null 2>&1 || continue
     if [ "$imagem" = hrflow-web ]; then
       # A imagem antiga recebia o Caddyfile por bind mount; a nova o traz dentro. Sem esta cópia, o rollback para
       # ela subiria o Caddy com o Caddyfile de fábrica (só HTTP na porta 80).
       printf 'FROM %s:latest\nCOPY Caddyfile /etc/caddy/Caddyfile\n' "$imagem" \
-        | docker build -q -t "$PREFIXO_IMAGENS/$imagem:$sha" -f - "$DEPLOY_DIR" >/dev/null
+        | docker build -q -t "$imagem:$sha" -f - "$DEPLOY_DIR" >/dev/null
     else
-      docker tag "$imagem:latest" "$PREFIXO_IMAGENS/$imagem:$sha"
+      docker tag "$imagem:latest" "$imagem:$sha"
     fi
   done
   printf 'IMAGE_TAG=%s\n' "$sha" > "$ESTADO_DIR/release.env"
