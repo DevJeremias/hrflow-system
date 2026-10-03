@@ -292,7 +292,7 @@ test('mês ausente ou malformado no histórico é 400', { skip: semBanco }, asyn
 test('a listagem de RH mostra coordenadas e o relógio de Belém', { skip: semBanco }, async () => {
     const usuario = await novoUsuario();
     await registrar(usuario, { tipo: 'Entrada', latitude: -1.45502, longitude: -48.5024 });
-    const { status, corpo } = await chamar('GET', '/', await ator('RH', null));
+    const { status, corpo } = await chamar('GET', '/?mes=2026-03', await ator('RH', null));
     assert.equal(status, 200);
     const meu = corpo.find((p) => p.funcionario_id === usuario.funcionario_id);
     assert.equal(Number(meu.latitude), -1.45502);

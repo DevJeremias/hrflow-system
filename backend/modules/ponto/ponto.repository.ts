@@ -39,6 +39,18 @@ export interface JustificativaDaEmpresa extends RowDataPacket {
     atualizado: number;
 }
 
+// Marcações da empresa em [inicio, fim) (segundos Unix), de todos os colaboradores ou só de
+// `funcionarioId`, com `busca` sobre o nome. `limite` e `deslocamento` recortam a página.
+export interface FiltroDePontosDaEmpresa {
+    empresaId: number;
+    inicio: number;
+    fim: number;
+    funcionarioId: number | null;
+    busca: string | null;
+    limite: number;
+    deslocamento: number;
+}
+
 export interface NovoRegistro {
     funcionarioId: number;
     empresaId: number;
@@ -62,6 +74,39 @@ export interface FiltroDeJustificativas {
     ate: string;
     funcionarioId: number | null;
 }
+
+// O LIKE trata % e _ como curingas: o texto digitado vale literalmente.
+const textoDeBusca = (busca: string): string => `%${busca.replace(/[\\%_]/g, '\\$&')}%`;
+
+const condicoesDosPontos = ({ empresaId, inicio, fim, funcionarioId, busca }: FiltroDePontosDaEmpresa) => {
+    const condicoes = ['p.empresa_id = ?', 'p.data_hora_oficial >= FROM_UNIXTIME(?)', 'p.data_hora_oficial < FROM_UNIXTIME(?)'];
+    const valores: Array<number | string> = [empresaId, inicio, fim];
+    if (funcionarioId) {
+        condicoes.push('p.funcionario_id = ?');
+        valores.push(funcionarioId);
+    }
+    if (busca) {
+        condicoes.push('f.nome LIKE ?');
+        valores.push(textoDeBusca(busca));
+    }
+    return { where: condicoes.join(' AND '), valores };
+};
+
+// Exportada para o teste conferir no EXPLAIN que a página usa idx_registro_pontos_empresa_data.
+// A ordem inclui o id: sem desempate, marcações no mesmo segundo trocariam de página entre consultas.
+export const consultaDosPontosDaEmpresa = (filtro: FiltroDePontosDaEmpresa) => {
+    const { where, valores } = condicoesDosPontos(filtro);
+    return {
+        sql: `SELECT p.id, p.funcionario_id, p.empresa_id, p.tipo_registro, p.latitude, p.longitude, p.observacao,
+                     UNIX_TIMESTAMP(p.data_hora_oficial) AS instante, f.nome as nome_funcionario
+              FROM registro_pontos p
+              JOIN funcionarios f ON p.funcionario_id = f.id
+              WHERE ${where}
+              ORDER BY p.data_hora_oficial DESC, p.id DESC
+              LIMIT ? OFFSET ?`,
+        valores: [...valores, filtro.limite, filtro.deslocamento],
+    };
+};
 
 const criarRepositorio = (executor: Connection) => ({
     // Com `travar`, bloqueia a linha do colaborador até o fim da transação.
@@ -109,17 +154,20 @@ const criarRepositorio = (executor: Connection) => ({
         return pontos;
     },
 
-    async registrosDaEmpresa(empresaId: number): Promise<RegistroDaEmpresa[]> {
-        const [pontos] = await executor.query<RegistroDaEmpresa[]>(
-            `SELECT p.id, p.funcionario_id, p.empresa_id, p.tipo_registro, p.latitude, p.longitude, p.observacao,
-                    UNIX_TIMESTAMP(p.data_hora_oficial) AS instante, f.nome as nome_funcionario
-             FROM registro_pontos p
-             JOIN funcionarios f ON p.funcionario_id = f.id
-             WHERE p.empresa_id = ?
-             ORDER BY p.data_hora_oficial DESC`,
-            [empresaId]
-        );
-        return pontos;
+    async registrosDaEmpresa(filtro: FiltroDePontosDaEmpresa): Promise<{ pontos: RegistroDaEmpresa[]; total: number }> {
+        const { sql, valores } = consultaDosPontosDaEmpresa(filtro);
+        const { where, valores: valoresDoTotal } = condicoesDosPontos(filtro);
+        const [[pontos], [[{ total }]]] = await Promise.all([
+            executor.query<RegistroDaEmpresa[]>(sql, valores),
+            executor.query<(RowDataPacket & { total: number })[]>(
+                `SELECT COUNT(*) AS total
+                 FROM registro_pontos p
+                 JOIN funcionarios f ON p.funcionario_id = f.id
+                 WHERE ${where}`,
+                valoresDoTotal
+            ),
+        ]);
+        return { pontos, total };
     },
 
     // Justificativas do colaborador com data de referência em [de, ate), datas 'AAAA-MM-DD'.

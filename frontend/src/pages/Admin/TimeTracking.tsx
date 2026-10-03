@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { pontoService, type CompanyPointRecord } from '../../services/pontoService';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { formatarDataIso, formatarHoraSemSegundos } from '../../utils/ponto';
 
 const mesAtualEmBelem = (): string => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Belem',
@@ -10,41 +11,57 @@ const mesAtualEmBelem = (): string => new Intl.DateTimeFormat('en-CA', {
   month: '2-digit'
 }).format(new Date()).slice(0, 7);
 
+const TAMANHO_DA_PAGINA = 50;
+const ATRASO_DA_BUSCA_MS = 300;
+
+interface Resultado {
+  chave: string;
+  registros: CompanyPointRecord[];
+  total: number;
+  erro: string | null;
+}
+
 export default function TimeTracking() {
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [registros, setRegistros] = useState<CompanyPointRecord[]>([]);
+  const [resultado, setResultado] = useState<Resultado | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [busca, setBusca] = useState('');
   const [monthFilter, setMonthFilter] = useState(mesAtualEmBelem);
+  const [pagina, setPagina] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    const termo = searchTerm.trim();
+    if (termo === busca) return undefined;
+    const timer = setTimeout(() => {
+      setBusca(termo);
+      setPagina(1);
+    }, ATRASO_DA_BUSCA_MS);
+    return () => clearTimeout(timer);
+  }, [searchTerm, busca]);
+
+  const chave = `${monthFilter}|${busca}|${pagina}|${reloadKey}`;
+
+  useEffect(() => {
     let ativo = true;
-    pontoService.getRegistrosDaEmpresa()
-      .then((dados) => { if (ativo) setRegistros(dados); })
-      .catch((error) => {
-        if (!ativo) return;
-        setRegistros([]);
-        setLoadError(mensagemDeErro(error, 'Erro ao buscar os registros de ponto'));
-      })
-      .finally(() => { if (ativo) setLoading(false); });
+    const pronto = (parcial: Omit<Resultado, 'chave'>) => { if (ativo) setResultado({ chave, ...parcial }); };
+    pontoService.getRegistrosDaEmpresa({ mes: monthFilter, pagina, limite: TAMANHO_DA_PAGINA, busca })
+      .then((dados) => pronto({ ...dados, erro: null }))
+      .catch((error) => pronto({ registros: [], total: 0, erro: mensagemDeErro(error, 'Erro ao buscar os registros de ponto') }));
     return () => { ativo = false; };
-  }, [reloadKey]);
+  }, [chave, monthFilter, pagina, busca]);
 
-  const registrosFiltrados = useMemo(() => {
-    const termo = searchTerm.trim().toLocaleLowerCase('pt-BR');
-    return registros.filter((registro) =>
-      registro.date.startsWith(monthFilter)
-      && registro.nome_funcionario.toLocaleLowerCase('pt-BR').includes(termo)
-    );
-  }, [registros, searchTerm, monthFilter]);
+  const loading = resultado?.chave !== chave;
+  const loadError = loading ? null : resultado.erro;
+  const registros = loading ? [] : resultado.registros;
+  const total = loading ? 0 : resultado.total;
+  const totalDePaginas = Math.max(1, Math.ceil(total / TAMANHO_DA_PAGINA));
 
-  const colaboradores = new Set(registrosFiltrados.map((registro) => registro.funcionario_id)).size;
-  const diasMonitorados = new Set(registrosFiltrados.map((registro) => registro.date)).size;
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((key) => key + 1);
+  const colaboradores = new Set(registros.map((registro) => registro.funcionario_id)).size;
+  const diasMonitorados = new Set(registros.map((registro) => registro.date)).size;
+  const retry = () => setReloadKey((key) => key + 1);
+  const trocarMes = (mes: string) => {
+    setMonthFilter(mes);
+    setPagina(1);
   };
 
   return (
@@ -58,15 +75,15 @@ export default function TimeTracking() {
           <label className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold shadow-sm">
             <CalendarIcon size={18} />
             <span className="sr-only">Mês de referência</span>
-            <input aria-label="Mês de referência" type="month" value={monthFilter} onChange={(event) => setMonthFilter(event.target.value)} className="bg-transparent outline-none" />
+            <input aria-label="Mês de referência" type="month" value={monthFilter} onChange={(event) => event.target.value && trocarMes(event.target.value)} className="bg-transparent outline-none" />
           </label>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <SummaryCard label="Marcações no mês" value={loading || loadError ? '—' : registrosFiltrados.length} icon={<Clock size={28} />} color="indigo" />
-        <SummaryCard label="Colaboradores com ponto" value={loading || loadError ? '—' : colaboradores} icon={<Users size={28} />} color="emerald" />
-        <SummaryCard label="Dias com marcação" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={28} />} color="rose" />
+        <SummaryCard label="Marcações no mês" value={loading || loadError ? '—' : total} icon={<Clock size={28} />} color="indigo" />
+        <SummaryCard label="Colaboradores nesta página" value={loading || loadError ? '—' : colaboradores} icon={<Users size={28} />} color="emerald" />
+        <SummaryCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={28} />} color="rose" />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
@@ -92,7 +109,7 @@ export default function TimeTracking() {
           </div>
         ) : loadError ? (
           <div className="p-6"><ErrorAlert message={loadError} onRetry={retry} /></div>
-        ) : registrosFiltrados.length === 0 ? (
+        ) : total === 0 ? (
           <p className="py-16 text-center font-medium text-slate-500">Nenhum registro de ponto encontrado neste mês.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -106,12 +123,12 @@ export default function TimeTracking() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {registrosFiltrados.map((registro) => (
+                {registros.map((registro) => (
                   <tr key={registro.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-5 font-bold text-slate-800">{registro.nome_funcionario}</td>
-                    <td className="p-5 font-medium text-slate-600">{registro.date}</td>
+                    <td className="p-5 font-medium text-slate-600">{formatarDataIso(registro.date)}</td>
                     <td className="p-5 font-medium text-slate-600">{registro.tipo_registro}</td>
-                    <td className="p-5 font-bold text-slate-700">{registro.time}</td>
+                    <td className="p-5 font-bold text-slate-700">{formatarHoraSemSegundos(registro.time)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -119,6 +136,26 @@ export default function TimeTracking() {
           </div>
         )}
       </div>
+
+      {!loading && !loadError && total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
+          <span>Página {pagina} de {totalDePaginas} · {total} marcações</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPagina((atual) => atual - 1)}
+              disabled={pagina <= 1}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+            >Anterior</button>
+            <button
+              type="button"
+              onClick={() => setPagina((atual) => atual + 1)}
+              disabled={pagina >= totalDePaginas}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
+            >Próxima</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

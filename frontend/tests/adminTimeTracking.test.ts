@@ -41,7 +41,11 @@ test('mostra carregamento e depois dados reais com indicadores calculados', asyn
   const mes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Belem', year: 'numeric', month: '2-digit' }).format(new Date());
   const data = `${mes}-12`;
   let resolveFetch: ((response: Response) => void) | undefined;
-  globalThis.fetch = (() => new Promise<Response>((resolve) => { resolveFetch = resolve; })) as typeof fetch;
+  let requestedUrl = '';
+  globalThis.fetch = ((url: string | URL | Request) => {
+    requestedUrl = String(url);
+    return new Promise<Response>((resolve) => { resolveFetch = resolve; });
+  }) as typeof fetch;
   const { host, root } = await renderScreen();
   assert.match(host.textContent ?? '', /Carregando registros de ponto/);
 
@@ -49,17 +53,22 @@ test('mostra carregamento e depois dados reais com indicadores calculados', asyn
     resolveFetch?.(new Response(JSON.stringify([
       { id: 1, funcionario_id: 7, tipo_registro: 'Entrada', nome_funcionario: 'Ana', date: data, time: '08:00:00' },
       { id: 2, funcionario_id: 7, tipo_registro: 'Saída', nome_funcionario: 'Ana', date: data, time: '17:00:00' },
-    ]), { status: 200 }));
+    ]), { status: 200, headers: { 'X-Total-Count': '120' } }));
   });
+  assert.equal(requestedUrl, `/api/ponto?mes=${mes}&pagina=1&limite=50`);
   assert.match(host.textContent ?? '', /Ana/);
-  assert.match(host.textContent ?? '', /Marcações no mês2/);
-  assert.match(host.textContent ?? '', /Colaboradores com ponto1/);
+  assert.match(host.textContent ?? '', new RegExp(`12/${mes.slice(5)}/${mes.slice(0, 4)}`));
+  assert.match(host.textContent ?? '', /Entrada08:00(?!:)/);
+  assert.doesNotMatch(host.textContent ?? '', /08:00:00/);
+  assert.match(host.textContent ?? '', /Marcações no mês120/);
+  assert.match(host.textContent ?? '', /Colaboradores nesta página1/);
+  assert.match(host.textContent ?? '', /Página 1 de 3 · 120 marcações/);
   await act(async () => root.unmount());
   host.remove();
 });
 
 test('mostra estado vazio para uma resposta sem registros', async () => {
-  globalThis.fetch = (async () => new Response('[]', { status: 200 })) as typeof fetch;
+  globalThis.fetch = (async () => new Response('[]', { status: 200, headers: { 'X-Total-Count': '0' } })) as typeof fetch;
   const { host, root } = await renderScreen();
   assert.match(host.textContent ?? '', /Nenhum registro de ponto encontrado neste mês/);
   assert.match(host.textContent ?? '', /Marcações no mês0/);
@@ -73,9 +82,28 @@ test('mostra erro de carregamento e oferece nova tentativa', async () => {
   assert.match(host.textContent ?? '', /Erro ao buscar os registros de ponto/);
   const retry = host.querySelector('button');
   assert.ok(retry, 'a tela deve permitir nova tentativa');
-  globalThis.fetch = (async () => new Response('[]', { status: 200 })) as typeof fetch;
+  globalThis.fetch = (async () => new Response('[]', { status: 200, headers: { 'X-Total-Count': '0' } })) as typeof fetch;
   await act(async () => { retry.click(); });
   assert.match(host.textContent ?? '', /Nenhum registro de ponto encontrado neste mês/);
+  await act(async () => root.unmount());
+  host.remove();
+});
+
+test('Próxima pede a página seguinte do mesmo mês', async () => {
+  const urls: string[] = [];
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    urls.push(String(url));
+    return new Response(JSON.stringify([{ id: 1, funcionario_id: 7, tipo_registro: 'Entrada', nome_funcionario: 'Ana', date: '2026-10-02', time: '14:00:00' }]), {
+      status: 200, headers: { 'X-Total-Count': '120' },
+    });
+  }) as typeof fetch;
+  const { host, root } = await renderScreen();
+  const proxima = [...host.querySelectorAll('button')].find((botao) => botao.textContent === 'Próxima');
+  assert.ok(proxima);
+  await act(async () => { proxima.click(); });
+  assert.match(urls.at(-1) ?? '', /pagina=2&limite=50$/);
+  assert.match(host.textContent ?? '', /Página 2 de 3/);
+  assert.match(host.textContent ?? '', /02\/10\/2026/);
   await act(async () => root.unmount());
   host.remove();
 });
