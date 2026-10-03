@@ -9,7 +9,6 @@ import AnatomySection from "./AnatomySection";
 import Contact from "./Contact"; 
 import CommandCenter from "./CommandCenter";
 import Footer from "./Footer";
-import "../../App.css"; 
 
 export default function Home() {
   const location = useLocation();
