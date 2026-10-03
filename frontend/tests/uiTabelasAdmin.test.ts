@@ -49,7 +49,7 @@ test('colaboradores: tabela semântica com legenda, th scope=col e ações rotul
   assert.equal(host.querySelector('caption')?.textContent, 'Colaboradores da empresa');
   assert.deepEqual(cabecalhos(host), [['Colaborador', 'col'], ['Cargo', 'col'], ['Setor', 'col'], ['Status', 'col'], ['Ações', 'col']]);
   assert.ok(host.querySelector('button[aria-label="Editar colaborador Bia Ficticia"]'));
-  assert.ok(host.querySelector('button[aria-label="Excluir colaborador Bia Ficticia"]'));
+  assert.ok(host.querySelector('button[aria-label="Excluir cadastro de Bia Ficticia"]'));
   assert.equal(host.querySelector('tbody tr td:nth-child(4)')?.textContent, 'Ativo');
 });
 
@@ -96,7 +96,7 @@ test('folha: tabela semântica com legenda e um botão de holerite rotulado por 
   assert.equal(document.activeElement, ver, 'o foco volta ao botão do holerite');
 });
 
-const responder = async (resposta: 'Excluir' | 'Cancelar') => {
+const responder = async (resposta: 'Excluir' | 'Excluir cadastro' | 'Cancelar') => {
   const dialogo = porRole(document, 'dialog');
   assert.ok(dialogo, 'a exclusão pede confirmação num diálogo');
   assert.match(dialogo.textContent ?? '', /Excluir/);
@@ -105,30 +105,31 @@ const responder = async (resposta: 'Excluir' | 'Cancelar') => {
 };
 const gravacoes = () => chamadas.filter((c) => c.metodo !== 'GET');
 
+// Excluir um cadastro passa pelo diálogo do ciclo de vida do colaborador (B-13): ele explica o efeito e confirma.
 test('excluir colaborador: cancelar não chama a API; confirmar chama DELETE e mostra toast de sucesso', async () => {
   const host = await abrirTela(Employees);
-  const excluir = host.querySelector<HTMLButtonElement>('button[aria-label="Excluir colaborador Bia Ficticia"]')!;
+  const excluir = host.querySelector<HTMLButtonElement>('button[aria-label="Excluir cadastro de Bia Ficticia"]')!;
   excluir.focus();
 
   await clicar(excluir);
-  assert.match(porRole(document, 'dialog')!.textContent ?? '', /Excluir Bia Ficticia\?/);
+  assert.match(porRole(document, 'dialog')!.textContent ?? '', /Excluir o cadastro de Bia Ficticia/);
   await responder('Cancelar');
   assert.deepEqual(gravacoes(), []);
   assert.equal(document.activeElement, excluir, 'cancelar devolve o foco ao botão');
 
   await clicar(excluir);
-  await responder('Excluir');
+  await responder('Excluir cadastro');
   assert.deepEqual(gravacoes().map((c) => `${c.metodo} ${c.caminho}`), ['DELETE /funcionarios/7']);
-  assert.equal(document.querySelector('[role="status"]')?.textContent, 'Colaborador excluído.');
+  assert.equal(document.querySelector('[role="status"]')?.textContent, 'Cadastro excluído.');
 });
 
-test('excluir colaborador: erro da API vira toast de erro, sem alert nativo', async () => {
+test('excluir colaborador: erro da API aparece dentro do diálogo, que continua aberto, sem alert nativo', async () => {
   instalarApi(chamadas, () => json(400, { erro: 'Colaborador tem registros de ponto.' }));
   const host = await abrirTela(Employees);
-  await clicar(host.querySelector('button[aria-label="Excluir colaborador Bia Ficticia"]')!);
-  await responder('Excluir');
-  assert.equal(document.querySelector('[role="alert"]')?.textContent, 'Colaborador tem registros de ponto.');
-  assert.ok(host.querySelector('button[aria-label="Excluir colaborador Bia Ficticia"]'), 'a linha continua na lista');
+  await clicar(host.querySelector('button[aria-label="Excluir cadastro de Bia Ficticia"]')!);
+  await responder('Excluir cadastro');
+  assert.equal(porRole(document, 'dialog')?.querySelector('[role="alert"]')?.textContent, 'Colaborador tem registros de ponto.');
+  assert.ok(host.querySelector('button[aria-label="Excluir cadastro de Bia Ficticia"]'), 'a linha continua na lista');
 });
 
 test('excluir cargo: confirmar chama DELETE e mostra o toast; erro da API vira toast de erro', async () => {

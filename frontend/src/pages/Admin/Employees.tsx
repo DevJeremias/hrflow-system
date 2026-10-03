@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, Pencil, Trash2, Users } from 'lucide-react';
+import { KeyRound, Pencil, Plus, Search, Trash2, UserCheck, UserMinus, Users } from 'lucide-react';
 import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
+import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import PageHeader from '../../components/ui/PageHeader';
 import Button, { IconButton } from '../../components/ui/Button';
@@ -11,7 +12,6 @@ import Badge, { type BadgeTone } from '../../components/ui/Badge';
 import DataTable, { type Column } from '../../components/ui/DataTable';
 import EmptyState from '../../components/ui/EmptyState';
 import Field, { Input } from '../../components/ui/Field';
-import { useConfirm } from '../../components/ui/confirmContext';
 import { useToast } from '../../components/ui/toastContext';
 import { mensagemDeErro } from '../../utils/erros';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -24,9 +24,14 @@ const TOM_DO_STATUS: Record<string, BadgeTone> = {
   Férias: 'warning',
 };
 
+// 'AAAA-MM-DD' -> 'DD/MM/AAAA', sem passar por Date (o fuso moveria o dia).
+const formatDate = (isoDate: string) => isoDate.split('-').reverse().join('/');
+
+// O RH não age sobre o cadastro de outro RH ou Administrador (nem sobre o próprio, que é de RH).
+const isManageable = (employee: Employee) => employee.perfilAcesso === null || employee.perfilAcesso === 'Colaborador';
+
 const Employees: React.FC = () => {
   usePageTitle('Colaboradores');
-  const confirmar = useConfirm();
   const toast = useToast();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -36,6 +41,7 @@ const Employees: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+  const [lifecycleAction, setLifecycleAction] = useState<LifecycleAction | null>(null);
   // Só o primeiro carregamento troca a lista por esqueletos: recarregar depois de salvar mantém as linhas
   // (e o botão que abriu o diálogo) no lugar.
   const carregado = useRef(false);
@@ -64,29 +70,28 @@ const Employees: React.FC = () => {
   }, [loadEmployees]);
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
+  // Os dados vão por PUT; a situação (Férias, Inativo com data e motivo) só muda por PATCH.
   const handleSave = async (employeeData: EmployeeForm) => {
     await employeeService.save(employeeData);
+    if (employeeToEdit) {
+      const { status = 'Ativo', dataDesligamento = '', motivoDesligamento = '' } = employeeData;
+      const changed = status !== employeeToEdit.status
+        || (status === 'Inativo' && (dataDesligamento !== employeeToEdit.dataDesligamento || motivoDesligamento !== employeeToEdit.motivoDesligamento));
+      if (changed) {
+        await employeeService.changeStatus(employeeToEdit.id, status === 'Inativo'
+          ? { status, date: dataDesligamento, reason: motivoDesligamento.trim() }
+          : { status: status as 'Ativo' | 'Férias' });
+      }
+    }
     await loadEmployees(page);
     setIsModalOpen(false);
     toast.success('Colaborador salvo.');
   };
 
-  const handleDelete = async (employee: Employee) => {
-    const confirmado = await confirmar({
-      title: `Excluir ${employee.nomeCompleto}?`,
-      description: 'O colaborador e o acesso dele ao sistema serão removidos. Esta ação não pode ser desfeita.',
-      confirmLabel: 'Excluir',
-      tone: 'danger',
-    });
-    if (!confirmado) return;
-    try {
-      await employeeService.delete(employee.id);
-      await loadEmployees(page - (employees.length === 1 && page > 1 ? 1 : 0));
-      toast.success('Colaborador excluído.');
-    } catch (error) {
-      toast.error(mensagemDeErro(error, 'Erro ao excluir colaborador.'));
-    }
-  };
+  const openLifecycle = (kind: LifecycleKind, employee: Employee) => setLifecycleAction({ kind, employee });
+
+  // A página pode esvaziar com a exclusão: volta para a anterior.
+  const handleLifecycleDone = () => loadEmployees(page - (lifecycleAction?.kind === 'delete' && employees.length === 1 && page > 1 ? 1 : 0));
 
   const filteredEmployees = employees.filter(emp =>
     emp.nomeCompleto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -112,7 +117,20 @@ const Employees: React.FC = () => {
     },
     { key: 'cargo', header: 'Cargo', cell: (emp) => <span className="text-ink">{emp.cargo}</span> },
     { key: 'setor', header: 'Setor', cell: (emp) => <span className="text-ink-muted">{emp.departamento}</span> },
-    { key: 'status', header: 'Status', cell: (emp) => <Badge tone={TOM_DO_STATUS[emp.status] ?? 'neutral'}>{emp.status || 'Ativo'}</Badge> },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (emp) => (
+        <>
+          <Badge tone={TOM_DO_STATUS[emp.status] ?? 'neutral'}>{emp.status || 'Ativo'}</Badge>
+          {emp.status === 'Inativo' && emp.dataDesligamento && (
+            <span className="mt-1 block text-xs text-ink-muted" title={emp.motivoDesligamento}>
+              Desde {formatDate(emp.dataDesligamento)}{emp.motivoDesligamento ? ` · ${emp.motivoDesligamento}` : ''}
+            </span>
+          )}
+        </>
+      ),
+    },
     {
       key: 'acoes',
       header: 'Ações',
@@ -123,9 +141,25 @@ const Employees: React.FC = () => {
           <IconButton label={`Editar colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}>
             <Pencil size={18} aria-hidden="true" />
           </IconButton>
-          <IconButton label={`Excluir colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => handleDelete(emp)} className="hover:text-danger">
-            <Trash2 size={18} aria-hidden="true" />
-          </IconButton>
+          {isManageable(emp) && emp.perfilAcesso !== null && emp.status !== 'Inativo' && (
+            <IconButton label={`Redefinir senha de ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('reset', emp)}>
+              <KeyRound size={18} aria-hidden="true" />
+            </IconButton>
+          )}
+          {isManageable(emp) && (emp.status === 'Inativo' ? (
+            <IconButton label={`Reativar colaborador ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('reactivate', emp)}>
+              <UserCheck size={18} aria-hidden="true" />
+            </IconButton>
+          ) : (
+            <IconButton label={`Inativar ou desligar ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('offboard', emp)}>
+              <UserMinus size={18} aria-hidden="true" />
+            </IconButton>
+          ))}
+          {isManageable(emp) && !emp.temMovimento && (
+            <IconButton label={`Excluir cadastro de ${emp.nomeCompleto}`} size="sm" onClick={() => openLifecycle('delete', emp)} className="hover:text-danger">
+              <Trash2 size={18} aria-hidden="true" />
+            </IconButton>
+          )}
         </span>
       ),
     },
@@ -139,6 +173,14 @@ const Employees: React.FC = () => {
         onSave={handleSave}
         employeeToEdit={employeeToEdit}
       />
+
+      {lifecycleAction && (
+        <EmployeeLifecycleModal
+          action={lifecycleAction}
+          onClose={() => setLifecycleAction(null)}
+          onDone={handleLifecycleDone}
+        />
+      )}
 
       <PageHeader
         title="Colaboradores"

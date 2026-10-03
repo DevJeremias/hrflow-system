@@ -93,6 +93,10 @@ const Login: React.FC = () => {
               />
             </Field>
 
+            <p className="text-sm text-ink-muted">
+              <span className="font-semibold text-ink">Esqueceu a senha?</span> Procure o RH da sua empresa: ele redefine o seu acesso.
+            </p>
+
             {sessionNotice && !erro && (
               <div role="status" className="flex items-center gap-2 rounded-control border border-warning-line bg-warning-soft p-4 text-sm font-semibold text-warning">
                 <AlertCircle size={18} aria-hidden="true" className="shrink-0" />

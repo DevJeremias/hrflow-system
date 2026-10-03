@@ -15,6 +15,14 @@ export interface Employee {
   status: string;
   dataAdmissao: string;
   avatar?: string;
+
+  // Desligamento: preenchidos só para quem está Inativo.
+  dataDesligamento?: string;
+  motivoDesligamento?: string;
+  // Perfil do acesso vinculado (null: sem acesso). O RH só age sobre Colaborador.
+  perfilAcesso?: string | null;
+  // Com ponto ou justificativa o cadastro não pode ser excluído, só inativado.
+  temMovimento?: boolean;
   
   dataNascimento?: string;
   enderecoCompleto?: string;
@@ -50,6 +58,10 @@ const mapEmployee = (d: any): Employee => ({
   departamento: d.departamento_nome || d.departamento_id?.toString() || 'Não definido',
   departamentoId: d.departamento_id?.toString() || '',
   status: d.status || 'Ativo',
+  dataDesligamento: d.data_desligamento || '',
+  motivoDesligamento: d.motivo_desligamento || '',
+  perfilAcesso: d.usuario_perfil ?? null,
+  temMovimento: Boolean(d.tem_movimento),
   dataAdmissao: d.data_admissao ? d.data_admissao.split('T')[0] : '',
   dataNascimento: d.data_nascimento ? d.data_nascimento.split('T')[0] : '',
   enderecoCompleto: d.endereco || '',
@@ -61,6 +73,10 @@ const mapEmployee = (d: any): Employee => ({
   tipoContrato: d.tipo_contrato || 'CLT',
   salarioBase: d.salario_base || ''
 });
+
+export type StatusChange =
+  | { status: 'Ativo' | 'Férias' }
+  | { status: 'Inativo'; date: string; reason: string };
 
 export const employeeService = {
   getPage: async (pagina: number, limite: number): Promise<EmployeePage> => {
@@ -96,7 +112,6 @@ export const employeeService = {
       salario_base: data.salarioBase,
       cargo_id: data.cargoId ? Number(data.cargoId) : null,
       departamento_id: data.departamentoId ? Number(data.departamentoId) : null,
-      status: data.status || 'Ativo',
       // A API só usa a senha no cadastro; na edição o campo nem é exibido.
       ...(data.id ? {} : { senha: data.senhaAcesso })
     };
@@ -108,6 +123,29 @@ export const employeeService = {
       body: JSON.stringify(payload),
       errorMessage: (err) => err?.erro || 'Erro ao salvar colaborador'
     });
+  },
+
+  // Inativar é desligar: a API exige data e motivo e encerra as sessões da pessoa. Os demais
+  // status limpam os dois campos.
+  changeStatus: async (id: string, change: StatusChange): Promise<void> => {
+    await httpClient(`${API_URL}/${id}/status`, {
+      method: 'PATCH',
+      auth: true,
+      body: JSON.stringify(change.status === 'Inativo'
+        ? { status: change.status, data_desligamento: change.date, motivo_desligamento: change.reason }
+        : { status: change.status }),
+      errorMessage: (err) => err?.erro || 'Erro ao alterar a situação do colaborador'
+    });
+  },
+
+  // Devolve a senha provisória, que a API mostra uma única vez.
+  resetPassword: async (id: string): Promise<string> => {
+    const data = await httpClient<{ senhaProvisoria: string }>(`${API_URL}/${id}/redefinir-senha`, {
+      method: 'POST',
+      auth: true,
+      errorMessage: (err) => err?.erro || 'Erro ao redefinir a senha'
+    });
+    return data.senhaProvisoria;
   },
 
   delete: async (id: string): Promise<void> => {

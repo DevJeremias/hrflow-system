@@ -98,10 +98,10 @@ test('App.css não existe mais', () => {
   assert.deepEqual(codigo.filter((arquivo) => /App\.css/.test(fonte(arquivo))).map(nome), []);
 });
 
-// As rotas dentro do Layout (admin e portal) não têm <main> próprio; as públicas, que não passam pelo Layout, têm um cada.
-test('nenhuma página aninha <main>: só o Layout e as quatro páginas públicas o declaram', () => {
+// As rotas dentro do Layout (admin e portal) não têm <main> próprio; as que não passam pelo Layout têm um cada.
+test('nenhuma página aninha <main>: só o Layout e as páginas fora dele (públicas e troca de senha) o declaram', () => {
   const comMain = codigo.filter((arquivo) => /<main[\s>]/.test(fonte(arquivo))).map(nome).sort();
-  assert.deepEqual(comMain, ['layouts/Layout.tsx', 'pages/Auth/Login.tsx', 'pages/Landing/Home.tsx', 'pages/Legal/LegalPage.tsx']);
+  assert.deepEqual(comMain, ['layouts/Layout.tsx', 'pages/Auth/Login.tsx', 'pages/Auth/TrocarSenha.tsx', 'pages/Landing/Home.tsx', 'pages/Legal/LegalPage.tsx']);
 });
 
 test('todo <label> do código tem htmlFor e toda <img> tem alt', () => {
@@ -118,7 +118,7 @@ test('todo <label> do código tem htmlFor e toda <img> tem alt', () => {
 
 test('toda página de rota define o título da aba com usePageTitle', () => {
   const paginas = [
-    'pages/Landing/Home.tsx', 'pages/Auth/Login.tsx', 'pages/Legal/LegalPage.tsx',
+    'pages/Landing/Home.tsx', 'pages/Auth/Login.tsx', 'pages/Auth/TrocarSenha.tsx', 'pages/Legal/LegalPage.tsx',
     'pages/Admin/Dashboard.tsx', 'pages/Admin/Employees.tsx', 'pages/Admin/OrgStructure.tsx', 'pages/Admin/Payroll.tsx', 'pages/Admin/TimeTracking.tsx',
     'pages/Portal/EmployeeDashboard.tsx', 'pages/Portal/Payslips.tsx', 'pages/Portal/Requests.tsx', 'pages/Portal/Profile.tsx',
   ];

@@ -32,9 +32,10 @@ export const PersonalTab: React.FC<TabProps> = ({ formData, handleChange }) => (
       <Field label="Data de Nascimento" name="dataNascimento">
         <Input type="date" autoComplete="bday" value={formData.dataNascimento} onChange={handleChange} />
       </Field>
-      {/* A API só grava a senha no cadastro; depois dele, quem troca a senha é o próprio usuário no perfil. */}
+      {/* A senha só se define no cadastro, e é provisória: o colaborador a troca no primeiro acesso.
+          Depois dele, quem esqueceu a senha pede ao RH em "Redefinir senha". */}
       {!formData.id && (
-        <Field label="Senha de Acesso" name="senhaAcesso" required>
+        <Field label="Senha Provisória" name="senhaAcesso" required>
           <Input type="password" autoComplete="new-password" value={formData.senhaAcesso} onChange={handleChange} placeholder="········" />
         </Field>
       )}
@@ -51,8 +52,36 @@ interface WorkTabProps extends TabProps {
   departamentos?: Department[];
 }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
 export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos = [], departamentos = [] }) => (
   <div className="space-y-5">
+    {/* O cadastro novo nasce Ativo; a situação só se muda numa edição. */}
+    {formData.id && (
+      <div className="space-y-4 rounded-card border border-line bg-surface-muted p-4">
+        <Field label="Situação" name="status">
+          <Select value={formData.status} onChange={handleChange}>
+            <option value="Ativo">Ativo</option>
+            <option value="Férias">Férias</option>
+            <option value="Inativo">Inativo (desligado)</option>
+          </Select>
+        </Field>
+        {formData.status === 'Inativo' && (
+          <>
+            <p className="text-sm text-ink-muted">Inativar bloqueia o login e encerra as sessões abertas. O histórico de ponto é mantido.</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Data do desligamento" name="dataDesligamento" required>
+                <Input type="date" autoComplete="off" max={today()} value={formData.dataDesligamento ?? ''} onChange={handleChange} />
+              </Field>
+              <Field label="Motivo" name="motivoDesligamento" required>
+                <Input type="text" autoComplete="off" maxLength={255} value={formData.motivoDesligamento ?? ''} onChange={handleChange} placeholder="Ex.: pedido de demissão" />
+              </Field>
+            </div>
+          </>
+        )}
+      </div>
+    )}
+
     <Field label="Data de Admissão" name="dataAdmissao">
       <Input type="date" autoComplete="off" value={formData.dataAdmissao} onChange={handleChange} />
     </Field>

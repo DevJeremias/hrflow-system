@@ -9,7 +9,7 @@ import httpClient, {
   startSessionEpoch,
 } from '../services/httpClient';
 import { avisarAbas, observarSessao } from '../services/sessaoEntreAbas';
-import { User, lerSessao, rotaInicial } from '../utils/sessao';
+import { User, lerSessao, rotaDepoisDoLogin } from '../utils/sessao';
 
 export type { User };
 
@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSessionError(null);
       setSessionNotice(null);
       setUser(novo);
-      navigate(rotaInicial(novo.role), { replace: true });
+      navigate(rotaDepoisDoLogin(novo), { replace: true });
     },
     aoEncerrar: () => {
       clearSession();
@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSessionNotice(null);
       setUser(logged);
       avisarAbas('login');
-      navigate(rotaInicial(logged.role));
+      navigate(rotaDepoisDoLogin(logged));
     } catch (error) {
       clearSession();
       throw error;

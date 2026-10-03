@@ -26,6 +26,13 @@ const initialState: EmployeeForm = {
   banco: '', agencia: '', conta: '', tipoConta: ''
 };
 
+// O formulário só guarda texto: o que a tela de colaboradores sabe do cadastro e não se edita aqui
+// (perfil do acesso, se há movimento) fica de fora.
+const formFrom = (employee: Employee): EmployeeForm => ({
+  ...initialState,
+  ...Object.fromEntries(Object.entries(employee).filter(([, value]) => typeof value === 'string' || typeof value === 'number')),
+}) as EmployeeForm;
+
 // Campo da API (detalhes[].campo) -> aba e campo do formulário onde o RH corrige o valor.
 const CAMPOS_DA_API: Record<string, { tab: Tab; field: string }> = {
   nome: { tab: 'personal', field: 'nomeCompleto' },
@@ -36,6 +43,8 @@ const CAMPOS_DA_API: Record<string, { tab: Tab; field: string }> = {
   data_nascimento: { tab: 'personal', field: 'dataNascimento' },
   endereco: { tab: 'personal', field: 'enderecoCompleto' },
   data_admissao: { tab: 'work', field: 'dataAdmissao' },
+  data_desligamento: { tab: 'work', field: 'dataDesligamento' },
+  motivo_desligamento: { tab: 'work', field: 'motivoDesligamento' },
   cargo_id: { tab: 'work', field: 'cargoId' },
   nivel: { tab: 'work', field: 'nivel' },
   departamento_id: { tab: 'work', field: 'departamentoId' },
@@ -70,7 +79,7 @@ type ContentProps = Omit<Props, 'isOpen'>;
 // Monta junto com o modal: cada abertura começa com estado novo, sem efeito que o reinicie.
 const EmployeeModalContent: React.FC<ContentProps> = ({ onClose, onSave, employeeToEdit }) => {
   const confirmar = useConfirm();
-  const [initialForm] = useState<EmployeeForm>(() => (employeeToEdit ? { ...initialState, ...employeeToEdit } as EmployeeForm : initialState));
+  const [initialForm] = useState<EmployeeForm>(() => (employeeToEdit ? formFrom(employeeToEdit) : initialState));
   const [activeTab, setActiveTab] = useState<Tab>('personal');
   const [formData, setFormData] = useState<EmployeeForm>(initialForm);
   const [submitting, setSubmitting] = useState(false);
