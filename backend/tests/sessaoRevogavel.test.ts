@@ -5,17 +5,13 @@
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
-import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
-import { criarAuthRouter } from '../modules/auth/index.ts';
-import { pararServidor, subirServidor } from './support/servidor.ts';
+import { criarApp } from '../app.ts';
+import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
 
 // O que os testes leem das claims do token que o login emitiu.
 interface Claims extends jwt.JwtPayload {
@@ -55,30 +51,22 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         });
         assert.equal(criado.status, 201);
         const [[funcionario]] = await pool.query<RowDataPacket[]>('SELECT id FROM funcionarios WHERE email = ?', [email]);
+        // O cadastro nasce com senha provisória; estes cenários tratam de quem já escolheu a própria.
+        await pool.query('UPDATE usuarios SET senha_provisoria = FALSE WHERE funcionario_id = ?', [funcionario.id]);
         const entrada = await login(email, senha);
         assert.equal(entrada.status, 200);
         return { email, senha, funcionarioId: funcionario.id, token: entrada.token };
     };
 
-    const atualizarStatus = (colaborador: { funcionarioId: number; email: string }, status: string) => chamar('PUT', `/api/funcionarios/${colaborador.funcionarioId}`, tokenAdmin, {
-        nome: `Colaborador Ficticio ${colaborador.funcionarioId}`, email: colaborador.email, status,
-    });
+    const atualizarStatus = (colaborador: { funcionarioId: number }, status: string) => chamar('PATCH', `/api/funcionarios/${colaborador.funcionarioId}/status`, tokenAdmin,
+        status === 'Inativo' ? { status, data_desligamento: '2026-01-10', motivo_desligamento: 'Motivo ficticio' } : { status });
 
     const consultar = (token: string | undefined) => chamar('GET', '/api/perfil/meus-dados', token);
 
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use(express.json());
-        app.use('/api/auth', criarAuthRouter({
-            loginPorIp: { windowMs: 60_000, limit: 1000 },
-            loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
-            registroPorIp: { windowMs: 60_000, limit: 1000 },
-            registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
-        }));
-        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
-        app.use('/api/perfil', authMiddleware, perfilRoutes);
+        const app = criarApp({ limitesAuth: LIMITES_AUTH_FOLGADOS });
         ({ server, baseUrl } = await subirServidor(app));
 
         const registro = await chamar('POST', '/api/auth/registrar', null, {

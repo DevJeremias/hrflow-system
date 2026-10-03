@@ -3,7 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ZodType } from 'zod';
-import { criarFuncionario, atualizarFuncionario } from '../modules/funcionarios/funcionarios.schemas.ts';
+import { criarFuncionario, atualizarFuncionario, alterarStatus } from '../modules/funcionarios/funcionarios.schemas.ts';
 import { validarAvatar, TAMANHO_MAXIMO_BYTES } from '../modules/funcionarios/index.ts';
 import { dataUrl } from './support/imagens.ts';
 
@@ -93,20 +93,41 @@ describe('schema de cadastro de funcionário', () => {
 });
 
 describe('schema de edição de funcionário', () => {
-    it('assume Ativo quando o status não vem', () => {
-        assert.equal(aceita(atualizarFuncionario, edicaoValida()).status, 'Ativo');
-        assert.equal(aceita(atualizarFuncionario, { ...edicaoValida(), status: '' }).status, 'Ativo');
-    });
+    it('exige e-mail', () => recusa(atualizarFuncionario, { nome: 'Pessoa Ficticia' }, /E-mail é obrigatório/));
+    it('recusa a senha enviada junto, em vez de ignorá-la em silêncio', () => recusa(atualizarFuncionario, { ...edicaoValida(), senha: 'senha-ficticia' }, /Campo desconhecido: senha/));
+    it('recusa o status: ele só muda por PATCH /:id/status', () => recusa(atualizarFuncionario, { ...edicaoValida(), status: 'Inativo' }, /Campo desconhecido: status/));
+});
 
-    it('aceita os três status do banco', () => {
-        for (const status of ['Ativo', 'Inativo', 'Férias']) {
-            assert.equal(aceita(atualizarFuncionario, { ...edicaoValida(), status }).status, status);
+describe('schema de mudança de status', () => {
+    it('aceita Ativo e Férias sem data nem motivo', () => {
+        for (const status of ['Ativo', 'Férias']) {
+            assert.deepEqual(aceita(alterarStatus, { status }), { status, data_desligamento: null, motivo_desligamento: null });
         }
     });
 
-    it('recusa status fora do ENUM do banco', () => recusa(atualizarFuncionario, { ...edicaoValida(), status: 'Demitido' }, /Status deve ser um destes valores: Ativo, Inativo, Férias/));
-    it('exige e-mail', () => recusa(atualizarFuncionario, { nome: 'Pessoa Ficticia' }, /E-mail é obrigatório/));
-    it('recusa a senha enviada junto, em vez de ignorá-la em silêncio', () => recusa(atualizarFuncionario, { ...edicaoValida(), senha: 'senha-ficticia' }, /Campo desconhecido: senha/));
+    it('Inativo exige data e motivo do desligamento', () => {
+        assert.deepEqual(aceita(alterarStatus, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: ' Pedido de demissão ' }),
+            { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: 'Pedido de demissão' });
+        recusa(alterarStatus, { status: 'Inativo', motivo_desligamento: 'Fim do contrato' }, /Data do desligamento é obrigatória/);
+        recusa(alterarStatus, { status: 'Inativo', data_desligamento: '2026-09-30' }, /Motivo do desligamento é obrigatório/);
+        recusa(alterarStatus, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: '   ' }, /Motivo do desligamento é obrigatório/);
+    });
+
+    it('data e motivo só valem para Inativo', () => {
+        recusa(alterarStatus, { status: 'Ativo', data_desligamento: '2026-09-30' }, /só valem para o status Inativo/);
+        recusa(alterarStatus, { status: 'Férias', motivo_desligamento: 'Fim do contrato' }, /só valem para o status Inativo/);
+    });
+
+    it('recusa data inválida, futura e motivo longo demais', () => {
+        recusa(alterarStatus, { status: 'Inativo', data_desligamento: '30/09/2026', motivo_desligamento: 'x' }, /Data do desligamento deve ser uma data válida/);
+        recusa(alterarStatus, { status: 'Inativo', data_desligamento: '2999-01-01', motivo_desligamento: 'x' }, /Data do desligamento deve estar entre/);
+        recusa(alterarStatus, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: 'x'.repeat(256) }, /Motivo do desligamento deve ter no máximo 255/);
+    });
+
+    it('recusa status fora do ENUM do banco e campo desconhecido', () => {
+        recusa(alterarStatus, { status: 'Demitido' }, /Status deve ser um destes valores: Ativo, Inativo, Férias/);
+        recusa(alterarStatus, { status: 'Ativo', nome: 'x' }, /Campo desconhecido: nome/);
+    });
 });
 
 describe('validação do avatar', () => {

@@ -4,14 +4,13 @@
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
-import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
+import { criarApp } from '../app.ts';
 import { carregarFixtures } from '../shared/db/fixtures.ts';
-import { authRoutes } from '../modules/auth/index.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-ficticia-1';
@@ -42,8 +41,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
         const [usuarios] = await pool.query<RowDataPacket[]>('SELECT id, email, perfil, funcionario_id, empresa_id FROM usuarios');
         for (const u of usuarios) ids[u.email] = u;
 
-        const app = express();
-        app.use('/api/auth', authRoutes);
+        const app = criarApp();
         ({ server, baseUrl } = await subirServidor(app));
     });
 
@@ -59,7 +57,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
         assert.equal(status, 200);
         assert.deepEqual(corpo, {
             id: admin.id, perfil: 'Administrador', empresa_id: admin.empresa_id, empresa_nome: 'Empresa Ficticia Alfa Ltda',
-            funcionario_id: null, avatar: null, nome: 'Admin Alfa Ficticio',
+            funcionario_id: null, avatar: null, nome: 'Admin Alfa Ficticio', senha_provisoria: false,
         });
     });
 
@@ -82,7 +80,7 @@ describe('sessão canônica (GET /api/auth/sessao)', { skip: banco.skip }, () =>
 
     it('não expõe e-mail, senha nem hash', async () => {
         const { corpo } = await get(await entrar('dora@alfa.exemplo.invalid'));
-        assert.deepEqual(Object.keys(corpo).sort(), ['avatar', 'empresa_id', 'empresa_nome', 'funcionario_id', 'id', 'nome', 'perfil']);
+        assert.deepEqual(Object.keys(corpo).sort(), ['avatar', 'empresa_id', 'empresa_nome', 'funcionario_id', 'id', 'nome', 'perfil', 'senha_provisoria']);
     });
 
     describe('toda credencial inválida é 401', () => {
