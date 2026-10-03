@@ -51,7 +51,7 @@ describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, (
     before(async () => {
         await banco.preparar();
         pool = require('../config/db');
-        const bcrypt = require('bcryptjs');
+        const bcrypt = require('bcrypt');
         const [empresa] = await pool.query("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
         empresaId = empresa.insertId;
         const { usuario } = await criarUsuario(pool, {

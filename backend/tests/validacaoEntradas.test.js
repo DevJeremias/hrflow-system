@@ -63,7 +63,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
         cargoA = (await pool.query('SELECT MIN(id) AS id FROM cargos WHERE empresa_id = ?', [empresaA]))[0][0].id;
         cargoB = (await pool.query('SELECT MIN(id) AS id FROM cargos WHERE empresa_id = ?', [empresaB]))[0][0].id;
 
-        const senhaHash = await require('bcryptjs').hash('senha-atual-ficticia', 4);
+        const senhaHash = await require('bcrypt').hash('senha-atual-ficticia', 4);
         const admin = await criarUsuario(pool, { empresaId: empresaA, perfil: 'Administrador', senhaHash });
         usuarioAdmin = admin.usuario.id;
         tokens.adminA = admin.token;

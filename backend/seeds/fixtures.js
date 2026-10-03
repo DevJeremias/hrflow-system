@@ -2,7 +2,7 @@
 // funcionários cujos ids diferem por construção (nenhum usuario.id coincide com o
 // funcionario.id vinculado). Dados inventados; e-mails no domínio reservado .invalid.
 // Departamentos e cargos vêm do trigger de empresa nova (migration 0002).
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 
 const EMPRESAS = ['Empresa Ficticia Alfa Ltda', 'Empresa Ficticia Beta Ltda'];
 const EMAILS_FUNCIONARIOS = [

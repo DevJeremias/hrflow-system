@@ -5,7 +5,7 @@
 const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const banco = require('./support/bancoDeTeste');
 const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 

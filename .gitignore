@@ -4,6 +4,18 @@ node_modules/
 # Variáveis de ambiente (Senhas do banco, chaves JWT)
 .env
 
+# Saídas de build e de testes
+dist/
+coverage/
+
 # Logs e arquivos de sistema do SO
+*.log
 npm-debug.log
 .DS_Store
+
+# O gerenciador de pacotes do projeto é o npm (package-lock.json na raiz)
+bun.lock
+bun.lockb
+
+# Estado do Visual Studio
+.vs/
