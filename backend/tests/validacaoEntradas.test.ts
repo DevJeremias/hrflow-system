@@ -8,7 +8,7 @@ import type { AddressInfo } from 'node:net';
 import bcrypt from 'bcrypt';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
-import { dataUrl } from './support/imagens.ts';
+import { dataUrl, imagemReal } from './support/imagens.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
@@ -245,7 +245,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
                 assert.equal(paginas.length, 6);
                 assert.equal(new Set(paginas.map((p) => p.id)).size, 6, 'sem repetição entre páginas');
                 assert.ok(paginas.every((p) => p.empresa_id === empresaB));
-                assert.deepEqual(paginas.map((p) => p.id), [...paginas.map((p) => p.id)].sort((a, b) => a - b));
+                assert.deepEqual(paginas.map((p) => p.nome), [...paginas.map((p) => p.nome)].sort((a, b) => a.localeCompare(b)), 'em ordem alfabética');
                 assert.ok(total >= 1);
             });
 
@@ -365,7 +365,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
         const comoColaborador = () => ({ jwt: tokens.colaborador });
 
         it('grava o avatar em formato e tamanho válidos, e remove com string vazia', async () => {
-            const avatar = dataUrl('png', 2048);
+            const avatar = await imagemReal('png');
             const ok = await chamar('PUT', '/api/perfil/meus-dados', meusDados({ avatar }), comoColaborador());
             assert.equal(ok.status, 200);
             const [[linha]] = await pool.query<RowDataPacket[]>('SELECT avatar FROM funcionarios WHERE id = ?', [funcionarioColaborador]);

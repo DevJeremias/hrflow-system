@@ -1,46 +1,16 @@
 import httpClient from './httpClient';
+import type {
+  CorpoDeRegistroApi, DecisaoDeJustificativaApi, DiaDoHistoricoApi, JornadaApi, JustificativaApi, PontoDaEmpresaApi,
+  RegistroDePontoApi, StatusDaJustificativaApi, StatusDoDiaApi, TotaisDePontoApi, TotaisDoPeriodoApi, TotalSemanalApi,
+} from '../types/api';
 
 // src/services/pontoService.ts
 
-export interface PointRecord {
-  id: string;
-  type: 'Entrada' | 'Pausa Almoço' | 'Retorno Almoço' | 'Saída' | string;
-  time: string; 
-  date: string; 
-}
-
-export type DayStatus = 'ok' | 'atraso' | 'incompleto' | 'falta' | 'justificado' | 'fim_de_semana';
-
-export type JustificationStatus = 'pendente' | 'aprovada' | 'recusada';
-
-// `open` marca o dia ainda sem apuração (futuro, hoje sem saída ou antes da admissão); `delay` e os
-// ajustes são 'HH:MM'; `note*` é a justificativa do colaborador e o que o RH decidiu sobre ela.
-export interface HistoryDay {
-  id: string;
-  date: string; 
-  entry: string;
-  lunchOut: string;
-  lunchIn: string;
-  exit: string;
-  totalHours: string;
-  status: DayStatus;
-  open: boolean;
-  delay: string;
-  note: string;
-  noteStatus: JustificationStatus | null;
-  noteReply: string | null;
-  negativeAdjust: string;
-  positiveAdjust: string;
-}
-
-export interface CompanyPointRecord {
-  id: number;
-  funcionario_id: number;
-  tipo_registro: string;
-  nome_funcionario: string;
-  date: string;
-  time: string;
-}
+export type PointRecord = RegistroDePontoApi;
+export type DayStatus = StatusDoDiaApi;
+export type JustificationStatus = StatusDaJustificativaApi;
+export type HistoryDay = DiaDoHistoricoApi;
+export type CompanyPointRecord = PontoDaEmpresaApi;
 
 export interface CompanyPointQuery {
   mes: string;
@@ -54,52 +24,12 @@ export interface CompanyPointPage {
   total: number;
 }
 
-export interface PeriodTotals {
-  workloadLimit: string;
-  workloadDone: string;
-  pendingTime: string;
-  excessTime: string;
-  delayTime: string;
-  absences: number;
-  incompleteDays: number;
-}
-
-export interface WeeklyTotal extends PeriodTotals {
-  id: string;
-  weekLabel: string;
-}
-
-export interface WorkSchedule {
-  weeklyHours: number;
-  entry: string;
-  exit: string;
-  toleranceMinutes: number;
-}
-
-export interface MonthTotals {
-  workSchedule: WorkSchedule;
-  totals: WeeklyTotal[];
-  monthlySummary: PeriodTotals;
-}
-
-export interface Justification {
-  id: number;
-  funcionario_id: number;
-  nome_funcionario: string;
-  date: string;
-  note: string;
-  status: JustificationStatus;
-  reply: string | null;
-  decidedBy: string | null;
-  decidedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface JustificationDecision {
-  status: 'aprovada' | 'recusada';
-  resposta?: string;
-}
+export type PeriodTotals = TotaisDoPeriodoApi;
+export type WeeklyTotal = TotalSemanalApi;
+export type WorkSchedule = JornadaApi;
+export type MonthTotals = TotaisDePontoApi;
+export type Justification = JustificativaApi;
+export type JustificationDecision = DecisaoDeJustificativaApi;
 
 // A rota correta (no singular) do seu Back-end
 const API_URL = '/ponto'; 
@@ -124,23 +54,18 @@ export const pontoService = {
   },
 
   getRegistrosHoje: async (funcionarioId: number): Promise<PointRecord[]> => {
-    const data = await httpClient(`${API_URL}/hoje/${funcionarioId}`, { auth: true, errorMessage: 'Erro ao buscar os registros de hoje' });
+    const data = await httpClient<PointRecord[]>(`${API_URL}/hoje/${funcionarioId}`, { auth: true, errorMessage: 'Erro ao buscar os registros de hoje' });
     return Array.isArray(data) ? data : [];
   },
 
   registrar: async (type: string, localizacao?: { lat: number, lng: number }): Promise<PointRecord> => {
     // O servidor identifica o colaborador pelo token; o corpo não leva o id.
-    const res = await httpClient(`${API_URL}/registrar`, {
+    const corpo: CorpoDeRegistroApi = { tipo: type, latitude: localizacao?.lat, longitude: localizacao?.lng };
+    return await httpClient<PointRecord>(`${API_URL}/registrar`, {
       method: 'POST',
       auth: true,
-      body: JSON.stringify({ 
-        tipo: type, 
-        latitude: localizacao?.lat,
-        longitude: localizacao?.lng
-      })
+      body: JSON.stringify(corpo)
     });
-    
-    return res;
   },
 
   getHistoricoMes: async (funcionarioId: number, month: string): Promise<HistoryDay[]> => {
@@ -175,7 +100,7 @@ export const pontoService = {
 
   // Resolve com a justificativa já decidida; a recusa precisa do motivo (o servidor recusa sem ele).
   decidirJustificativa: async (id: number, decisao: JustificationDecision): Promise<Justification> => {
-    return await httpClient(`${API_URL}/justificativas/${id}`, {
+    return await httpClient<Justification>(`${API_URL}/justificativas/${id}`, {
       method: 'PATCH',
       auth: true,
       body: JSON.stringify(decisao)

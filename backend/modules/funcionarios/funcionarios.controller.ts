@@ -5,7 +5,7 @@ import * as service from './funcionarios.service.ts';
 import type { Ator } from './funcionarios.service.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { TipoDeErro } from './funcionarios.erros.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, IdDaRota, Paginacao } from './funcionarios.schemas.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, IdDaRota, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -38,7 +38,7 @@ const entradaDe = <T>(req: Request, parte: 'params' | 'body' | 'query'): T => {
 
 export const listarFuncionarios = async (req: Request, res: Response) => {
     try {
-        const { funcionarios, total } = await service.listarFuncionarios(empresaDe(req), entradaDe<Paginacao>(req, 'query'));
+        const { funcionarios, total } = await service.listarFuncionarios(empresaDe(req), entradaDe<ConsultaDeFuncionarios>(req, 'query'));
         enviarPagina(res, funcionarios, total);
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao buscar funcionários.');

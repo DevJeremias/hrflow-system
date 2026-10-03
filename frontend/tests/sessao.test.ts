@@ -1,7 +1,7 @@
 // Funções puras da sessão do front-end (SEC-08). Rodam no Node, sem navegador nem servidor.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lerSessao, ehGestao, rotaInicial, rotaDepoisDoLogin } from '../src/utils/sessao.ts';
+import { lerSessao, ehGestao, rotaInicial, rotaDepoisDoLogin, destinoDoLogin } from '../src/utils/sessao.ts';
 
 const sessaoValida = () => ({ id: 3, nome: 'Rita RH Ficticia', perfil: 'RH', funcionario_id: 1, empresa_nome: 'Empresa Ficticia Alfa Ltda', avatar: null });
 
@@ -65,4 +65,26 @@ test('quem tem senha provisória vai à troca, em qualquer perfil; os demais, à
     assert.equal(rotaDepoisDoLogin({ role, senhaProvisoria: true }), '/trocar-senha');
     assert.equal(rotaDepoisDoLogin({ role, senhaProvisoria: false }), rotaInicial(role));
   }
+});
+
+const rh = { role: 'RH', senhaProvisoria: false } as const;
+const admin = { role: 'Administrador', senhaProvisoria: false } as const;
+const colaborador = { role: 'Colaborador', senhaProvisoria: false } as const;
+
+test('destinoDoLogin devolve a tela interrompida e cai no painel do perfil sem ela', () => {
+  assert.equal(destinoDoLogin({ from: '/admin/folha' }, rh), '/admin/folha');
+  assert.equal(destinoDoLogin({ from: '/admin/gestao-ponto?mes=2026-10#topo' }, admin), '/admin/gestao-ponto?mes=2026-10#topo');
+  assert.equal(destinoDoLogin(null, rh), '/admin');
+  assert.equal(destinoDoLogin(undefined, colaborador), '/meu-painel');
+});
+
+test('destinoDoLogin só aceita caminho interno do app', () => {
+  for (const from of ['https://exemplo.invalid/admin', '//exemplo.invalid', '/\\exemplo.invalid', 'admin/folha', '/login', '/login?x=1', 42, null, {}]) {
+    assert.equal(destinoDoLogin({ from }, rh), '/admin', String(from));
+  }
+});
+
+test('com senha provisória o login só leva à troca, mesmo com uma tela guardada', () => {
+  assert.equal(destinoDoLogin({ from: '/admin/folha' }, { role: 'RH', senhaProvisoria: true }), '/trocar-senha');
+  assert.equal(destinoDoLogin(null, { role: 'Colaborador', senhaProvisoria: true }), '/trocar-senha');
 });

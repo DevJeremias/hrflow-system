@@ -1,6 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Mail, Phone, Building2, Lock, User as UserIcon, Camera, X, Save } from 'lucide-react';
-import { userService, PerfilUsuario, DadosEditaveis } from '../../services/userService';
+import { Mail, Phone, Camera, X, Save } from 'lucide-react';
+import type { PerfilUsuario, DadosEditaveis } from '../../services/userService';
+import { useAtualizarMeuPerfil } from '../../queries/perfil';
+import type { CorpoDeMeusDadosApi } from '../../types/api';
+import { enderecoDoAvatar } from '../../utils/sessao';
 import { mensagemDeErro } from '../../utils/erros';
 
 interface Props {
@@ -19,6 +22,7 @@ const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<DadosEditaveis>(() => dadosEditaveis(perfil));
   const [status, setStatus] = useState({ loading: false, erro: '', sucesso: '' });
+  const atualizar = useAtualizarMeuPerfil();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,11 +37,22 @@ const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
 
   const handleSalvar = async () => {
     setStatus({ loading: true, erro: '', sucesso: '' });
+    // A foto só viaja quando mudou: sem a chave, o servidor mantém a atual; '' a remove.
+    const avatarAtual = perfil.avatar ?? '';
+    const trocouAvatar = editForm.avatar !== avatarAtual;
+    const corpo: CorpoDeMeusDadosApi = {
+      nome: editForm.nome, email: editForm.email, telefone: editForm.telefone,
+      ...(trocouAvatar ? { avatar: editForm.avatar } : {}),
+    };
     try {
-      await userService.updateMyProfile(editForm);
+      await atualizar.mutateAsync(corpo);
+      // O data URL digitado vira o endereço da miniatura que o servidor passou a servir.
+      const avatar = !trocouAvatar || !editForm.avatar ? editForm.avatar : enderecoDoAvatar();
+      const atualizados = { ...editForm, avatar };
+      setEditForm(atualizados);
       setStatus({ loading: false, erro: '', sucesso: 'Dados atualizados!' });
       setIsEditing(false);
-      onUpdate(editForm);
+      onUpdate(atualizados);
       setTimeout(() => setStatus({ loading: false, erro: '', sucesso: '' }), 3000);
     } catch (error) {
       setStatus({ loading: false, erro: mensagemDeErro(error, 'Erro ao atualizar dados'), sucesso: '' });

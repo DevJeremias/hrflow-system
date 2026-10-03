@@ -1,3 +1,5 @@
+import type { ErroApi } from '../types/api';
+
 const API_BASE_URL = '/api';
 
 // A sessão é um cookie HttpOnly que o navegador envia sozinho: o JavaScript nunca vê o token.
@@ -54,7 +56,10 @@ export const setSessionExpiredHandler = (handler: (() => void) | null): void => 
   sessionExpiredHandler = handler;
 };
 
-type ErrorMessage = string | ((data: any, status: number) => string);
+// O corpo de uma resposta de erro, quando a API devolve JSON.
+type ErrorBody = ErroApi | undefined;
+
+type ErrorMessage = string | ((data: ErrorBody, status: number) => string);
 
 export interface HttpRequestOptions extends RequestInit {
   auth?: boolean;
@@ -65,9 +70,9 @@ export interface HttpRequestOptions extends RequestInit {
 
 export class HttpError extends Error {
   readonly status: number;
-  readonly data: any;
+  readonly data: ErrorBody;
 
-  constructor(message: string, status: number, data: any) {
+  constructor(message: string, status: number, data: ErrorBody) {
     super(message);
     this.name = 'HttpError';
     this.status = status;
@@ -80,7 +85,7 @@ export class HttpError extends Error {
   }
 }
 
-const parseResponse = async (response: Response): Promise<any> => {
+const parseResponse = async (response: Response): Promise<unknown> => {
   const text = await response.text();
   if (!text) return undefined;
 
@@ -91,7 +96,7 @@ const parseResponse = async (response: Response): Promise<any> => {
   }
 };
 
-export const httpClient = async <T = any>(path: string, options: HttpRequestOptions = {}): Promise<T> => {
+export const httpClient = async <T = unknown>(path: string, options: HttpRequestOptions = {}): Promise<T> => {
   const {
     auth = false, errorMessage, onResponse, timeoutMs = REQUEST_TIMEOUT_MS, headers: optionHeaders, signal: callerSignal, ...requestOptions
   } = options;
@@ -130,6 +135,8 @@ export const httpClient = async <T = any>(path: string, options: HttpRequestOpti
   }
 
   if (!response.ok) {
+    // Erro sem JSON (página HTML de um proxy, por exemplo) não carrega campos a ler.
+    const errorBody: ErrorBody = typeof data === 'object' && data !== null ? data as ErroApi : undefined;
     // Só encerra a sessão se ela ainda é a da época da chamada: uma resposta atrasada de um
     // login anterior não pode derrubar a sessão nova.
     if (response.status === 401 && auth && sessionEpoch === epoch) {
@@ -137,13 +144,13 @@ export const httpClient = async <T = any>(path: string, options: HttpRequestOpti
     }
 
     if (UNAVAILABLE_STATUSES.includes(response.status)) {
-      throw new HttpError(NETWORK_ERROR_MESSAGE, response.status, data);
+      throw new HttpError(NETWORK_ERROR_MESSAGE, response.status, errorBody);
     }
 
     const message = typeof errorMessage === 'function'
-      ? errorMessage(data, response.status)
-      : errorMessage || data?.mensagem || data?.erro || `Erro na requisição: ${response.status}`;
-    throw new HttpError(message, response.status, data);
+      ? errorMessage(errorBody, response.status)
+      : errorMessage || errorBody?.mensagem || errorBody?.erro || `Erro na requisição: ${response.status}`;
+    throw new HttpError(message, response.status, errorBody);
   }
 
   onResponse?.(response);

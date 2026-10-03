@@ -7,7 +7,8 @@ import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { novoQueryClient } from './support/consulta.ts';
 import { createServer, type ViteDevServer } from 'vite';
 import { mesAtualEmBelem } from '../src/utils/competencia.ts';
 
@@ -134,7 +135,7 @@ const montar = async (Tela: ComponentType) => {
   document.body.append(host);
   const root = createRoot(host);
   montados.push({ host, root });
-  const cliente = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const cliente = novoQueryClient();
   await act(async () => {
     root.render(createElement(QueryClientProvider, { client: cliente },
       createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));

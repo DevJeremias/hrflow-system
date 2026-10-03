@@ -4,11 +4,13 @@ import { formatarHoraDeBelem, type TipoPonto } from '../../utils/ponto';
 
 interface Props {
   isRegistering: boolean;
+  // Sem vínculo, ou enquanto o ponto de hoje carrega, nenhuma marcação pode ser feita.
+  disabled: boolean;
   proximosTipos: readonly TipoPonto[];
   onPunchClock: (tipo: TipoPonto) => void;
 }
 
-const DashboardPunchCard: React.FC<Props> = ({ isRegistering, proximosTipos, onPunchClock }) => {
+const DashboardPunchCard: React.FC<Props> = ({ isRegistering, disabled, proximosTipos, onPunchClock }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -40,7 +42,7 @@ const DashboardPunchCard: React.FC<Props> = ({ isRegistering, proximosTipos, onP
         ) : (
           <div className="space-y-3">
             {proximosTipos.map((tipo) => (
-              <button key={tipo} onClick={() => onPunchClock(tipo)} disabled={isRegistering} className="w-full relative group/btn overflow-hidden rounded-[2rem] bg-slate-900 text-white p-1 disabled:opacity-60">
+              <button key={tipo} onClick={() => onPunchClock(tipo)} disabled={disabled} className="w-full relative group/btn overflow-hidden rounded-[2rem] bg-slate-900 text-white p-1 disabled:opacity-60">
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-primary to-indigo-600 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-500"></div>
                 <div className="relative flex items-center justify-center gap-3 bg-slate-900 group-hover/btn:bg-opacity-0 px-8 py-6 rounded-[1.8rem] transition-all duration-300">
                   {isRegistering ? (

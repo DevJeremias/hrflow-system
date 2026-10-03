@@ -10,7 +10,7 @@ interface Props {
 
 const OrgRolesTable: React.FC<Props> = ({ roles, onEdit, onDelete }) => {
   const getLevelClass = (level: string | null) => {
-    const classes: any = {
+    const classes: Record<string, string> = {
       'Júnior': 'bg-blue-50 text-blue-600',
       'Pleno': 'bg-purple-50 text-purple-600',
       'Sênior': 'bg-indigo-50 text-indigo-600',

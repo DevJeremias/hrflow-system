@@ -4,8 +4,9 @@ import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { createServer, type ViteDevServer } from 'vite';
+import { novoQueryClient } from './support/consulta.ts';
 
 const EMAIL_DUPLICADO = 'Este e-mail já está registado no sistema.';
 const CARGOS = [
@@ -89,7 +90,7 @@ const montar = async (Tela: ComponentType) => {
   const root = createRoot(host);
   montados.push({ host, root });
   await act(async () => {
-    root.render(createElement(QueryClientProvider, { client: new QueryClient() },
+    root.render(createElement(QueryClientProvider, { client: novoQueryClient() },
       createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));
   });
   await esperar();

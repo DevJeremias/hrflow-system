@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Search, Edit2, Trash2, KeyRound, UserMinus, UserCheck, Lock } from 'lucide-react';
-import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
+import { Employee, EmployeeForm } from '../../services/employeeService';
+import { useFuncionarios, useInvalidarPorColaboradores, useSalvarColaborador } from '../../queries/funcionarios';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import EmployeeLifecycleModal, { LifecycleAction, LifecycleKind } from '../../components/Admin/EmployeeLifecycleModal';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -9,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { podeGerirCadastro, motivoDeNegacaoDoCadastro } from '../../utils/permissoes';
 
 const PAGE_SIZE = 50;
+const ATRASO_DA_BUSCA_MS = 300;
 
 // 'AAAA-MM-DD' -> 'DD/MM/AAAA', sem passar por Date (o fuso moveria o dia).
 const formatDate = (isoDate: string) => isoDate.split('-').reverse().join('/');
@@ -19,64 +21,49 @@ const Employees: React.FC = () => {
   // nem o de RH ou Administrador. Situação, senha e exclusão valem para os outros, nunca para o próprio cadastro.
   const canEdit = (employee: Employee) => podeGerirCadastro(user, employee);
   const isManageable = (employee: Employee) => canEdit(employee) && !(user?.funcionarioId != null && String(user.funcionarioId) === employee.id);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [totalEmployees, setTotalEmployees] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [busca, setBusca] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const [lifecycleAction, setLifecycleAction] = useState<LifecycleAction | null>(null);
 
-  const loadEmployees = useCallback(async (requestedPage: number) => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const result = await employeeService.getPage(requestedPage, PAGE_SIZE);
-      setEmployees(result.employees);
-      setTotalEmployees(result.total);
-      setPage(requestedPage);
-    } catch (error) {
-      setLoadError(mensagemDeErro(error, 'Erro ao buscar colaboradores'));
-      setEmployees([]);
-      setTotalEmployees(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // A busca vai ao servidor depois de uma pausa na digitação: encontra qualquer colaborador da
+  // empresa, não só os da página aberta.
   useEffect(() => {
-    Promise.resolve().then(() => loadEmployees(1));
-  }, [loadEmployees]);
+    const termo = searchTerm.trim();
+    if (termo === busca) return undefined;
+    const timer = setTimeout(() => {
+      setBusca(termo);
+      setPage(1);
+    }, ATRASO_DA_BUSCA_MS);
+    return () => clearTimeout(timer);
+  }, [searchTerm, busca]);
+
+  const { data, error, isPending, isPlaceholderData, refetch } = useFuncionarios({ pagina: page, limite: PAGE_SIZE, busca });
+  const salvar = useSalvarColaborador();
+  const invalidar = useInvalidarPorColaboradores();
+
+  const employees = data?.employees ?? [];
+  const totalEmployees = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalEmployees / PAGE_SIZE));
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar colaboradores') : null;
+  const loading = isPending;
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
   // Os dados vão por PUT; a situação (Férias, Inativo com data e motivo) só muda por PATCH.
   const handleSave = async (employeeData: EmployeeForm) => {
-    await employeeService.save(employeeData);
-    if (employeeToEdit) {
-      const { status = 'Ativo', dataDesligamento = '', motivoDesligamento = '' } = employeeData;
-      const changed = status !== employeeToEdit.status
-        || (status === 'Inativo' && (dataDesligamento !== employeeToEdit.dataDesligamento || motivoDesligamento !== employeeToEdit.motivoDesligamento));
-      if (changed) {
-        await employeeService.changeStatus(employeeToEdit.id, status === 'Inativo'
-          ? { status, date: dataDesligamento, reason: motivoDesligamento.trim() }
-          : { status: status as 'Ativo' | 'Férias' });
-      }
-    }
-    await loadEmployees(page);
+    await salvar.mutateAsync({ dados: employeeData, original: employeeToEdit });
     setIsModalOpen(false);
   };
 
   const openLifecycle = (kind: LifecycleKind, employee: Employee) => setLifecycleAction({ kind, employee });
 
   // A página pode esvaziar com a exclusão: volta para a anterior.
-  const handleLifecycleDone = () => loadEmployees(page - (lifecycleAction?.kind === 'delete' && employees.length === 1 && page > 1 ? 1 : 0));
-
-  const filteredEmployees = employees.filter(emp => 
-    emp.nomeCompleto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.cargo?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleLifecycleDone = async () => {
+    if (lifecycleAction?.kind === 'delete' && employees.length === 1 && page > 1) setPage(page - 1);
+    await invalidar();
+  };
 
   const getStatusColor = (status: string) => {
     const statusColors: Record<string, string> = {
@@ -123,7 +110,7 @@ const Employees: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input 
             type="text"
-            placeholder="Buscar nesta página por nome ou cargo..."
+            placeholder="Buscar por nome, e-mail, CPF, cargo ou setor..."
             className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -131,10 +118,10 @@ const Employees: React.FC = () => {
         </div>
       </div>
 
-      {loadError && <ErrorAlert message={loadError} onRetry={() => loadEmployees(page)} />}
+      {loadError && <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />}
 
       {!loadError && (
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+      <div aria-busy={isPlaceholderData} className={`bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -154,17 +141,13 @@ const Employees: React.FC = () => {
                     <td colSpan={4} className="py-6 px-6"><div className="h-4 bg-slate-100 rounded w-full"></div></td>
                   </tr>
                 ))
-              ) : filteredEmployees.length > 0 ? (
-                filteredEmployees.map(emp => (
+              ) : employees.length > 0 ? (
+                employees.map(emp => (
                   <tr key={emp.id} className="group hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm overflow-hidden">
-                          {emp.avatar ? (
-                            <img src={emp.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                          ) : (
-                            emp.nomeCompleto?.charAt(0) || 'U'
-                          )}
+                          {emp.nomeCompleto?.charAt(0) || 'U'}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900">{emp.nomeCompleto}</p>
@@ -257,19 +240,19 @@ const Employees: React.FC = () => {
       {!loadError && !loading && (
         <div className="flex items-center justify-between gap-4 text-sm text-slate-600">
           <span>
-            {totalEmployees === 0 ? 'Nenhum colaborador' : `Página ${page} de ${Math.ceil(totalEmployees / PAGE_SIZE)} · ${totalEmployees} colaboradores`}
+            {totalEmployees === 0 ? 'Nenhum colaborador' : `Página ${page} de ${totalPages} · ${totalEmployees} colaboradores`}
           </span>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => loadEmployees(page - 1)}
+              onClick={() => setPage(page - 1)}
               disabled={page <= 1}
               className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
             >Anterior</button>
             <button
               type="button"
-              onClick={() => loadEmployees(page + 1)}
-              disabled={page >= Math.ceil(totalEmployees / PAGE_SIZE)}
+              onClick={() => setPage(page + 1)}
+              disabled={page >= totalPages}
               className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
             >Próxima</button>
           </div>

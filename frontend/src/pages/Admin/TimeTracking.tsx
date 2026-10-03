@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
-import { pontoService, type CompanyPointRecord } from '../../services/pontoService';
+import { usePontoDaEmpresa } from '../../queries/ponto';
 import ErrorAlert from '../../components/ErrorAlert';
 import JustificativasPonto from '../../components/Admin/JustificativasPonto';
 import { mensagemDeErro } from '../../utils/erros';
@@ -17,21 +17,12 @@ const ABAS: Array<{ id: Aba; rotulo: string }> = [
   { id: 'justificativas', rotulo: 'Justificativas' },
 ];
 
-interface Resultado {
-  chave: string;
-  registros: CompanyPointRecord[];
-  total: number;
-  erro: string | null;
-}
-
 export default function TimeTracking() {
   const [aba, setAba] = useState<Aba>('marcacoes');
-  const [resultado, setResultado] = useState<Resultado | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [busca, setBusca] = useState('');
   const [monthFilter, setMonthFilter] = useState(mesAtualEmBelem);
   const [pagina, setPagina] = useState(1);
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const termo = searchTerm.trim();
@@ -43,26 +34,19 @@ export default function TimeTracking() {
     return () => clearTimeout(timer);
   }, [searchTerm, busca]);
 
-  const chave = `${monthFilter}|${busca}|${pagina}|${reloadKey}`;
+  const { data, error, isPending, isPlaceholderData, refetch } = usePontoDaEmpresa({
+    mes: monthFilter, pagina, limite: TAMANHO_DA_PAGINA, busca,
+  });
 
-  useEffect(() => {
-    let ativo = true;
-    const pronto = (parcial: Omit<Resultado, 'chave'>) => { if (ativo) setResultado({ chave, ...parcial }); };
-    pontoService.getRegistrosDaEmpresa({ mes: monthFilter, pagina, limite: TAMANHO_DA_PAGINA, busca })
-      .then((dados) => pronto({ ...dados, erro: null }))
-      .catch((error) => pronto({ registros: [], total: 0, erro: mensagemDeErro(error, 'Erro ao buscar os registros de ponto') }));
-    return () => { ativo = false; };
-  }, [chave, monthFilter, pagina, busca]);
-
-  const loading = resultado?.chave !== chave;
-  const loadError = loading ? null : resultado.erro;
-  const registros = loading ? [] : resultado.registros;
-  const total = loading ? 0 : resultado.total;
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar os registros de ponto') : null;
+  const registros = data?.registros ?? [];
+  const total = data?.total ?? 0;
   const totalDePaginas = Math.max(1, Math.ceil(total / TAMANHO_DA_PAGINA));
 
   const colaboradores = new Set(registros.map((registro) => registro.funcionario_id)).size;
   const diasMonitorados = new Set(registros.map((registro) => registro.date)).size;
-  const retry = () => setReloadKey((key) => key + 1);
+  const retry = () => { refetch(); };
   const trocarMes = (mes: string) => {
     setMonthFilter(mes);
     setPagina(1);
@@ -111,7 +95,7 @@ export default function TimeTracking() {
           <SummaryCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={28} />} color="rose" />
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+        <div aria-busy={isPlaceholderData} className={`bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}>
           <div className="p-6 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50/50">
             <div className="relative w-full md:w-96">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />

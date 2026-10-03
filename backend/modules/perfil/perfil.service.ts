@@ -3,6 +3,7 @@
 import bcrypt from 'bcrypt';
 import * as repositorio from './perfil.repository.ts';
 import { ErroDePerfil } from './perfil.erros.ts';
+import { gerarMiniatura } from './perfil.miniatura.ts';
 import type { CorpoDeAlterarSenha, CorpoDeAtualizarMeusDados } from './perfil.schemas.ts';
 
 // Sem funcionário vinculado não há cargo nem departamento reais: o Administrador de conta
@@ -62,15 +63,18 @@ interface DadosDeAtualizacao {
 export const atualizarMeusDados = async ({ usuarioId, funcionarioId, empresaId, corpo }: DadosDeAtualizacao): Promise<void> => {
     const { nome, email, telefone, avatar } = corpo;
 
+    // A miniatura sai antes da transação: decodificar a imagem é trabalho de CPU e não deve segurar uma conexão.
+    const mudancaDeAvatar = typeof avatar === 'string' ? { original: avatar, miniatura: await gerarMiniatura(avatar) } : avatar;
+
     await repositorio.emTransacao(async (repo) => {
         if (await repo.emailEmUsoPorOutro(email, usuarioId)) {
             throw new ErroDePerfil('invalido', 'E-mail já utilizado por outra conta.');
         }
 
         // A conta de acesso vale para qualquer perfil; o cadastro de RH só existe para quem tem funcionário.
-        await repo.atualizarUsuario({ usuarioId, empresaId, nome, email, avatar });
+        await repo.atualizarUsuario({ usuarioId, empresaId, nome, email, avatar: mudancaDeAvatar });
         if (funcionarioId) {
-            await repo.atualizarFuncionario({ funcionarioId, empresaId, nome, email, telefone, avatar });
+            await repo.atualizarFuncionario({ funcionarioId, empresaId, nome, email, telefone, avatar: mudancaDeAvatar });
         }
     });
 };
@@ -83,4 +87,20 @@ export const alterarMinhaSenha = async (usuarioId: number, { senhaAtual, novaSen
     if (await bcrypt.compare(novaSenha, hash)) throw new ErroDePerfil('invalido', 'A nova senha deve ser diferente da atual.');
 
     await repositorio.trocarSenha(usuarioId, await bcrypt.hash(novaSenha, CUSTO_DO_HASH));
+};
+
+// A miniatura do avatar. Quem enviou a foto antes de a miniatura existir tem só o original: ela é
+// gerada na primeira leitura e guardada.
+export const obterMeuAvatar = async (usuarioId: number, empresaId: number): Promise<Buffer> => {
+    const avatar = await repositorio.avatarDoUsuario(usuarioId, empresaId);
+    if (avatar?.avatar_miniatura) return avatar.avatar_miniatura;
+    if (!avatar?.tem_original) throw new ErroDePerfil('inexistente', 'Você ainda não tem avatar.');
+
+    const original = await repositorio.avatarOriginal(usuarioId, empresaId);
+    if (!original) throw new ErroDePerfil('inexistente', 'Você ainda não tem avatar.');
+    const miniatura = await gerarMiniatura(original).catch(() => {
+        throw new ErroDePerfil('inexistente', 'O avatar gravado não pôde ser lido. Envie outra foto.');
+    });
+    await repositorio.gravarMiniatura(usuarioId, empresaId, miniatura);
+    return miniatura;
 };

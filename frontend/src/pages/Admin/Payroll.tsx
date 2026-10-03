@@ -1,67 +1,45 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Filter, CalendarDays, Lock, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { getPayroll, processPayroll, closePayroll, MonthlyPayroll } from '../../services/payrollService';
+import { useAcaoDaFolha, useFolhaDaCompetencia } from '../../queries/folha';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 import { mesAtualEmBelem, rotuloDaCompetencia, formatarMomento } from '../../utils/competencia';
 
-type Acao = 'processar' | 'fechar';
-
 const Payroll: React.FC = () => {
   const [competencia, setCompetencia] = useState(mesAtualEmBelem);
-  const [folha, setFolha] = useState<MonthlyPayroll | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [acao, setAcao] = useState<Acao | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [confirmandoFechamento, setConfirmandoFechamento] = useState(false);
   const [deptFilter, setDeptFilter] = useState('Todos');
-  const [reloadKey, setReloadKey] = useState(0);
-  // Uma resposta que chega depois de o RH trocar o mês não pode sobrescrever a folha do mês novo.
-  const competenciaDaTela = useRef(competencia);
+
+  const { data, error, isPending, refetch } = useFolhaDaCompetencia(competencia);
+  const processar = useAcaoDaFolha(competencia, 'processar');
+  const fechar = useAcaoDaFolha(competencia, 'fechar');
+  const folha = data ?? null;
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar a folha de pagamento') : null;
+  const acao = processar.isPending ? 'processar' : fechar.isPending ? 'fechar' : null;
+  const falhaDaAcao = processar.error ?? fechar.error;
+  const actionError = falhaDaAcao ? mensagemDeErro(falhaDaAcao, 'Não foi possível concluir a operação.') : null;
 
   const trocarCompetencia = (nova: string) => {
-    competenciaDaTela.current = nova;
     setCompetencia(nova);
-    setFolha(null);
-    setLoading(true);
-    setLoadError(null);
-    setActionError(null);
+    processar.reset();
+    fechar.reset();
     setConfirmandoFechamento(false);
     setDeptFilter('Todos');
   };
 
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((k) => k + 1);
-  };
+  const retry = () => { refetch(); };
 
-  useEffect(() => {
-    let ativo = true;
-    getPayroll(competencia)
-      .then((dados) => { if (ativo) setFolha(dados); })
-      .catch((error) => { if (ativo) { setFolha(null); setLoadError(mensagemDeErro(error, 'Erro ao buscar a folha de pagamento')); } })
-      .finally(() => { if (ativo) setLoading(false); });
-    return () => { ativo = false; };
-  }, [competencia, reloadKey]);
-
-  const executar = async (qual: Acao, operacao: (mes: string) => Promise<MonthlyPayroll>) => {
-    const mes = competencia;
-    setAcao(qual);
-    setActionError(null);
+  const executar = async (qual: 'processar' | 'fechar') => {
+    processar.reset();
+    fechar.reset();
     try {
-      const resultado = await operacao(mes);
-      if (competenciaDaTela.current === mes) {
-        setFolha(resultado);
-        setConfirmandoFechamento(false);
-      }
-    } catch (error) {
-      if (competenciaDaTela.current === mes) setActionError(mensagemDeErro(error, 'Não foi possível concluir a operação.'));
-    } finally {
-      setAcao(null);
+      await (qual === 'processar' ? processar : fechar).mutateAsync();
+      setConfirmandoFechamento(false);
+    } catch {
+      // O erro aparece na tela por actionError.
     }
   };
 
@@ -80,7 +58,7 @@ const Payroll: React.FC = () => {
     }), { gross: 0, deductions: 0, net: 0, charges: 0 });
   }, [displayedPayrolls]);
 
-  const departmentsList = Array.from(new Set((itens ?? []).map(p => p.department)));
+  const departmentsList = useMemo(() => Array.from(new Set((itens ?? []).map(p => p.department))), [itens]);
   const rotulo = rotuloDaCompetencia(competencia);
   const fechada = folha?.status === 'fechada';
 
@@ -124,7 +102,7 @@ const Payroll: React.FC = () => {
         <div className="py-16 text-center flex flex-col items-center gap-4 bg-white rounded-3xl border border-slate-100 shadow-sm">
           <p className="text-slate-600 font-bold text-lg">A folha de {rotulo} ainda não foi processada.</p>
           <p className="text-slate-400 font-medium text-sm max-w-md">Ao processar, o sistema calcula o holerite de cada colaborador com o cadastro de agora. Você confere antes de fechar o mês.</p>
-          <button type="button" onClick={() => executar('processar', processPayroll)} disabled={acao !== null}
+          <button type="button" onClick={() => executar('processar')} disabled={acao !== null}
             className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-primary text-white text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60">
             <RefreshCw size={16} /> {acao === 'processar' ? 'Processando...' : 'Processar folha'}
           </button>
@@ -146,7 +124,7 @@ const Payroll: React.FC = () => {
             </div>
             {!fechada && (
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => executar('processar', processPayroll)} disabled={acao !== null}
+                <button type="button" onClick={() => executar('processar')} disabled={acao !== null}
                   className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60">
                   <RefreshCw size={16} /> {acao === 'processar' ? 'Processando...' : 'Processar novamente'}
                 </button>
@@ -166,7 +144,7 @@ const Payroll: React.FC = () => {
                 {folha.pendencias.length > 0 && ` ${folha.pendencias.length} colaborador(es) sem salário ficarão sem holerite neste mês.`}
               </p>
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => executar('fechar', closePayroll)} disabled={acao !== null}
+                <button type="button" onClick={() => executar('fechar')} disabled={acao !== null}
                   className="px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-60">
                   {acao === 'fechar' ? 'Fechando...' : 'Confirmar fechamento'}
                 </button>

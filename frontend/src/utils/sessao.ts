@@ -17,6 +17,16 @@ export const ROTA_TROCA_DE_SENHA = '/trocar-senha';
 export const rotaDepoisDoLogin = (usuario: Pick<User, 'role' | 'senhaProvisoria'>): string =>
   (usuario.senhaProvisoria ? ROTA_TROCA_DE_SENHA : rotaInicial(usuario.role));
 
+// Para onde o login leva: à troca de senha, se a senha é provisória; senão, de volta à tela que o
+// ProtectedRoute interrompeu (guardada em `state.from`) ou, sem ela, ao painel do perfil. Só
+// caminho interno do app é aceito.
+export const destinoDoLogin = (estado: unknown, usuario: Pick<User, 'role' | 'senhaProvisoria'>): string => {
+  if (usuario.senhaProvisoria) return ROTA_TROCA_DE_SENHA;
+  const origem = (estado as { from?: unknown } | null | undefined)?.from;
+  const interno = typeof origem === 'string' && origem.startsWith('/') && !origem.startsWith('//') && !origem.startsWith('/\\');
+  return interno && origem !== '/login' && !origem.startsWith('/login?') ? origem : rotaInicial(usuario.role);
+};
+
 export interface User {
   id: number;
   nome: string;
@@ -49,3 +59,7 @@ export const lerSessao = (dados: unknown): User | null => {
   // Ausente vale como falso: uma API anterior a este campo nunca marcou senha provisória.
   return { id, nome, role: perfil, funcionarioId, empresaNome, avatar: avatar ?? null, senhaProvisoria: senhaProvisoria === true };
 };
+
+// A API serve a miniatura do avatar em um endereço fixo; `versao` força o navegador a buscar de novo
+// quando a foto acabou de mudar.
+export const enderecoDoAvatar = (versao: number = Date.now()): string => `/api/perfil/avatar?v=${versao}`;

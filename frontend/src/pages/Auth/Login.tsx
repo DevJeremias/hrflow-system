@@ -4,8 +4,9 @@ import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; 
 import { HttpError } from '../../services/httpClient';
 import { mensagemDeLimite } from '../../utils/espera';
+import { mensagemDeErro } from '../../utils/erros';
 import logo from '../../assets/logo.png';
-import loginImagem from '../../assets/login_imagem2.png';
+import loginImagem from '../../assets/login_imagem2.webp';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -22,8 +23,8 @@ const Login: React.FC = () => {
 
     try {
       await login(email, senha);
-    } catch (error: any) {
-      const mensagem = error.message || 'Erro ao realizar login.';
+    } catch (error) {
+      const mensagem = mensagemDeErro(error, 'Erro ao realizar login.');
       setErro(error instanceof HttpError && error.status === 429 ? mensagemDeLimite(error.data, mensagem) : mensagem);
     } finally {
       setIsSubmitting(false); 

@@ -1,15 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Briefcase, Plus, BuildingIcon } from 'lucide-react';
-import { 
-  saveDepartment, 
-  saveRole,
-  getDepartments, 
-  getRoles, 
-  deleteRole,
-  deleteDepartment,
-  Department, 
-  Role 
-} from '../../services/departmentsRolesService';
+import type { Department, DepartmentForm, Role, RoleForm } from '../../services/departmentsRolesService';
+import {
+  useCargos, useDepartamentos, useExcluirCargo, useExcluirDepartamento, useSalvarCargo, useSalvarDepartamento,
+} from '../../queries/estrutura';
 import DepartmentCard from '../../components/Admin/OrgDepartmentCard';
 import RolesTable from '../../components/Admin/OrgRolesTable';
 import FormModal from '../../components/Admin/OrgFormModal';
@@ -18,68 +12,55 @@ import { mensagemDeErro } from '../../utils/erros';
 
 const DepartmentsRoles: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'depts' | 'roles'>('depts');
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState('Todos');
 
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     type: 'department' | 'role';
-    item: any;
+    item: Department | Role | null;
   }>({
     isOpen: false,
     type: 'department',
     item: null
   });
 
-  const loadData = async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const [deptsData, rolesData] = await Promise.all([
-        getDepartments(),
-        getRoles()
-      ]);
-      setDepartments(deptsData);
-      setRoles(rolesData);
-    } catch (error) {
-      setLoadError(mensagemDeErro(error, 'Erro ao carregar estrutura organizacional'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const departamentos = useDepartamentos();
+  const cargos = useCargos();
+  const salvarDepartamento = useSalvarDepartamento();
+  const salvarCargo = useSalvarCargo();
+  const excluirDepartamento = useExcluirDepartamento();
+  const excluirCargo = useExcluirCargo();
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const departments = departamentos.data ?? [];
+  const roles = cargos.data ?? [];
+  const loading = departamentos.isPending || cargos.isPending;
+  const falha = departamentos.error ?? cargos.error;
+  const loadError = falha ? mensagemDeErro(falha, 'Erro ao carregar estrutura organizacional') : null;
+  const reload = () => { departamentos.refetch(); cargos.refetch(); };
 
   const filteredRoles = roleFilter === 'Todos' 
     ? roles 
     : roles.filter(r => r.departmentId === roleFilter);
 
-  const handleOpenModal = (type: 'department' | 'role', item: any = null) => {
+  const handleOpenModal = (type: 'department' | 'role', item: Department | Role | null = null) => {
     setModalConfig({ isOpen: true, type, item });
   };
 
   // O erro sobe até o modal, que o mostra junto ao formulário e mantém o que foi digitado.
-  const handleSave = async (data: any) => {
-    if (modalConfig.type === 'department') {
-      await saveDepartment(data);
+  const handleSave = async (data: DepartmentForm | RoleForm) => {
+    if ('title' in data) {
+      await salvarCargo.mutateAsync(data);
     } else {
-      await saveRole(data);
+      await salvarDepartamento.mutateAsync(data);
     }
 
-    await loadData();
     setModalConfig({ ...modalConfig, isOpen: false });
   };
 
   const handleDeleteDepartment = async (dept: Department) => {
     if (window.confirm(`Tem a certeza que deseja excluir o departamento "${dept.name}"?`)) {
       try {
-        await deleteDepartment(dept.id);
-        await loadData();
+        await excluirDepartamento.mutateAsync(dept.id);
       } catch (error) {
         alert(mensagemDeErro(error, "Erro ao excluir departamento."));
       }
@@ -89,10 +70,9 @@ const DepartmentsRoles: React.FC = () => {
   const handleDeleteRole = async (role: Role) => {
     if (window.confirm(`Tem a certeza que deseja excluir o cargo "${role.title}"?`)) {
       try {
-        await deleteRole(role.id);
-        await loadData();
-      } catch (error: any) {
-        alert(error.message || "Erro ao excluir cargo.");
+        await excluirCargo.mutateAsync(role.id);
+      } catch (error) {
+        alert(mensagemDeErro(error, "Erro ao excluir cargo."));
       }
     }
   };
@@ -139,7 +119,7 @@ const DepartmentsRoles: React.FC = () => {
             <p className="font-bold">A carregar estrutura...</p>
           </div>
         ) : loadError ? (
-          <ErrorAlert message={loadError} onRetry={loadData} />
+          <ErrorAlert message={loadError} onRetry={reload} />
         ) : activeTab === 'depts' ? (
           /* Visão de Departamentos (Cards) */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
