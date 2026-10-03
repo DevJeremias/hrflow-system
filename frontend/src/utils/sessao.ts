@@ -7,14 +7,6 @@ const PERFIS_DE_GESTAO: readonly Perfil[] = ['Administrador', 'RH'];
 export const ehGestao = (perfil: Perfil | undefined): boolean =>
   perfil !== undefined && PERFIS_DE_GESTAO.includes(perfil);
 
-// Para onde o login leva: de volta à tela que o ProtectedRoute interrompeu (guardada em
-// `state.from`) ou, sem ela, ao painel do perfil. Só caminho interno do app é aceito.
-export const destinoDoLogin = (estado: unknown, perfil: Perfil): string => {
-  const origem = (estado as { from?: unknown } | null | undefined)?.from;
-  const interno = typeof origem === 'string' && origem.startsWith('/') && !origem.startsWith('//') && !origem.startsWith('/\\');
-  return interno && origem !== '/login' && !origem.startsWith('/login?') ? origem : rotaInicial(perfil);
-};
-
 export const rotaInicial = (perfil: Perfil): string => (ehGestao(perfil) ? '/admin' : '/meu-painel');
 
 // Quem entrou com a senha que o RH definiu só pode trocá-la: o servidor recusa o resto (403).
@@ -22,6 +14,16 @@ export const ROTA_TROCA_DE_SENHA = '/trocar-senha';
 
 export const rotaDepoisDoLogin = (usuario: Pick<User, 'role' | 'senhaProvisoria'>): string =>
   (usuario.senhaProvisoria ? ROTA_TROCA_DE_SENHA : rotaInicial(usuario.role));
+
+// Para onde o login leva: à troca de senha, se a senha é provisória; senão, de volta à tela que o
+// ProtectedRoute interrompeu (guardada em `state.from`) ou, sem ela, ao painel do perfil. Só
+// caminho interno do app é aceito.
+export const destinoDoLogin = (estado: unknown, usuario: Pick<User, 'role' | 'senhaProvisoria'>): string => {
+  if (usuario.senhaProvisoria) return ROTA_TROCA_DE_SENHA;
+  const origem = (estado as { from?: unknown } | null | undefined)?.from;
+  const interno = typeof origem === 'string' && origem.startsWith('/') && !origem.startsWith('//') && !origem.startsWith('/\\');
+  return interno && origem !== '/login' && !origem.startsWith('/login?') ? origem : rotaInicial(usuario.role);
+};
 
 export interface User {
   id: number;

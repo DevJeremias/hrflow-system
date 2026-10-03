@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import Header from './Header'; 
+import Header from './Header';
+import PaginaCarregando from '../components/PaginaCarregando';
 
 const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -20,7 +21,10 @@ const Layout: React.FC = () => {
         
         <main className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12">
           <div className="max-w-7xl mx-auto">
-            <Outlet /> 
+            {/* O menu e o cabeçalho ficam de pé enquanto o código da tela escolhida chega. */}
+            <Suspense fallback={<PaginaCarregando />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
         
