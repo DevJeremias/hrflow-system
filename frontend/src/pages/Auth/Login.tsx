@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react'; 
 import { useAuth } from '../../contexts/AuthContext'; 
+import { HttpError } from '../../services/httpClient';
+import { mensagemDeLimite } from '../../utils/espera';
 import logo from '../../assets/logo.png';
 import loginImagem from '../../assets/login_imagem2.png';
 
@@ -21,7 +23,8 @@ const Login: React.FC = () => {
     try {
       await login(email, senha);
     } catch (error: any) {
-      setErro(error.message || 'Erro ao realizar login.');
+      const mensagem = error.message || 'Erro ao realizar login.';
+      setErro(error instanceof HttpError && error.status === 429 ? mensagemDeLimite(error.data, mensagem) : mensagem);
     } finally {
       setIsSubmitting(false); 
     }

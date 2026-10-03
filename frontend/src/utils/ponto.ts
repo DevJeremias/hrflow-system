@@ -21,3 +21,9 @@ export const formatarHoraDeBelem = (data: Date): string => new Intl.DateTimeForm
 export const formatarDataDeBelem = (data: Date): string => new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Belem', weekday: 'long', day: 'numeric', month: 'long',
 }).format(data);
+
+// 'AAAA-MM-DD' (o dia que a API devolve) como 'dd/mm/aaaa'.
+export const formatarDataIso = (data: string): string => data.split('-').reverse().join('/');
+
+// 'HH:MM:SS' como 'HH:MM'.
+export const formatarHoraSemSegundos = (hora: string): string => hora.slice(0, 5);

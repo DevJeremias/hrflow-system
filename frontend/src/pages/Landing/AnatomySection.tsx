@@ -32,7 +32,7 @@ export default function AnatomySection() {
               <div className="p-2 bg-white rounded-[2.5rem] shadow-xl border border-slate-200 backdrop-blur-sm">
                 <img 
                   src={heroImagem} 
-                  alt="Interface do Sistema RHPRO" 
+                  alt="Três pessoas trabalhando juntas em um escritório" 
                   className="w-full h-auto rounded-[2rem] object-cover opacity-95"
                 />
               </div>
@@ -43,8 +43,8 @@ export default function AnatomySection() {
                     <CheckCircle2 size={24} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Motor de Cálculo</p>
-                    <p className="text-lg font-bold text-slate-900">100% Ativo</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Folha de pagamento</p>
+                    <p className="text-lg font-bold text-slate-900">INSS calculado</p>
                   </div>
                 </div>
               </div>
@@ -60,31 +60,31 @@ export default function AnatomySection() {
                 </span>
               </h2>
               <p className="text-xl text-slate-500 font-medium leading-relaxed max-w-lg">
-                Entenda como nossa interface converte dados brutos de folha em clareza estratégica e velocidade operacional. Tudo pensado para o seu conforto.
+                Veja como o HRFlow organiza a rotina de RH: da estrutura da empresa ao holerite de cada colaborador.
               </p>
             </div>
 
             <div className="space-y-8 border-t border-slate-200 pt-10">
-              <h3 className="text-2xl font-black text-slate-900">Tudo isso a 1 clique de distância.</h3>
+              <h3 className="text-2xl font-black text-slate-900">O que o sistema faz hoje.</h3>
               
               <div className="grid grid-cols-1 gap-4">
                 {[
                   { 
                     icon: <Cog size={20} />, 
-                    title: "Configuração Rápida", 
-                    desc: "Faça o setup de regras e departamentos em minutos.",
+                    title: "Estrutura da empresa", 
+                    desc: "Cadastre departamentos e cargos e vincule os colaboradores.",
                     colorClasses: "text-orange-500 bg-orange-50 border-orange-100 group-hover:bg-orange-500 group-hover:text-white"
                   },
                   { 
                     icon: <Network size={20} />, 
-                    title: "Custo Centralizado", 
-                    desc: "Visualize o custo consolidado de cada DP instantaneamente.",
+                    title: "Folha e holerites", 
+                    desc: "Processe a folha dos colaboradores ativos e consulte cada holerite.",
                     colorClasses: "text-purple-500 bg-purple-50 border-purple-100 group-hover:bg-purple-500 group-hover:text-white"
                   },
                   { 
                     icon: <Database size={20} />, 
-                    title: "Segurança de Dados", 
-                    desc: "Conformidade LGPD nativa e criptografia de ponta.",
+                    title: "Acesso controlado", 
+                    desc: "Perfis de Administrador, RH e Colaborador; senhas guardadas com hash.",
                     colorClasses: "text-green-500 bg-green-50 border-green-100 group-hover:bg-green-500 group-hover:text-white"
                   }
                 ].map((item, index) => (

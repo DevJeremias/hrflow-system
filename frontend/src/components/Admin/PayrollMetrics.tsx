@@ -24,7 +24,7 @@ const PayrollMetrics: React.FC<Props> = ({ metrics }) => {
 
       <div className="bg-rose-50/50 p-6 rounded-[2rem] border border-rose-100 flex flex-col justify-center relative overflow-hidden group">
         <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-rose-500 mb-4 transition-transform group-hover:scale-110 shadow-sm"><TrendingDown size={24} /></div>
-        <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Retenções (INSS/IRRF)</p>
+        <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Retenções (INSS)</p>
         <h3 className="text-2xl font-black text-rose-900 tracking-tight">{formatCurrency(metrics.deductions)}</h3>
       </div>
 

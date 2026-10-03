@@ -14,10 +14,7 @@
   },
   "src/components/Admin/OrgFormModal.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 24
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
+      "count": 7
     }
   },
   "src/components/Admin/OrgRolesTable.tsx": {
@@ -71,14 +68,9 @@
       "count": 1
     }
   },
-  "src/services/dashboardService.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/services/departmentsRolesService.ts": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 11
+      "count": 8
     }
   },
   "src/services/employeeService.ts": {

@@ -15,9 +15,10 @@ interface Department {
 interface Props {
   department: Department;
   onEdit: () => void;
+  onDelete: () => void;
 }
 
-const OrgDepartmentCard: React.FC<Props> = ({ department, onEdit }) => {
+const OrgDepartmentCard: React.FC<Props> = ({ department, onEdit, onDelete }) => {
   
   const getInitials = (name: string) => {
     if (!name) return '--'; // Se não tiver gestor, mostra dois tracinhos
@@ -36,9 +37,12 @@ const OrgDepartmentCard: React.FC<Props> = ({ department, onEdit }) => {
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{department.sigla || 'S/S'}</span>
           </div>
         </div>
-        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEdit} className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-lg transition-colors">
+        <div className="flex gap-2">
+          <button onClick={onEdit} aria-label={`Editar departamento ${department.name}`} className="p-2 text-slate-400 hover:text-primary hover:bg-slate-50 rounded-lg transition-colors">
             <Pencil size={18} />
+          </button>
+          <button onClick={onDelete} aria-label={`Excluir departamento ${department.name}`} className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-50 rounded-lg transition-colors">
+            <Trash2 size={18} />
           </button>
         </div>
       </div>

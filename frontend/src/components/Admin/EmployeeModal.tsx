@@ -16,8 +16,7 @@ interface Props {
 const initialState = {
   nomeCompleto: '', emailPessoal: '', telefone: '', cpf: '', dataNascimento: '', enderecoCompleto: '', senhaAcesso: '',
   matricula: '', cargo: '', nivel: '', departamento: '', dataAdmissao: '', tipoContrato: 'CLT', salarioBase: '', status: 'Ativo',
-  banco: '', agencia: '', conta: '', tipoConta: '',
-  cargoEarnings: [], cargoDeductions: []
+  banco: '', agencia: '', conta: '', tipoConta: ''
 };
 
 const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdit }) => {
@@ -57,11 +56,9 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
       if (cargoSelecionado) {
         updatedData = {
           ...updatedData,
-          salarioBase: cargoSelecionado.salary.toString(),
+          salarioBase: (cargoSelecionado.salary ?? 0).toString(),
           departamento: cargoSelecionado.department,
-          nivel: cargoSelecionado.level || '', 
-          cargoEarnings: cargoSelecionado.earnings || [],
-          cargoDeductions: cargoSelecionado.deductions || []
+          nivel: cargoSelecionado.level || ''
         };
       }
     }
@@ -70,8 +67,7 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const { cargoEarnings, cargoDeductions, ...dadosLimpos } = formData;
-    onSave(dadosLimpos);
+    onSave(formData);
   };
 
   return (

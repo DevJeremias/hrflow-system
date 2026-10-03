@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { responderErro } = require('../utils/erros');
 const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
+const { calcularHolerite } = require('../modules/folha/folha.regras.ts');
 
 exports.processarFolha = async (req, res) => {
     try {
@@ -21,9 +22,7 @@ exports.processarFolha = async (req, res) => {
         );
 
         const folhaProcessada = funcionarios.map(emp => {
-            const baseSalary = parseFloat(emp.salario_base) || 0;
-            let inss = calcularINSS(baseSalary);
-            const netSalary = baseSalary - inss;
+            const { baseSalary, inss, netSalary, employerCharges } = calcularHolerite(parseFloat(emp.salario_base) || 0);
 
             return {
                 id: emp.id.toString(),
@@ -35,7 +34,7 @@ exports.processarFolha = async (req, res) => {
                 totalDeductions: inss,
                 totalGross: baseSalary,
                 netSalary,
-                employerCharges: baseSalary * 0.278,
+                employerCharges,
                 earningsList: [],
                 deductionsList: [{ description: 'Desconto INSS', value: inss, isPercentage: false }]
             };
@@ -66,9 +65,7 @@ exports.meuHolerite = async (req, res) => {
         if (funcionarios.length === 0) return res.status(404).json({ erro: "Colaborador não encontrado" });
 
         const emp = funcionarios[0];
-        const baseSalary = parseFloat(emp.salario_base) || 0;
-        let inss = calcularINSS(baseSalary);
-        const netSalary = baseSalary - inss;
+        const { baseSalary, inss, netSalary, employerCharges } = calcularHolerite(parseFloat(emp.salario_base) || 0);
 
         // Retorna um Array (Para simular o histórico no Front-end)
         res.json([{
@@ -81,7 +78,7 @@ exports.meuHolerite = async (req, res) => {
             totalDeductions: inss,
             totalGross: baseSalary,
             netSalary,
-            employerCharges: baseSalary * 0.278,
+            employerCharges,
             earningsList: [],
             deductionsList: [{ description: 'Desconto INSS', value: inss, isPercentage: false }]
         }]);
@@ -90,14 +87,3 @@ exports.meuHolerite = async (req, res) => {
         responderErro(res, error, "Erro ao buscar holerite");
     }
 };
-
-// Função de cálculo centralizada
-function calcularINSS(baseSalary) {
-    if (baseSalary <= 0) return 0;
-    let inss = 0;
-    if (baseSalary <= 1412) inss = baseSalary * 0.075;
-    else if (baseSalary <= 2666.68) inss = (baseSalary * 0.09) - 21.18;
-    else if (baseSalary <= 4000.03) inss = (baseSalary * 0.12) - 101.18;
-    else inss = (baseSalary * 0.14) - 181.18;
-    return inss > 908.85 ? 908.85 : inss;
-}

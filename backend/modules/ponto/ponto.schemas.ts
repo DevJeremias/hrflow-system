@@ -1,7 +1,9 @@
-import { z, data, corpo, inteiroPositivo, opcional, campo, ausente } from '../../schemas/comum.js';
+import { z, data, corpo, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../schemas/comum.js';
+import { paginacao } from '../../schemas/paginacao.js';
 import * as fuso from './ponto.fuso.ts';
 
 export const LIMITE_JUSTIFICATIVA = 1000;
+export const LIMITE_BUSCA = 100;
 
 const hojeEmBelem = (): string => fuso.diaLocal(Math.floor(Date.now() / 1000));
 
@@ -27,6 +29,13 @@ export const consultarJustificativas = z.object({
     mes,
     funcionarioId: opcional(inteiroPositivo('Colaborador')),
 });
+// O mês é obrigatório: sem ele a consulta varreria todo o histórico da empresa.
+export const consultarPontosDaEmpresa = z.object({
+    mes,
+    funcionarioId: opcional(inteiroPositivo('Colaborador')),
+    busca: opcional(textoLivre('A busca', LIMITE_BUSCA)),
+    ...paginacao.shape,
+});
 
 // O que cada schema entrega em req.dadosValidados. schemas/comum.js ainda é JavaScript e seus
 // construtores não declaram o tipo que devolvem, então estes tipos são escritos à mão: mude-os
@@ -42,4 +51,12 @@ export interface CorpoDaJustificativa {
 export interface ConsultaDeJustificativas {
     mes: string;
     funcionarioId: number | null;
+}
+
+export interface ConsultaDePontosDaEmpresa {
+    mes: string;
+    funcionarioId: number | null;
+    busca: string | null;
+    pagina: number;
+    limite: number;
 }
