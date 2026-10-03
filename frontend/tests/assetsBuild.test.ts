@@ -8,6 +8,10 @@ import { join, extname } from 'node:path';
 import { build } from 'vite';
 
 const raiz = new URL('..', import.meta.url).pathname;
+const EXTENSOES_DE_IMAGEM = /\.(png|jpe?g|avif|webp|gif|svg)$/;
+// Orçamento de peso das imagens do build (auditoria H-22: o login chegou a 8 MB e a landing a 6 MB em PNG bruto).
+const LIMITE_POR_IMAGEM = 300 * 1024;
+const LIMITE_TOTAL = 1024 * 1024;
 const CAMINHO_LITERAL = /(?:src\s*=\s*|url\()\s*["'{`(]*\s*\.?\/src\//g;
 
 const arquivos = (dir: string): string[] =>
@@ -27,13 +31,22 @@ test('o build de produção empacota as imagens com hash e sem caminhos /src/', 
   try {
     await build({ root: raiz, logLevel: 'silent', build: { outDir, emptyOutDir: true } });
     const pasta = join(outDir, 'assets');
-    const imagens = readdirSync(pasta).filter((nome) => /\.(png|jpe?g|avif)$/.test(nome));
-    for (const base of ['logo', 'mosaico_image1', 'mosaico_image5', 'hero_imagem', 'login_imagem2']) {
+    const imagens = readdirSync(pasta).filter((nome) => EXTENSOES_DE_IMAGEM.test(nome));
+    for (const base of ['logo', 'mosaico_image1', 'mosaico_image2', 'mosaico_image3', 'mosaico_image4', 'mosaico_image5', 'hero_imagem', 'login_imagem2']) {
       assert.ok(imagens.some((nome) => nome.startsWith(`${base}-`)), `imagem ${base} ausente do build`);
     }
     const js = readdirSync(pasta).filter((nome) => nome.endsWith('.js')).map((nome) => readFileSync(join(pasta, nome), 'utf8')).join('\n');
     assert.doesNotMatch(js, /["'`]\.?\/src\/assets\//);
     for (const nome of imagens) assert.ok(existsSync(join(pasta, nome)));
+    assert.ok(!imagens.some((nome) => nome.startsWith('hero-')), 'hero.png não é usado e não deve voltar');
+
+    // Tudo que o build publica como imagem: as importadas (assets/, com hash) e as de public/ (raiz).
+    const publicadas = [pasta, outDir].flatMap((dir) =>
+      readdirSync(dir).filter((nome) => EXTENSOES_DE_IMAGEM.test(nome)).map((nome) => ({ nome, bytes: statSync(join(dir, nome)).size })));
+    const pesadas = publicadas.filter(({ bytes }) => bytes > LIMITE_POR_IMAGEM).map(({ nome, bytes }) => `${nome} (${Math.round(bytes / 1024)} KB)`);
+    assert.deepEqual(pesadas, [], `imagens acima de ${LIMITE_POR_IMAGEM / 1024} KB`);
+    const total = publicadas.reduce((soma, { bytes }) => soma + bytes, 0);
+    assert.ok(total < LIMITE_TOTAL, `as imagens do build somam ${Math.round(total / 1024)} KB, acima de ${LIMITE_TOTAL / 1024} KB`);
   } finally {
     rmSync(outDir, { recursive: true, force: true });
   }

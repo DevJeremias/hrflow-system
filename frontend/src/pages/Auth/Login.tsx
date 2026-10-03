@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { HttpError } from '../../services/httpClient';
 import { mensagemDeLimite } from '../../utils/espera';
 import logo from '../../assets/logo.png';
-import loginImagem from '../../assets/login_imagem2.png';
+import loginImagem from '../../assets/login_imagem2.webp';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');

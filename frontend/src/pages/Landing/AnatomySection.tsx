@@ -33,6 +33,10 @@ export default function AnatomySection() {
                 <img 
                   src={heroImagem} 
                   alt="Três pessoas trabalhando juntas em um escritório" 
+                  width={740}
+                  height={493}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-auto rounded-[2rem] object-cover opacity-95"
                 />
               </div>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Pause, Play } from 'lucide-react';
-import mosaico1 from '../../assets/mosaico_image1.png';
-import mosaico2 from '../../assets/mosaico_image2.jpg';
-import mosaico3 from '../../assets/mosaico_image3.jpg';
-import mosaico4 from '../../assets/mosaico_image4.png';
-import mosaico5 from '../../assets/mosaico_image5.png';
+import mosaico1 from '../../assets/mosaico_image1.webp';
+import mosaico2 from '../../assets/mosaico_image2.webp';
+import mosaico3 from '../../assets/mosaico_image3.webp';
+import mosaico4 from '../../assets/mosaico_image4.webp';
+import mosaico5 from '../../assets/mosaico_image5.webp';
 
 const MENOS_MOVIMENTO = '(prefers-reduced-motion: reduce)';
 
@@ -119,18 +119,18 @@ export default function Hero() {
                   <div className={`grid grid-cols-2 gap-4 w-full max-w-md h-[450px] transition-all duration-1000 delay-500 ${currentSlide === index ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
                     
                     <div className="bg-zinc-800 rounded-3xl row-span-2 overflow-hidden border border-zinc-700/50 shadow-2xl relative group">
-                      <img src={mosaico1} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      <img src={mosaico1} alt="" width={600} height={900} fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 to-transparent z-10"></div>
                       <p className="absolute bottom-4 left-4 z-20 text-white font-bold text-sm">Pessoas e equipes</p>
                     </div>
 
                     <div className="bg-zinc-800 rounded-3xl overflow-hidden border border-zinc-700/50 shadow-xl relative">
-                      <img src={mosaico2} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      <img src={mosaico2} alt="" width={660} height={440} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/30 to-transparent"></div>
                     </div>
 
                     <div className="bg-purple-900/40 rounded-3xl overflow-hidden border border-purple-500/30 relative flex items-center justify-center">
-                      <img src={mosaico3} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                      <img src={mosaico3} alt="" width={612} height={408} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover opacity-60" />
                     </div>
                   </div>
                 )}
@@ -148,6 +148,10 @@ export default function Hero() {
                       <img 
                         src={mosaico4} 
                         alt="Notebook exibindo um painel com gráficos" 
+                        width={1399}
+                        height={820}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover rounded-[2.2rem] shadow-inner" 
                       />
                       
@@ -162,6 +166,10 @@ export default function Hero() {
                       <img 
                         src={mosaico5} 
                         alt="Rede de pessoas conectadas" 
+                        width={460}
+                        height={270}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover" 
                       />
                     </div>
