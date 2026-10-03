@@ -23,7 +23,7 @@ const SCHEMA = [
     `CREATE TABLE usuarios (
         id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(100), email VARCHAR(100) NOT NULL UNIQUE,
         senha VARCHAR(255) NOT NULL, perfil VARCHAR(50) NOT NULL, empresa_id INT NOT NULL,
-        funcionario_id INT NULL, sessao_versao INT NOT NULL DEFAULT 0)`,
+        funcionario_id INT NULL, sessao_versao INT NOT NULL DEFAULT 0, senha_provisoria BOOLEAN NOT NULL DEFAULT FALSE)`,
 ];
 
 
