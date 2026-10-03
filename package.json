@@ -2,6 +2,7 @@
   "name": "hrflow-system",
   "version": "1.0.0",
   "private": true,
+  "license": "ISC",
   "workspaces": [
     "frontend",
     "backend"
@@ -23,5 +24,9 @@
     "db:seed": "node scripts/db.mjs seed",
     "db:setup": "node scripts/db.mjs setup",
     "db:reset": "node scripts/db.mjs reset"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3"
   }
 }
