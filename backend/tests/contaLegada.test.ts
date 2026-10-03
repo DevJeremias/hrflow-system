@@ -2,20 +2,27 @@
 // bcryptjs 3) ou $2a$ (bibliotecas mais antigas). Os dois formatos precisam continuar entrando.
 // Os hashes abaixo são literais gerados pelas bibliotecas originais, não pelo bcrypt em uso.
 // Banco e variáveis em tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST os testes são pulados.
-const { before, after, describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const http = require('node:http');
-const banco = require('./support/bancoDeTeste');
-const { criarUsuario, tokenDaResposta } = require('./support/sessao');
+import { before, after, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import type http from 'node:http';
+import express from 'express';
+import type { ResultSetHeader } from 'mysql2/promise';
+import banco from './support/bancoDeTeste.js';
+import { criarUsuario, tokenDaResposta } from './support/sessao.js';
+import pool from '../config/db.js';
+import { criarAuthRouter } from '../modules/auth/index.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-legada-ficticia';
 const HASH_BCRYPTJS_2B = '$2b$10$RCdzwpKK.eQPnNLbn53EkeZu3B6XsI5PPKl91m5zI0BzwKpMnfgCm';
 const HASH_LEGADO_2A = '$2a$10$nzouARU.6dLcjtB5SzC58e0bxO./MFEu49wWaU7UKMaqixVY8e5X6';
 
 describe('login de conta com hash legado', { skip: banco.skip }, () => {
-    let server, baseUrl, pool, empresaId;
+    let server: http.Server;
+    let baseUrl: string;
+    let empresaId: number;
 
-    const entrar = (email, senha) => fetch(`${baseUrl}/api/auth/login`, {
+    const entrar = (email: string, senha: string) => fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha }),
@@ -23,26 +30,22 @@ describe('login de conta com hash legado', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        pool = require('../config/db');
-        const [empresa] = await pool.query("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
+        const [empresa] = await pool.query<ResultSetHeader>("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");
         empresaId = empresa.insertId;
 
-        const express = require('express');
         const app = express();
-        app.use('/api/auth', require('../routes/authRoutes').criarRouter({
+        app.use('/api/auth', criarAuthRouter({
             loginPorIp: { windowMs: 60_000, limit: 1000 },
             loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
             registroPorIp: { windowMs: 60_000, limit: 1000 },
             registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
         }));
-        server = http.createServer(app);
-        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-        baseUrl = `http://127.0.0.1:${server.address().port}`;
+        ({ server, baseUrl } = await subirServidor(app));
     });
 
     after(async () => {
-        if (server) await new Promise((resolve) => server.close(resolve));
-        if (pool) await pool.end();
+        if (server) await pararServidor(server);
+        await pool.end();
         await banco.encerrar();
     });
 

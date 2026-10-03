@@ -1,7 +1,7 @@
 const API_BASE_URL = '/api';
 
 // A sessão é um cookie HttpOnly que o navegador envia sozinho: o JavaScript nunca vê o token.
-// O que ele vê é o cookie de CSRF (utils/sessao.js na API), que o servidor emite junto e que
+// O que ele vê é o cookie de CSRF (modules/auth/auth.sessao.ts na API), que o servidor emite junto e que
 // sai com a sessão. Ele é devolvido em X-CSRF-Token nas requisições que mudam estado e sua
 // presença diz se há uma sessão a confirmar, sem chamar a API.
 const CSRF_COOKIE = 'hrflow_csrf';

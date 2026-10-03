@@ -1,12 +1,13 @@
 const jwt = require('jsonwebtoken');
 const jwtSecret = require('../config/jwtSecret');
 const db = require('../config/db');
-const { lerTokenDaSessao, csrfValido, encerrarSessao } = require('../utils/sessao');
+// Direto do arquivo, não do index do módulo: o index monta o router de auth, que importa este middleware.
+const { lerTokenDaSessao, csrfValido, encerrarSessao } = require('../modules/auth/auth.sessao.ts');
 
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 module.exports = async (req, res, next) => {
-    // 1. O crachá vem no cookie HttpOnly da sessão (utils/sessao.js)
+    // 1. O crachá vem no cookie HttpOnly da sessão (modules/auth/auth.sessao.ts)
     const token = lerTokenDaSessao(req);
 
     if (!token) {

@@ -3,7 +3,7 @@
 declare global {
     namespace Express {
         interface Request {
-            // Claims do token, preenchidas por middlewares/authMiddleware.js (ver utils/sessao.js).
+            // Claims do token, preenchidas por middlewares/authMiddleware.js (ver modules/auth/auth.sessao.ts).
             usuario?: {
                 id: number;
                 perfil: string;

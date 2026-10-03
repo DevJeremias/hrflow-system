@@ -1,19 +1,22 @@
-const express = require('express');
-const authController = require('../controllers/authController');
-const authMiddleware = require('../middlewares/authMiddleware');
-const { corpoJson, criarLimitadores, tratarErroDeCorpo } = require('../middlewares/limitesAuth');
-const { validarLogin, validarRegistro } = require('../utils/validacaoAuth');
+import express from 'express';
+import type { NextFunction, Request, Response } from 'express';
+import * as authController from './auth.controller.ts';
+import { validarLogin, validarRegistro } from './auth.schemas.ts';
+import type { Validacao } from './auth.schemas.ts';
+import authMiddleware from '../../middlewares/authMiddleware.js';
+import { corpoJson, criarLimitadores, tratarErroDeCorpo } from '../../middlewares/limitesAuth.js';
 
 // Ordem em cada rota: limite por IP (barato, antes de ler o corpo), corpo pequeno,
 // validação de entrada, limite por identidade e só então o controller.
-const validar = (validador) => (req, res, next) => {
+const validar = <T>(validador: (corpo: unknown) => Validacao<T>) => (req: Request, res: Response, next: NextFunction) => {
     const { erro, dados } = validador(req.body);
     if (erro) return res.status(400).json({ erro });
-    req.dadosValidados = dados;
+    req.dadosValidados = { body: dados };
     next();
 };
 
-const criarRouter = (limites) => {
+// Os limites são parâmetro para os testes apertarem só o que querem exercitar.
+export const criarRouter = (limites?: Parameters<typeof criarLimitadores>[0]) => {
     const router = express.Router();
     const limitadores = criarLimitadores(limites);
 
@@ -32,5 +35,4 @@ const criarRouter = (limites) => {
     return router;
 };
 
-module.exports = criarRouter();
-module.exports.criarRouter = criarRouter;
+export const authRoutes = criarRouter();

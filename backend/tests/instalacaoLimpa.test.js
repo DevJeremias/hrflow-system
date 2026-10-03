@@ -36,7 +36,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         const authMiddleware = require('../middlewares/authMiddleware');
         const app = express();
         app.use(express.json({ limit: '10mb' }));
-        app.use('/api/auth', require('../routes/authRoutes'));
+        app.use('/api/auth', require('../modules/auth/index.ts').authRoutes);
         app.use('/api/funcionarios', authMiddleware, require('../modules/funcionarios/index.ts').funcionariosRoutes);
         app.use('/api/ponto', authMiddleware, require('../modules/ponto/index.ts').pontoRoutes);
         app.use('/api/estrutura', authMiddleware, require('../modules/estrutura/index.ts').estruturaRoutes);

@@ -7,7 +7,7 @@ const tratarErros = require('./middlewares/tratarErros');
 
 // Importação das Rotas
 const saudeRoutes = require('./routes/saudeRoutes');
-const authRoutes = require('./routes/authRoutes');
+const { authRoutes } = require('./modules/auth/index.ts');
 const { funcionariosRoutes } = require('./modules/funcionarios/index.ts');
 const { pontoRoutes } = require('./modules/ponto/index.ts'); 
 const { dashboardRoutes } = require('./modules/dashboard/index.ts');

@@ -2,19 +2,40 @@
 // funcionário inativo não faz login; o token dura 8 horas. Cada cenário reproduz um achado da
 // revisão técnica de 11/09/2026, de ponta a ponta contra o MySQL migrado (tests/support/bancoDeTeste.js).
 // Sem HRFLOW_TEST_DB_HOST os testes são marcados como ignorados, nunca como aprovados.
-const { before, after, describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const http = require('node:http');
-const jwt = require('jsonwebtoken');
-const banco = require('./support/bancoDeTeste');
-const { cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');
+import { before, after, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import type http from 'node:http';
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import type { RowDataPacket } from 'mysql2/promise';
+import banco from './support/bancoDeTeste.js';
+import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
+import pool from '../config/db.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
+import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
+import { perfilRoutes } from '../modules/perfil/index.ts';
+import { criarAuthRouter } from '../modules/auth/index.ts';
+import { pararServidor, subirServidor } from './support/servidor.ts';
+
+// O que os testes leem das claims do token que o login emitiu.
+interface Claims extends jwt.JwtPayload {
+    id: number;
+    perfil: string;
+    empresa_id: number;
+    funcionario_id: number | null;
+    sv: number;
+}
+
+const claimsDe = (token: string | undefined) => jwt.decode(token as string) as Claims;
 
 describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
-    let server, baseUrl, pool;
-    let empresa, tokenAdmin;
+    let server: http.Server;
+    let baseUrl: string;
+    let empresa: number;
+    let tokenAdmin: string | undefined;
     let sequencia = 0;
 
-    const chamar = async (metodo, caminho, token, corpo) => {
+    const chamar = async (metodo: string, caminho: string, token: string | undefined | null, corpo?: object) => {
         const resposta = await fetch(`${baseUrl}${caminho}`, {
             method: metodo,
             headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
@@ -23,7 +44,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         return { status: resposta.status, corpo: await resposta.json(), token: tokenDaResposta(resposta) };
     };
 
-    const login = (email, senha) => chamar('POST', '/api/auth/login', null, { email, senha });
+    const login = (email: string, senha: string) => chamar('POST', '/api/auth/login', null, { email, senha });
 
     // Colaborador criado pela API, como o RH faria, com a senha informada.
     const novoColaborador = async (senha = 'senha-ficticia-1') => {
@@ -33,37 +54,32 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
             nome: `Colaborador Ficticio ${sequencia}`, email, senha, data_admissao: '2024-01-02',
         });
         assert.equal(criado.status, 201);
-        const [[funcionario]] = await pool.query('SELECT id FROM funcionarios WHERE email = ?', [email]);
+        const [[funcionario]] = await pool.query<RowDataPacket[]>('SELECT id FROM funcionarios WHERE email = ?', [email]);
         const entrada = await login(email, senha);
         assert.equal(entrada.status, 200);
         return { email, senha, funcionarioId: funcionario.id, token: entrada.token };
     };
 
-    const atualizarStatus = (colaborador, status) => chamar('PUT', `/api/funcionarios/${colaborador.funcionarioId}`, tokenAdmin, {
+    const atualizarStatus = (colaborador: { funcionarioId: number; email: string }, status: string) => chamar('PUT', `/api/funcionarios/${colaborador.funcionarioId}`, tokenAdmin, {
         nome: `Colaborador Ficticio ${colaborador.funcionarioId}`, email: colaborador.email, status,
     });
 
-    const consultar = (token) => chamar('GET', '/api/perfil/meus-dados', token);
+    const consultar = (token: string | undefined) => chamar('GET', '/api/perfil/meus-dados', token);
 
     before(async () => {
         await banco.preparar();
-        pool = require('../config/db');
 
-        const express = require('express');
-        const authMiddleware = require('../middlewares/authMiddleware');
         const app = express();
         app.use(express.json());
-        app.use('/api/auth', require('../routes/authRoutes').criarRouter({
+        app.use('/api/auth', criarAuthRouter({
             loginPorIp: { windowMs: 60_000, limit: 1000 },
             loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
             registroPorIp: { windowMs: 60_000, limit: 1000 },
             registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
         }));
-        app.use('/api/funcionarios', authMiddleware, require('../modules/funcionarios/index.ts').funcionariosRoutes);
-        app.use('/api/perfil', authMiddleware, require('../modules/perfil/index.ts').perfilRoutes);
-        server = http.createServer(app);
-        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-        baseUrl = `http://127.0.0.1:${server.address().port}`;
+        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
+        app.use('/api/perfil', authMiddleware, perfilRoutes);
+        ({ server, baseUrl } = await subirServidor(app));
 
         const registro = await chamar('POST', '/api/auth/registrar', null, {
             nomeEmpresa: 'Empresa Sessao Ficticia', nomeAdmin: 'Admin Sessao Ficticio',
@@ -71,18 +87,19 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         });
         assert.equal(registro.status, 201);
         tokenAdmin = (await login('admin@sessao.exemplo.invalid', 'senha-admin-ficticia')).token;
-        [[{ id: empresa }]] = await pool.query('SELECT id FROM empresas');
+        [[{ id: empresa }]] = await pool.query<RowDataPacket[]>('SELECT id FROM empresas');
     });
 
     after(async () => {
-        await new Promise((resolve) => server.close(resolve));
+        await pararServidor(server);
         await pool.end();
         await banco.encerrar();
     });
 
     it('o token novo dura 8 horas e carrega a versão da sessão', async () => {
         const colaborador = await novoColaborador();
-        const { exp, iat, sv } = jwt.decode(colaborador.token);
+        const { exp, iat, sv } = claimsDe(colaborador.token);
+        assert.ok(exp !== undefined && iat !== undefined);
         assert.equal(exp - iat, 8 * 60 * 60);
         assert.equal(sv, 0);
         assert.equal((await consultar(colaborador.token)).status, 200);
@@ -135,7 +152,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
 
         const novo = await login(colaborador.email, 'senha-nova-ficticia');
         assert.equal(novo.status, 200);
-        assert.equal(jwt.decode(novo.token).sv, 1);
+        assert.equal(claimsDe(novo.token).sv, 1);
         assert.equal((await consultar(novo.token)).status, 200);
     });
 
@@ -154,22 +171,22 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
     });
 
     it('administrador sem funcionário vinculado continua autenticando', async () => {
-        const [{ total }] = (await pool.query('SELECT COUNT(*) AS total FROM usuarios WHERE funcionario_id IS NULL AND empresa_id = ?', [empresa]))[0];
+        const [{ total }] = (await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS total FROM usuarios WHERE funcionario_id IS NULL AND empresa_id = ?', [empresa]))[0];
         assert.ok(total >= 1);
         assert.equal((await chamar('GET', '/api/funcionarios', tokenAdmin)).status, 200);
     });
 
     it('token sem versão de sessão (emitido antes da migration) é recusado', async () => {
         const colaborador = await novoColaborador();
-        const { id, perfil, empresa_id, funcionario_id } = jwt.decode(colaborador.token);
-        const antigo = jwt.sign({ id, perfil, empresa_id, funcionario_id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+        const { id, perfil, empresa_id, funcionario_id } = claimsDe(colaborador.token);
+        const antigo = jwt.sign({ id, perfil, empresa_id, funcionario_id }, process.env.JWT_SECRET as string, { expiresIn: '1d' });
         assert.equal((await consultar(antigo)).status, 401);
     });
 
     it('token expirado é recusado com 401', async () => {
         const colaborador = await novoColaborador();
-        const { id, perfil, empresa_id, funcionario_id, sv } = jwt.decode(colaborador.token);
-        const expirado = jwt.sign({ id, perfil, empresa_id, funcionario_id, sv }, process.env.JWT_SECRET, { expiresIn: -10 });
+        const { id, perfil, empresa_id, funcionario_id, sv } = claimsDe(colaborador.token);
+        const expirado = jwt.sign({ id, perfil, empresa_id, funcionario_id, sv }, process.env.JWT_SECRET as string, { expiresIn: -10 });
         assert.equal((await consultar(expirado)).status, 401);
     });
 });
