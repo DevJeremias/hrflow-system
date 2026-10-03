@@ -29,7 +29,7 @@ const ProvisionalPasswordPanel: React.FC<Props> = ({ nome, email, senha, onClose
         <div className="min-w-0">
           <p className="font-black text-slate-900">Senha provisória de {nome}</p>
           <p className="text-sm font-medium text-slate-600 break-words">
-            Entregue a senha a {email}. Ela não aparece de novo e deve ser trocada no primeiro acesso.
+            Entregue a senha a <span className="break-all">{email}</span>. Ela não aparece de novo e deve ser trocada no primeiro acesso.
           </p>
         </div>
       </div>

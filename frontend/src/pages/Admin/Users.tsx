@@ -103,7 +103,7 @@ const Users: React.FC = () => {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="group flex items-center justify-center gap-3 bg-slate-900 hover:bg-primary text-white font-bold py-4 px-8 rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95"
+          className="group flex shrink-0 items-center justify-center gap-3 whitespace-nowrap bg-slate-900 hover:bg-primary text-white font-bold py-4 px-8 rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95"
         >
           <Plus size={22} className="group-hover:rotate-90 transition-transform duration-300" />
           <span>Novo usuário</span>

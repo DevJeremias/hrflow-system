@@ -22,7 +22,7 @@ backend/
 └── types/                  # declarações que só o tsc usa (express.d.ts)
 ```
 
-As áreas são `auth`, `dashboard`, `estrutura`, `folha`, `funcionarios`, `perfil`, `ponto` e `saude` (health e ready, só rotas). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
+As áreas são `auth`, `dashboard`, `estrutura`, `folha`, `funcionarios`, `perfil`, `ponto`, `saude` (health e ready, só rotas) e `usuarios` (contas de acesso, só do Administrador). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
 
 ## Regras de estrutura
 
@@ -56,7 +56,7 @@ Cada camada só conhece a de baixo:
 rotas -> controlador -> serviço -> repositório -> banco
 ```
 
-* **Rotas** montam o `Router`. Autorização por perfil (`verificarPerfil`, `verificarAcessoFuncionario`) e validação de entrada (`validarEntrada` com os schemas do módulo) ficam aqui, antes do controlador. O `authMiddleware` é aplicado no `app.ts`, ao montar o módulo.
+* **Rotas** montam o `Router`. Autorização por perfil (`exigirPermissao`, que lê a matriz de `shared/utils/permissoes.ts` documentada em `docs/permissoes.md`; `verificarPerfil`; `verificarAcessoFuncionario`) e validação de entrada (`validarEntrada` com os schemas do módulo) ficam aqui, antes do controlador. O `authMiddleware` é aplicado no `app.ts`, ao montar o módulo.
 * **Controlador** é fino: extrai da requisição o que o serviço precisa (a empresa e o colaborador vêm do token em `req.usuario`, nunca do corpo), chama uma função do serviço e responde. Não tem regra nem SQL.
 * **Serviço** decide. Recebe parâmetros simples, devolve o formato que o front-end consome e lança `ErroDePonto` quando uma regra recusa a operação. O tipo do erro (`proibido`, `invalido`, `inexistente`, `conflito`) diz o que aconteceu; quem o transforma em status HTTP (403, 400, 404, 409) é o controlador.
 * **Repositório** executa as consultas e devolve as linhas como o MySQL as entrega. `emTransacao` reserva uma conexão, confirma se o trabalho terminar e desfaz se ele lançar erro; o repositório que ele entrega usa essa conexão, e é assim que o serviço mantém uma regra e a escrita dela na mesma transação.
