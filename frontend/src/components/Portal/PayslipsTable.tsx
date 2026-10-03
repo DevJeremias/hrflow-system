@@ -1,22 +1,22 @@
 import React from 'react';
 import { FileText, Eye, Calendar } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { Payslip } from '../../services/payrollService';
+import { rotuloDaCompetencia } from '../../utils/competencia';
 import Button from '../ui/Button';
 import Card, { CardHeader } from '../ui/Card';
 import DataTable, { type Column } from '../ui/DataTable';
 
 interface Props {
-  payslips: EmployeePayroll[];
-  monthsLabels: string[];
-  onOpenPayslip: (payroll: EmployeePayroll, monthLabel: string) => void;
+  payslips: Payslip[];
+  onOpenPayslip: (payslip: Payslip) => void;
 }
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-interface Linha { payroll: EmployeePayroll; monthLabel: string; index: number; }
+interface Linha { payroll: Payslip; monthLabel: string; }
 
-const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip }) => {
-  const linhas: Linha[] = payslips.map((payroll, index) => ({ payroll, monthLabel: monthsLabels[index] || 'Mês Anterior', index }));
+const PayslipsTable: React.FC<Props> = ({ payslips, onOpenPayslip }) => {
+  const linhas: Linha[] = payslips.map((payroll) => ({ payroll, monthLabel: rotuloDaCompetencia(payroll.competencia) }));
 
   const columns: Column<Linha>[] = [
     {
@@ -38,7 +38,7 @@ const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip 
       align: 'right',
       semRotuloNoCartao: true,
       cell: ({ payroll, monthLabel }) => (
-        <Button size="sm" aria-label={`Visualizar holerite de ${monthLabel}`} onClick={() => onOpenPayslip(payroll, monthLabel)} icon={<Eye size={14} aria-hidden="true" />}>
+        <Button size="sm" aria-label={`Visualizar holerite de ${monthLabel}`} onClick={() => onOpenPayslip(payroll)} icon={<Eye size={14} aria-hidden="true" />}>
           Visualizar
         </Button>
       ),
@@ -47,9 +47,9 @@ const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip 
 
   return (
     <Card as="section" padding="none" className="overflow-hidden">
-      <CardHeader title="Demonstrativo calculado com os dados atuais" icon={<Calendar size={20} />} />
+      <CardHeader title="Holerites das folhas fechadas" icon={<Calendar size={20} />} />
       <div className="p-3 md:p-0">
-        <DataTable caption="Holerites disponíveis" columns={columns} rows={linhas} rowKey={({ index }) => index} />
+        <DataTable caption="Holerites disponíveis" columns={columns} rows={linhas} rowKey={({ payroll }) => payroll.competencia} />
       </div>
     </Card>
   );

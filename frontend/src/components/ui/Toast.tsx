@@ -26,7 +26,7 @@ const ItemDeToast: React.FC<{ toast: Toast; onFechar: (id: number) => void }> = 
   }, [id, tipo, onFechar]);
 
   return (
-    <div className={`pointer-events-auto flex items-start gap-3 rounded-card border p-4 shadow-raised animate-in slide-in-from-bottom-2 fade-in duration-200 ${VISUAL[tipo].classes}`}>
+    <div role={tipo === 'error' ? 'alert' : undefined} className={`pointer-events-auto flex items-start gap-3 rounded-card border p-4 shadow-raised animate-in slide-in-from-bottom-2 fade-in duration-200 ${VISUAL[tipo].classes}`}>
       <span className="mt-0.5 shrink-0">{VISUAL[tipo].icone}</span>
       <p className="flex-1 text-sm font-semibold">{mensagem}</p>
       <IconButton label="Fechar notificação" size="sm" onClick={() => onFechar(id)} className="-m-1 text-current hover:bg-black/5"><X size={16} aria-hidden="true" /></IconButton>
@@ -47,14 +47,13 @@ const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   return (
     <ToastContext.Provider value={notificar}>
       {children}
-      {/* As regiões vivas existem desde o início: o leitor de tela só anuncia o que entra em uma região já presente. */}
+      {/* A região de status existe desde o início: o leitor de tela só anuncia o que entra em uma região já presente.
+          O erro se anuncia sozinho (role="alert" no próprio aviso), então não há região de alerta vazia na página. */}
       <div data-modal-ignore className="pointer-events-none fixed inset-x-4 bottom-4 z-[60] flex flex-col items-end gap-3 sm:left-auto sm:w-full sm:max-w-sm">
         <div role="status" className="flex w-full flex-col gap-3">
           {toasts.filter((toast) => toast.tipo !== 'error').map((toast) => <ItemDeToast key={toast.id} toast={toast} onFechar={fechar} />)}
         </div>
-        <div role="alert" className="flex w-full flex-col gap-3">
-          {toasts.filter((toast) => toast.tipo === 'error').map((toast) => <ItemDeToast key={toast.id} toast={toast} onFechar={fechar} />)}
-        </div>
+        {toasts.filter((toast) => toast.tipo === 'error').map((toast) => <ItemDeToast key={toast.id} toast={toast} onFechar={fechar} />)}
       </div>
     </ToastContext.Provider>
   );

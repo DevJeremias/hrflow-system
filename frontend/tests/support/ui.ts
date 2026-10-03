@@ -8,7 +8,7 @@ import { createServer, type ViteDevServer } from 'vite';
 export { dom, act, createElement };
 
 export const iniciarVite = (): Promise<ViteDevServer> =>
-  createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  createServer({ configFile: './vite.config.js', server: { middlewareMode: true, ws: false }, appType: 'custom' });
 
 const montados: { host: HTMLElement; root: Root }[] = [];
 

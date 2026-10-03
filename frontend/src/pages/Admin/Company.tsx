@@ -1,0 +1,147 @@
+import React, { useState, useEffect } from 'react';
+import { Landmark } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Company as CompanyData, REGIMES_TRIBUTARIOS, getCompany, saveCompany } from '../../services/empresaService';
+import ErrorAlert from '../../components/ErrorAlert';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import Spinner from '../../components/ui/Spinner';
+import Field, { Input, Select } from '../../components/ui/Field';
+import { mensagemDeErro } from '../../utils/erros';
+import { mascararCnpj } from '../../utils/empresa';
+import { usePageTitle } from '../../hooks/usePageTitle';
+
+interface Formulario {
+  razaoSocial: string;
+  cnpj: string;
+  regime: string;
+}
+
+const formularioDe = (empresa: CompanyData): Formulario => ({
+  razaoSocial: empresa.razao_social ?? '',
+  cnpj: mascararCnpj(empresa.cnpj ?? ''),
+  regime: empresa.regime_tributario ?? ''
+});
+
+// Os dados legais que o holerite imprime. O RH confere; só o Administrador altera.
+const Company: React.FC = () => {
+  usePageTitle('Dados da empresa');
+  const { user } = useAuth();
+  const podeEditar = user?.role === 'Administrador';
+  const [empresa, setEmpresa] = useState<CompanyData | null>(null);
+  const [form, setForm] = useState<Formulario>({ razaoSocial: '', cnpj: '', regime: '' });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const retry = () => {
+    setLoading(true);
+    setLoadError(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  useEffect(() => {
+    let ativo = true;
+    getCompany()
+      .then((dados) => {
+        if (!ativo) return;
+        setEmpresa(dados);
+        setForm(formularioDe(dados));
+      })
+      .catch((error) => { if (ativo) setLoadError(mensagemDeErro(error, 'Erro ao buscar os dados da empresa')); })
+      .finally(() => { if (ativo) setLoading(false); });
+    return () => { ativo = false; };
+  }, [reloadKey]);
+
+  const alterar = (parcial: Partial<Formulario>) => {
+    setForm((atual) => ({ ...atual, ...parcial }));
+    setSaved(false);
+  };
+
+  const salvar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
+    setSaved(false);
+    try {
+      const gravada = await saveCompany({
+        razao_social: form.razaoSocial,
+        cnpj: form.cnpj,
+        regime_tributario: (form.regime || null) as CompanyData['regime_tributario']
+      });
+      setEmpresa(gravada);
+      setForm(formularioDe(gravada));
+      setSaved(true);
+    } catch (error) {
+      setSaveError(mensagemDeErro(error, 'Erro ao salvar os dados da empresa'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl space-y-8 animate-in fade-in duration-300">
+      <PageHeader
+        title="Dados da Empresa"
+        description="Razão social e CNPJ aparecem no cabeçalho dos holerites. A folha só fecha com os dois preenchidos."
+      />
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-3 py-20 text-ink-muted">
+          <Spinner size="lg" rotulo="Carregando os dados da empresa" />
+          <p className="font-semibold" aria-hidden="true">Carregando os dados da empresa...</p>
+        </div>
+      ) : loadError || !empresa ? (
+        <ErrorAlert message={loadError ?? 'Dados da empresa indisponíveis.'} onRetry={retry} />
+      ) : (
+        <Card as="section" padding="lg">
+          <form onSubmit={salvar} className="space-y-6">
+            <div className="flex items-center gap-3">
+              <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-control bg-surface-sunken text-ink-muted"><Landmark size={24} /></span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Nome no sistema</p>
+                <p className="text-lg font-bold text-ink">{empresa.nome}</p>
+              </div>
+            </div>
+
+            {!podeEditar && (
+              <p className="rounded-control bg-surface-muted p-4 text-sm font-semibold text-ink-muted">Somente o Administrador altera os dados da empresa.</p>
+            )}
+
+            <Field label="Razão social" name="razaoSocial" required>
+              <Input autoComplete="off" maxLength={255} disabled={!podeEditar} value={form.razaoSocial} onChange={(e) => alterar({ razaoSocial: e.target.value })} />
+            </Field>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <Field label="CNPJ" name="cnpj" required>
+                <Input autoComplete="off" inputMode="numeric" placeholder="00.000.000/0000-00" disabled={!podeEditar} value={form.cnpj} onChange={(e) => alterar({ cnpj: mascararCnpj(e.target.value) })} />
+              </Field>
+              <Field label="Regime tributário" name="regime">
+                <Select autoComplete="off" disabled={!podeEditar} value={form.regime} onChange={(e) => alterar({ regime: e.target.value })}>
+                  <option value="">Não informado</option>
+                  {REGIMES_TRIBUTARIOS.map((regime) => <option key={regime} value={regime}>{regime}</option>)}
+                </Select>
+              </Field>
+            </div>
+
+            {saveError && <ErrorAlert message={saveError} />}
+            {saved && <p role="status" className="rounded-control border border-success-line bg-success-soft p-4 text-sm font-semibold text-success">Dados da empresa salvos.</p>}
+
+            {podeEditar && (
+              <Button type="submit" size="lg" loading={saving}>
+                {saving ? 'Salvando...' : 'Salvar dados'}
+              </Button>
+            )}
+          </form>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default Company;

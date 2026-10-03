@@ -4,6 +4,13 @@ import { TABELAS_INSS, type TabelaInss } from './folha.tabelas.ts';
 
 const ENCARGOS_PATRONAIS = 278; // milésimos do salário (27,8%), estimativa fixa até haver regime tributário
 
+// Contratos sem vínculo CLT: o PJ presta serviço e o estágio é regido pela Lei 11.788, então nenhum
+// dos dois sofre desconto de INSS em folha nem gera encargo patronal CLT. Contrato não informado
+// (a coluna é opcional) segue a regra geral, a mesma que a folha sempre aplicou.
+const CONTRATOS_SEM_VINCULO_CLT: readonly string[] = ['PJ', 'Estágio'];
+
+export const temVinculoClt = (tipoContrato: string | null): boolean => !CONTRATOS_SEM_VINCULO_CLT.includes(tipoContrato ?? '');
+
 export const emCentavos = (reais: number): number => Math.round(reais * 100);
 
 export const emReais = (centavos: number): number => centavos / 100;
@@ -34,6 +41,10 @@ export const calcularInssEmCentavos = (salarioCentavos: number, tabela: TabelaIn
     return centavosDe(acumulado);
 };
 
+// A folha de uma competência só existe se há tabela de INSS vigente no primeiro dia dela.
+export const haTabelaVigente = (dia: string, tabelas: readonly TabelaInss[] = TABELAS_INSS): boolean =>
+    tabelas.some((tabela) => tabela.vigencia_inicio <= dia);
+
 export interface Holerite {
     baseSalary: number;
     inss: number;
@@ -45,13 +56,31 @@ export const calcularHolerite = (
     salario: number,
     dia: string = new Date().toISOString().slice(0, 10),
     tabelas: readonly TabelaInss[] = TABELAS_INSS,
+    tipoContrato: string | null = null,
 ): Holerite => {
     const bruto = emCentavos(salario);
-    const inss = calcularInssEmCentavos(bruto, tabelaVigente(dia, tabelas));
+    const clt = temVinculoClt(tipoContrato);
+    const inss = clt ? calcularInssEmCentavos(bruto, tabelaVigente(dia, tabelas)) : 0;
     return {
         baseSalary: emReais(bruto),
         inss: emReais(inss),
         netSalary: emReais(bruto - inss),
-        employerCharges: emReais(centavosDe(bruto * ENCARGOS_PATRONAIS)),
+        employerCharges: emReais(clt ? centavosDe(bruto * ENCARGOS_PATRONAIS) : 0),
     };
 };
+
+// Linha do holerite. O valor é em reais, com no máximo duas casas.
+export interface Rubrica {
+    codigo: string;
+    descricao: string;
+    tipo: 'provento' | 'desconto';
+    valor: number;
+}
+
+export const CODIGO_SALARIO = 'SALARIO';
+
+// As rubricas que o cálculo gera hoje: o salário e, para quem tem vínculo CLT, o INSS.
+export const rubricasDoHolerite = ({ baseSalary, inss }: Holerite): Rubrica[] => [
+    { codigo: CODIGO_SALARIO, descricao: 'Salário Base', tipo: 'provento', valor: baseSalary },
+    ...(inss > 0 ? [{ codigo: 'INSS', descricao: 'Desconto INSS', tipo: 'desconto' as const, valor: inss }] : []),
+];

@@ -19,3 +19,7 @@ bun.lockb
 
 # Estado do Visual Studio
 .vs/
+
+# Saídas do Playwright (relatório, traces e capturas de falha)
+test-results/
+playwright-report/

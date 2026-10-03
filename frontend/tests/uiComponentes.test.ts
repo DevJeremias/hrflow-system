@@ -154,19 +154,20 @@ const Disparador = () => {
     createElement('button', { type: 'button', onClick: () => toast.error('Não foi possível excluir.') }, 'erro'));
 };
 
-test('Toast: sucesso entra na região de status, erro na região de alerta, e o botão dispensa', async () => {
+test('Toast: sucesso entra na região de status, erro vira um alerta próprio, e o botão dispensa', async () => {
   await montar(createElement(ui.UiProviders, null, createElement(Disparador)));
   const status = document.querySelector('[role="status"]')!;
-  const alerta = document.querySelector('[role="alert"]')!;
-  assert.ok(status && alerta, 'as regiões existem antes de qualquer toast');
+  assert.ok(status, 'a região de status existe antes de qualquer toast');
+  assert.equal(document.querySelector('[role="alert"]'), null, 'sem erro não há alerta vazio na página');
 
   await clicar(botaoPorTexto(document, /^ok$/));
   assert.equal(status.textContent, 'Colaborador salvo.');
   await clicar(botaoPorTexto(document, /^erro$/));
+  const alerta = document.querySelector<HTMLElement>('[role="alert"]')!;
   assert.equal(alerta.textContent, 'Não foi possível excluir.');
 
-  await clicar(botaoPorTexto(alerta as HTMLElement, /Fechar notificação/));
-  assert.equal(alerta.textContent, '');
+  await clicar(botaoPorTexto(alerta, /Fechar notificação/));
+  assert.equal(document.querySelector('[role="alert"]'), null);
   assert.equal(status.textContent, 'Colaborador salvo.');
 });
 

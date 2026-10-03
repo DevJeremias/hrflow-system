@@ -21,12 +21,16 @@ type Chamada = { metodo: string; caminho: string };
 let chamadas: Chamada[] = [];
 let respostaDaJustificativa: () => Response;
 let respostaDoRegistro: () => Response;
+// O que a API devolve em /ponto/hoje: depois de uma marcação o espelho recarrega o dia e a lista vem do servidor.
+let registrosDeHoje: unknown[] = [];
 let alertasNativos: string[] = [];
 
 const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json' } });
 
 const HOJE = new Date().toISOString().slice(0, 10);
-const DIA = { id: HOJE, date: HOJE, entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'OK', note: '', negativeAdjust: '00:00', positiveAdjust: '00:00' };
+const DIA = { id: HOJE, date: HOJE, entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'ok', open: false, delay: '00:00', note: '', noteStatus: null, noteReply: null, negativeAdjust: '00:00', positiveAdjust: '00:00' };
+const JORNADA = { weeklyHours: 40, entry: '08:00', exit: '17:00', toleranceMinutes: 10 };
+const TOTAIS_VAZIOS = { workloadLimit: '00:00', workloadDone: '00:00', pendingTime: '00:00', excessTime: '00:00', delayTime: '00:00', absences: 0, incompleteDays: 0 };
 const PERFIL = {
   perfil: 'Colaborador', vinculado: true, nome: 'Caio Ficticio', email: 'caio@exemplo.invalid', avatar: null, telefone: '91999990000', cpf: null, data_nascimento: null,
   data_admissao: '2024-01-10', endereco: null, tipo_contrato: 'CLT', nivel: 'Pleno', banco: 'Banco Ficticio', agencia: '0001', conta: '12345-6', tipo_conta: 'Corrente', cargo: 'Analista', departamento: 'TI',
@@ -48,9 +52,9 @@ before(async () => {
     if (caminho === '/auth/sessao') return json({ id: 3, nome: 'Caio Ficticio', perfil: 'Colaborador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: 7, avatar: null });
     if (caminho === '/perfil/meus-dados') return json(PERFIL);
     if (caminho === '/solicitacoes/minhas') return json([]);
-    if (caminho.startsWith('/ponto/hoje/')) return json([]);
+    if (caminho.startsWith('/ponto/hoje/')) return json(registrosDeHoje);
     if (caminho.startsWith('/ponto/historico/')) return json([DIA]);
-    if (caminho.startsWith('/ponto/totais/')) return json({ totals: [], monthlySummary: null });
+    if (caminho.startsWith('/ponto/totais/')) return json({ workSchedule: JORNADA, totals: [], monthlySummary: TOTAIS_VAZIOS });
     if (caminho === '/ponto/registrar') return respostaDoRegistro();
     if (caminho.startsWith('/ponto/justificativa/')) return respostaDaJustificativa();
     return json({ erro: 'rota inesperada no teste' }, 404);
@@ -66,6 +70,7 @@ beforeEach(() => {
   chamadas = [];
   alertasNativos = [];
   respostaDaJustificativa = () => new Response(null, { status: 204 });
+  registrosDeHoje = [];
   respostaDoRegistro = () => json({ id: 1, type: 'Entrada', time: '08:00', date: HOJE }, 201);
   Object.defineProperty(dom.window.navigator, 'geolocation', { configurable: true, value: undefined });
 });
@@ -190,7 +195,7 @@ test('Meus Dados: o vínculo mostra os valores em lista de definição, sem <lab
 
 const abrirJustificativa = async () => {
   const host = await abrirPagina(EmployeeDashboard);
-  const rotulo = `Adicionar nota de ${HOJE.split('-').reverse().join('/')}`;
+  const rotulo = `Adicionar nota em ${HOJE.split('-').reverse().join('/')}`;
   const abrir = botaoPorTexto(host, new RegExp(rotulo));
   abrir.focus();
   await clicar(abrir);
@@ -221,7 +226,7 @@ test('justificativa: com sucesso o modal fecha e a nota aparece na linha', async
   await act(async () => { dialogo().querySelector('form')!.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })); });
   await esperar();
   assert.equal(porRole(document, 'dialog'), null);
-  assert.ok(botaoPorTexto(host, /Justificativa de .*: Atestado/), 'a linha agora oferece ver a justificativa');
+  assert.ok(botaoPorTexto(host, /Justificativa de .*Atestado/), 'a linha agora oferece ver a justificativa');
 });
 
 test('justificativa: Esc fecha o modal sem enviar nada', async () => {
@@ -263,7 +268,10 @@ test('bater ponto: navegador sem geolocalização e falha do servidor viram toas
   assert.match(document.querySelector('[role="alert"]')!.textContent ?? '', /Fora do raio permitido/);
   await desmontarTudo();
 
-  respostaDoRegistro = () => json({ id: 1, type: 'Entrada', time: '08:00', date: HOJE }, 201);
+  respostaDoRegistro = () => {
+    registrosDeHoje = [{ id: 1, type: 'Entrada', time: '08:00', date: HOJE }];
+    return json(registrosDeHoje[0], 201);
+  };
   host = await abrirPagina(EmployeeDashboard);
   await clicar(botaoPorTexto(host, /Registrar Entrada/));
   await esperar();

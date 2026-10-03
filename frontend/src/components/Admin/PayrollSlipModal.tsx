@@ -3,6 +3,7 @@ import { Printer, Building } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
 import Modal from '../ui/Modal';
 import { IconButton } from '../ui/Button';
+import { mascararCnpj } from '../../utils/empresa';
 
 interface Props {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface Props {
   employee: EmployeePayroll | null;
   month: string;
   companyName?: string;
+  // Só os dígitos, como a API os guarda; sem CNPJ a linha não aparece.
+  cnpj?: string | null;
 }
 
 interface Linha { descricao: string; referencia: string; tipo: 'vencimento' | 'desconto'; valor: number; }
@@ -18,7 +21,7 @@ const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 
 
 const ROTULO = 'text-xs font-semibold uppercase tracking-wider text-ink-muted';
 
-const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName }) => {
+const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, companyName, cnpj }) => {
   if (!isOpen || !employee) return null;
 
   // Abaixo de sm as linhas viram uma lista empilhada; a tabela de quatro colunas só cabe a partir daí.
@@ -48,7 +51,10 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
             <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-ink text-white print:border print:border-ink print:bg-white print:text-ink">
               <Building size={24} />
             </span>
-            {companyName && <p className="min-w-0 break-words text-lg font-bold uppercase tracking-tight text-ink">{companyName}</p>}
+            <div className="min-w-0">
+              {companyName && <p className="break-words text-lg font-bold uppercase tracking-tight text-ink">{companyName}</p>}
+              {cnpj && <p className="text-sm font-semibold text-ink-muted">CNPJ: {mascararCnpj(cnpj)}</p>}
+            </div>
           </div>
           <div className="sm:text-right">
             <h3 className="text-xl font-bold uppercase text-ink">Recibo de Pagamento</h3>

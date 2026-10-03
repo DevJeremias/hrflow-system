@@ -10,15 +10,21 @@ import DataTable, { type Column } from '../../components/ui/DataTable';
 import EmptyState from '../../components/ui/EmptyState';
 import Field, { Input } from '../../components/ui/Field';
 import Spinner from '../../components/ui/Spinner';
+import Tabs, { TabPanel, type TabItem } from '../../components/ui/Tabs';
+import JustificativasPonto from '../../components/Admin/JustificativasPonto';
 import { mensagemDeErro } from '../../utils/erros';
 import { formatarDataIso, formatarHoraSemSegundos } from '../../utils/ponto';
+import { mesAtualEmBelem } from '../../utils/competencia';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
-const mesAtualEmBelem = (): string => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Belem',
-  year: 'numeric',
-  month: '2-digit'
-}).format(new Date()).slice(0, 7);
+type Aba = 'marcacoes' | 'justificativas';
+
+const ABAS: readonly TabItem<Aba>[] = [
+  { id: 'marcacoes', label: 'Marcações' },
+  { id: 'justificativas', label: 'Justificativas' },
+];
+
+const ID_DAS_ABAS = 'gestao-ponto';
 
 const TAMANHO_DA_PAGINA = 50;
 const ATRASO_DA_BUSCA_MS = 300;
@@ -32,6 +38,7 @@ interface Resultado {
 
 export default function TimeTracking() {
   usePageTitle('Gestão de ponto');
+  const [aba, setAba] = useState<Aba>('marcacoes');
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [busca, setBusca] = useState('');
@@ -85,7 +92,7 @@ export default function TimeTracking() {
     <div className="space-y-8 animate-in fade-in duration-300">
       <PageHeader
         title="Gestão de Ponto"
-        description="Consulte as marcações reais de ponto dos colaboradores."
+        description="Consulte as marcações de ponto dos colaboradores e decida as justificativas."
         actions={(
           <Field label="Mês de referência" name="mes">
             <Input type="month" autoComplete="off" value={monthFilter} onChange={(event) => event.target.value && trocarMes(event.target.value)} />
@@ -93,50 +100,60 @@ export default function TimeTracking() {
         )}
       />
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <StatCard label="Marcações no mês" value={loading || loadError ? '—' : total} icon={<Clock size={24} />} tone="brand" />
-        <StatCard label="Colaboradores nesta página" value={loading || loadError ? '—' : colaboradores} icon={<Users size={24} />} tone="success" />
-        <StatCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={24} />} tone="warning" />
-      </div>
+      <Tabs tabs={ABAS} value={aba} onChange={setAba} label="Seções da gestão de ponto" idPrefix={ID_DAS_ABAS} />
 
-      <Card as="section" padding="none">
-        <div className="flex flex-col items-stretch justify-between gap-4 border-b border-line bg-surface-muted p-5 md:flex-row md:items-center">
-          <div className="w-full md:w-96">
-            <Field label="Buscar colaborador" name="busca" hideLabel>
-              <Input type="search" autoComplete="off" icon={<Search size={18} />} placeholder="Buscar colaborador..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
-            </Field>
-          </div>
-          <p className="text-sm text-ink-muted">Dados limitados à empresa da sua sessão.</p>
+      {aba === 'justificativas' ? (
+        <TabPanel idPrefix={ID_DAS_ABAS} id="justificativas">
+          <JustificativasPonto mes={monthFilter} />
+        </TabPanel>
+      ) : (
+        <TabPanel idPrefix={ID_DAS_ABAS} id="marcacoes" className="space-y-8">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <StatCard label="Marcações no mês" value={loading || loadError ? '—' : total} icon={<Clock size={24} />} tone="brand" />
+          <StatCard label="Colaboradores nesta página" value={loading || loadError ? '—' : colaboradores} icon={<Users size={24} />} tone="success" />
+          <StatCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={24} />} tone="warning" />
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-ink-muted">
-            <Spinner size="lg" rotulo="Carregando registros de ponto" />
-            <p className="font-semibold">Carregando registros de ponto...</p>
+        <Card as="section" padding="none">
+          <div className="flex flex-col items-stretch justify-between gap-4 border-b border-line bg-surface-muted p-5 md:flex-row md:items-center">
+            <div className="w-full md:w-96">
+              <Field label="Buscar colaborador" name="busca" hideLabel>
+                <Input type="search" autoComplete="off" icon={<Search size={18} />} placeholder="Buscar colaborador..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
+              </Field>
+            </div>
+            <p className="text-sm text-ink-muted">Dados limitados à empresa da sua sessão.</p>
           </div>
-        ) : loadError ? (
-          <div className="p-6"><ErrorAlert message={loadError} onRetry={retry} /></div>
-        ) : (
-          <div className="p-3 md:p-0">
-            <DataTable
-              caption="Marcações de ponto do mês"
-              columns={columns}
-              rows={registros}
-              rowKey={(registro) => registro.id}
-              empty={<EmptyState icon={<Clock size={28} />} title="Nenhum registro de ponto encontrado neste mês." />}
-            />
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-20 text-ink-muted">
+              <Spinner size="lg" rotulo="Carregando registros de ponto" />
+              <p className="font-semibold">Carregando registros de ponto...</p>
+            </div>
+          ) : loadError ? (
+            <div className="p-6"><ErrorAlert message={loadError} onRetry={retry} /></div>
+          ) : (
+            <div className="p-3 md:p-0">
+              <DataTable
+                caption="Marcações de ponto do mês"
+                columns={columns}
+                rows={registros}
+                rowKey={(registro) => registro.id}
+                empty={<EmptyState icon={<Clock size={28} />} title="Nenhum registro de ponto encontrado neste mês." />}
+              />
+            </div>
+          )}
+        </Card>
+
+        {!loading && !loadError && total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-ink-muted">
+            <span>Página {pagina} de {totalDePaginas} · {total} marcações</span>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setPagina((atual) => atual - 1)} disabled={pagina <= 1}>Anterior</Button>
+              <Button variant="secondary" size="sm" onClick={() => setPagina((atual) => atual + 1)} disabled={pagina >= totalDePaginas}>Próxima</Button>
+            </div>
           </div>
         )}
-      </Card>
-
-      {!loading && !loadError && total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-ink-muted">
-          <span>Página {pagina} de {totalDePaginas} · {total} marcações</span>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setPagina((atual) => atual - 1)} disabled={pagina <= 1}>Anterior</Button>
-            <Button variant="secondary" size="sm" onClick={() => setPagina((atual) => atual + 1)} disabled={pagina >= totalDePaginas}>Próxima</Button>
-          </div>
-        </div>
+        </TabPanel>
       )}
     </div>
   );

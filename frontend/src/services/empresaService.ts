@@ -1,0 +1,30 @@
+import httpClient from './httpClient.ts';
+
+export const REGIMES_TRIBUTARIOS = ['Simples Nacional', 'Lucro Presumido', 'Lucro Real'] as const;
+
+export interface Company {
+  nome: string;
+  razao_social: string | null;
+  // Só os 14 dígitos.
+  cnpj: string | null;
+  regime_tributario: typeof REGIMES_TRIBUTARIOS[number] | null;
+}
+
+export interface CompanyData {
+  razao_social: string;
+  cnpj: string;
+  regime_tributario: Company['regime_tributario'];
+}
+
+const API_URL = '/empresa';
+
+export const getCompany = (): Promise<Company> =>
+  httpClient<Company>(API_URL, { auth: true, errorMessage: 'Erro ao buscar os dados da empresa' });
+
+export const saveCompany = (data: CompanyData): Promise<Company> =>
+  httpClient<Company>(API_URL, {
+    method: 'PUT',
+    auth: true,
+    body: JSON.stringify(data),
+    errorMessage: (response) => response?.erro || 'Erro ao salvar os dados da empresa'
+  });

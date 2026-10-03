@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
-import { EmployeePayroll, getMyPayroll } from '../../services/payrollService';
+import { Payslip, getMyPayslips } from '../../services/payrollService';
 import PayslipsSummaryCards from '../../components/Portal/PayslipsMetrics';
 import PayslipsHistoryTable from '../../components/Portal/PayslipsTable';
 import HoleriteModal from '../../components/Admin/PayrollSlipModal';
@@ -9,20 +9,18 @@ import EmptyState from '../../components/ui/EmptyState';
 import PageHeader from '../../components/ui/PageHeader';
 import Spinner from '../../components/ui/Spinner';
 import { mensagemDeErro } from '../../utils/erros';
-import { competenciaAtual } from '../../utils/competencia';
+import { rotuloDaCompetencia } from '../../utils/competencia';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
 
 const MyPayslips: React.FC = () => {
   usePageTitle('Meus holerites');
-  const [payslips, setPayslips] = useState<EmployeePayroll[]>([]);
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedPayslip, setSelectedPayslip] = useState<EmployeePayroll | null>(null);
-  const [selectedMonthLabel, setSelectedMonthLabel] = useState('');
+  const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
 
   const { user } = useAuth();
-  const monthsLabels = [competenciaAtual()];
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -33,22 +31,18 @@ const MyPayslips: React.FC = () => {
   };
 
   useEffect(() => {
-    getMyPayroll()
+    getMyPayslips()
       .then(setPayslips)
       .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar meu holerite')))
       .finally(() => setLoading(false));
   }, [reloadKey]);
 
-  const handleOpenPayslip = (payroll: EmployeePayroll, monthLabel: string) => {
-    setSelectedPayslip(payroll);
-    setSelectedMonthLabel(monthLabel);
-  };
-
-  const latestPayslip = payslips[payslips.length - 1];
+  // A API entrega do mês mais recente ao mais antigo.
+  const latestPayslip = payslips[0];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <PageHeader title="Meus Holerites" description="Acesse e faça o download dos seus demonstrativos de pagamento." />
+      <PageHeader title="Meus Holerites" description="Os recibos de cada mês, disponíveis depois que o RH fecha a folha." />
 
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-4 py-20 text-ink-muted">
@@ -62,21 +56,20 @@ const MyPayslips: React.FC = () => {
           {latestPayslip && (
             <PayslipsSummaryCards
               latestPayslip={latestPayslip}
-              monthLabel={monthsLabels[monthsLabels.length - 1]}
+              monthLabel={rotuloDaCompetencia(latestPayslip.competencia)}
             />
           )}
 
           <PayslipsHistoryTable
             payslips={payslips}
-            monthsLabels={monthsLabels}
-            onOpenPayslip={handleOpenPayslip}
+            onOpenPayslip={setSelectedPayslip}
           />
         </>
       ) : (
         <EmptyState
           icon={<FileText size={32} />}
           title="Nenhum holerite disponível"
-          description="O seu primeiro recibo de vencimento aparecerá aqui após o processamento da folha."
+          description="O seu primeiro recibo de vencimento aparecerá aqui quando o RH fechar a folha do mês."
           className="rounded-card border border-line bg-surface shadow-card"
         />
       )}
@@ -86,8 +79,9 @@ const MyPayslips: React.FC = () => {
           isOpen={!!selectedPayslip}
           onClose={() => setSelectedPayslip(null)}
           employee={selectedPayslip}
-          month={selectedMonthLabel}
-          companyName={user?.empresaNome}
+          month={rotuloDaCompetencia(selectedPayslip.competencia)}
+          companyName={selectedPayslip.empresa.razaoSocial ?? user?.empresaNome}
+          cnpj={selectedPayslip.empresa.cnpj}
         />
       )}
     </div>

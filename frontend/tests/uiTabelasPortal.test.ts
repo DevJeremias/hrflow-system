@@ -22,13 +22,15 @@ const json = (corpo: unknown) => new Response(JSON.stringify(corpo), { status: 2
 const HOLERITE = {
   id: '7', name: 'Caio Ficticio', role: 'Analista', department: 'TI', baseSalary: 5000, totalEarnings: 0, totalDeductions: 400,
   totalGross: 5000, netSalary: 4600, employerCharges: 1390, earningsList: [], deductionsList: [{ description: 'INSS', value: 400 }],
+  contract: 'CLT', competencia: '2026-09', empresa: { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181' },
 };
 const DIAS = [
-  { id: '2026-10-01', date: '2026-10-01', entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'OK', note: '', negativeAdjust: '00:00', positiveAdjust: '00:00' },
-  { id: '2026-10-02', date: '2026-10-02', entry: '08:30', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '07:30', status: 'Atraso', note: 'Trânsito', negativeAdjust: '00:30', positiveAdjust: '00:00' },
+  { id: '2026-10-01', date: '2026-10-01', entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'ok', open: false, delay: '00:00', note: '', noteStatus: null, noteReply: null, negativeAdjust: '00:00', positiveAdjust: '00:00' },
+  { id: '2026-10-02', date: '2026-10-02', entry: '08:30', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '07:30', status: 'atraso', open: false, delay: '00:30', note: 'Trânsito', noteStatus: 'pendente', noteReply: null, negativeAdjust: '00:30', positiveAdjust: '00:00' },
 ];
-const SEMANA = { id: 's1', weekLabel: 'Semana 1', workloadLimit: '44:00', workloadPreset: '40:00', workloadDone: '39:30', presenceTime: '39:30', pendingTime: '00:30', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '-00:30' };
-const TOTAL_MENSAL = { workloadLimit: '176:00', workloadPreset: '160:00', workloadDone: '158:00', presenceTime: '158:00', pendingTime: '02:00', excessTime: '00:00', hoursBank: '00:00', dailyAdjustBalance: '-02:00' };
+const SEMANA = { id: 's1', weekLabel: 'Semana 1', workloadLimit: '44:00', workloadDone: '39:30', pendingTime: '00:30', excessTime: '00:00', delayTime: '00:30', absences: 1, incompleteDays: 0 };
+const TOTAL_MENSAL = { workloadLimit: '176:00', workloadDone: '158:00', pendingTime: '02:00', excessTime: '04:00', delayTime: '01:00', absences: 3, incompleteDays: 2 };
+const JORNADA = { weeklyHours: 40, entry: '08:00', exit: '17:00', toleranceMinutes: 10 };
 
 before(async () => {
   document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
@@ -40,10 +42,10 @@ before(async () => {
   globalThis.fetch = (async (entrada: RequestInfo | URL) => {
     const caminho = new URL(String(entrada), 'http://localhost').pathname.replace(/^\/api/, '');
     if (caminho === '/auth/sessao') return json({ id: 3, nome: 'Caio Ficticio', perfil: 'Colaborador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: 7, avatar: null });
-    if (caminho === '/folha/meu-holerite') return json([HOLERITE]);
+    if (caminho === '/folha/meus-holerites') return json([HOLERITE]);
     if (caminho.startsWith('/ponto/hoje/')) return json([]);
     if (caminho.startsWith('/ponto/historico/')) return json(DIAS);
-    if (caminho.startsWith('/ponto/totais/')) return json({ totals: [SEMANA], monthlySummary: TOTAL_MENSAL });
+    if (caminho.startsWith('/ponto/totais/')) return json({ workSchedule: JORNADA, totals: [SEMANA], monthlySummary: TOTAL_MENSAL });
     return new Response(JSON.stringify({ erro: 'rota inesperada' }), { status: 404 });
   }) as typeof fetch;
 });
@@ -105,21 +107,21 @@ test('Meus Holerites: os três indicadores usam o StatCard e o último é o escu
 test('Espelho de ponto: as duas tabelas são semânticas, viram cartão no celular e o rodapé traz os totais', async () => {
   const host = await abrirPagina(EmployeeDashboard);
   const [diaria, semanal] = [...host.querySelectorAll('table')];
-  verificarTabela(diaria, ['Data', 'Entrada', 'Pausa', 'Retorno', 'Saída', 'Presença', 'Ajuste negativo', 'Ajuste positivo', 'Status', 'Justificativa']);
+  verificarTabela(diaria, ['Data', 'Entrada', 'Pausa', 'Retorno', 'Saída', 'Horas', 'Atraso', 'Ajuste negativo', 'Ajuste positivo', 'Status', 'Justificativa']);
   assert.match(diaria.className, /\bxl:table\b/, 'abaixo de 1280 px a linha é um cartão; a coluna Justificativa nunca é cortada');
   assert.equal(diaria.querySelectorAll('tbody tr').length, 2);
 
-  verificarTabela(semanal, ['Semana', 'Carga horária de trabalho', 'Carga horária preestabelecida', 'Carga horária cumprida', 'Tempo presença', 'Tempo pendente', 'Excedente', 'Saldo ajuste diário']);
+  verificarTabela(semanal, ['Semana', 'Carga prevista', 'Horas trabalhadas', 'Pendente', 'Excedente', 'Atrasos', 'Faltas', 'Incompletos']);
   const rodape = semanal.querySelector('tfoot')!;
   assert.equal(rodape.querySelectorAll('td')[0].textContent, 'Total Mensal');
   assert.equal(rodape.querySelectorAll('td')[1].textContent, '176:00');
-  assert.equal(rodape.querySelectorAll('td')[7].textContent, '-02:00');
+  assert.equal(rodape.querySelectorAll('td')[7].textContent, '2', 'o rodapé traz os dias incompletos do mês');
 });
 
 test('Espelho de ponto: o botão de justificativa é visível sem hover e tem nome acessível por dia', async () => {
   const host = await abrirPagina(EmployeeDashboard);
   const botoes = [...host.querySelectorAll('tbody button')].map((b) => b.textContent);
-  assert.deepEqual(botoes, ['Adicionar nota de 01/10/2026', 'Justificativa de 02/10/2026: Trânsito']);
+  assert.deepEqual(botoes, ['Adicionar nota em 01/10/2026', 'Justificativa de 02/10/2026: PendenteTrânsito']);
   assert.equal(host.querySelector('[class*="group-hover:opacity"], [class~="opacity-0"]'), null);
 });
 

@@ -19,6 +19,12 @@ export const HOLERITE = {
   id: '7', name: 'Bia Ficticia', role: 'Desenvolvedor(a)', department: 'Tecnologia', baseSalary: 8000, totalEarnings: 0, totalDeductions: 800,
   totalGross: 8000, netSalary: 7200, employerCharges: 2000, earningsList: [], deductionsList: [{ description: 'INSS', value: 800, isPercentage: false }],
 };
+// A folha por competência (B-12): uma folha aberta com o holerite acima.
+export const FOLHA = {
+  competencia: '2026-10', status: 'aberta', processadaEm: '2026-10-02T15:00:00.000Z', fechadaEm: null,
+  empresa: { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181' },
+  totais: { bruto: 8000, descontos: 800, liquido: 7200, encargos: 2000 }, itens: [HOLERITE], pendencias: [],
+};
 export const SESSAO = { id: 1, nome: 'Rita RH', perfil: 'RH', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: null, avatar: null };
 
 // `gravacao` responde a qualquer POST, PUT ou DELETE.
@@ -32,7 +38,7 @@ export const instalarApi = (chamadas: Chamada[], gravacao: () => Response | Prom
     if (caminho.startsWith('/funcionarios')) return json(200, FUNCIONARIOS, { 'X-Total-Count': String(FUNCIONARIOS.length) });
     if (caminho.startsWith('/estrutura/cargos')) return json(200, CARGOS);
     if (caminho.startsWith('/estrutura/departamentos')) return json(200, DEPARTAMENTOS);
-    if (caminho.startsWith('/folha/processar')) return json(200, [HOLERITE], { 'X-Total-Count': '1' });
+    if (caminho.startsWith('/folha/competencias/')) return json(200, FOLHA);
     return json(404, { erro: 'rota inesperada no teste' });
   }) as typeof fetch;
 };

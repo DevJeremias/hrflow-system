@@ -24,7 +24,7 @@ const QUEBRA = {
     rodape: 'md:table-footer-group',
     linha: 'md:table-row md:mb-0 md:rounded-none md:border-0 md:p-0 md:shadow-none',
     celula: 'md:table-cell md:px-6 md:py-4 md:before:hidden',
-    celulaCompacta: 'md:table-cell md:px-2.5 md:py-3 md:before:hidden',
+    celulaCompacta: 'md:table-cell md:px-2 md:py-3 md:before:hidden',
     alinhamento: { left: 'md:text-left', center: 'md:text-center', right: 'md:text-right' },
   },
   lg: {
@@ -35,7 +35,7 @@ const QUEBRA = {
     rodape: 'lg:table-footer-group',
     linha: 'lg:table-row lg:mb-0 lg:rounded-none lg:border-0 lg:p-0 lg:shadow-none',
     celula: 'lg:table-cell lg:px-6 lg:py-4 lg:before:hidden',
-    celulaCompacta: 'lg:table-cell lg:px-2.5 lg:py-3 lg:before:hidden',
+    celulaCompacta: 'lg:table-cell lg:px-2 lg:py-3 lg:before:hidden',
     alinhamento: { left: 'lg:text-left', center: 'lg:text-center', right: 'lg:text-right' },
   },
   xl: {
@@ -46,7 +46,7 @@ const QUEBRA = {
     rodape: 'xl:table-footer-group',
     linha: 'xl:table-row xl:mb-0 xl:rounded-none xl:border-0 xl:p-0 xl:shadow-none',
     celula: 'xl:table-cell xl:px-6 xl:py-4 xl:before:hidden',
-    celulaCompacta: 'xl:table-cell xl:px-2.5 xl:py-3 xl:before:hidden',
+    celulaCompacta: 'xl:table-cell xl:px-2 xl:py-3 xl:before:hidden',
     alinhamento: { left: 'xl:text-left', center: 'xl:text-center', right: 'xl:text-right' },
   },
 } as const;
@@ -91,7 +91,7 @@ function DataTable<Row>({ caption, columns, rows, rowKey, loading = false, loadi
         <thead className={`sr-only ${q.cabecalho}`}>
           <tr className="border-b border-line bg-surface-muted">
             {columns.map((coluna) => (
-              <th key={coluna.key} scope="col" className={`${compact ? 'px-2.5' : 'px-6'} py-3 text-xs font-semibold uppercase tracking-wider text-ink-muted ${q.alinhamento[coluna.align ?? 'left']}`}>{coluna.header}</th>
+              <th key={coluna.key} scope="col" className={`${compact ? 'px-2' : 'px-6'} py-3 text-xs font-semibold uppercase tracking-wider text-ink-muted ${q.alinhamento[coluna.align ?? 'left']}`}>{coluna.header}</th>
             ))}
           </tr>
         </thead>

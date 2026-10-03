@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { Search, FileText } from 'lucide-react';
-import { EmployeePayroll } from '../../services/payrollService';
+import { EmployeePayroll, PayrollCompany } from '../../services/payrollService';
 import PayrollSlipModal from './PayrollSlipModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { competenciaAtual } from '../../utils/competencia';
+import { rotuloDaCompetencia } from '../../utils/competencia';
 import Card, { CardHeader } from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import DataTable, { type Column } from '../ui/DataTable';
 import Field, { Input } from '../ui/Field';
 
-interface Props { payrolls: EmployeePayroll[]; }
+interface Props { payrolls: EmployeePayroll[]; competencia: string; empresa: PayrollCompany; }
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-const PayrollTable: React.FC<Props> = ({ payrolls }) => {
+const PayrollTable: React.FC<Props> = ({ payrolls, competencia, empresa }) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePayroll | null>(null);
@@ -29,7 +29,7 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
       cell: (emp) => (
         <span className="block">
           <span className="block font-semibold text-ink">{emp.name}</span>
-          <span className="block text-xs text-ink-muted">{emp.role}</span>
+          <span className="block text-xs text-ink-muted">{emp.role}{emp.contract ? ` · ${emp.contract}` : ''}</span>
         </span>
       ),
     },
@@ -52,10 +52,9 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
 
   return (
     <>
-      <Card as="section" padding="none" >
+      <Card as="section" padding="none">
         <CardHeader
           title="Holerites Individuais"
-         
           actions={(
             <div className="w-full sm:w-72">
               <Field label="Buscar colaborador" name="busca" hideLabel>
@@ -70,7 +69,7 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
             columns={columns}
             rows={filtered}
             rowKey={(emp) => emp.id}
-            empty={<p className="py-12 text-center text-sm text-ink-muted">Nenhum colaborador encontrado.</p>}
+            empty={<p className="py-12 text-center text-sm text-ink-muted">{payrolls.length === 0 ? 'Nenhum colaborador na folha deste mês.' : 'Nenhum colaborador encontrado.'}</p>}
           />
         </div>
       </Card>
@@ -80,8 +79,9 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
           isOpen
           onClose={() => setSelectedEmployee(null)}
           employee={selectedEmployee}
-          month={competenciaAtual()}
-          companyName={user?.empresaNome}
+          month={rotuloDaCompetencia(competencia)}
+          companyName={empresa.razaoSocial ?? user?.empresaNome}
+          cnpj={empresa.cnpj}
         />
       )}
     </>
