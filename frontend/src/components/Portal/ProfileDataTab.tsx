@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Mail, Phone, Building2, Lock, User as UserIcon, Camera, X, Save } from 'lucide-react';
+import { Mail, Phone, Camera, X, Save } from 'lucide-react';
 import { userService, PerfilUsuario, DadosEditaveis } from '../../services/userService';
 import { mensagemDeErro } from '../../utils/erros';
 
