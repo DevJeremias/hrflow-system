@@ -11,8 +11,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createServer, type ViteDevServer } from 'vite';
 
-Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: dom.window.localStorage });
-
 let server: ViteDevServer;
 let Harness: ComponentType<{ initialPath: string }>;
 const originalFetch = globalThis.fetch;

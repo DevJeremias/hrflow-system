@@ -7,6 +7,7 @@ Object.defineProperties(globalThis, {
   window: { configurable: true, value: dom.window },
   document: { configurable: true, value: dom.window.document },
   navigator: { configurable: true, value: dom.window.navigator },
+  localStorage: { configurable: true, value: dom.window.localStorage },
   // O FormData do Node não aceita um <form> do jsdom.
   FormData: { configurable: true, value: dom.window.FormData },
   IS_REACT_ACT_ENVIRONMENT: { configurable: true, value: true },
