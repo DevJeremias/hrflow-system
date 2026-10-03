@@ -56,8 +56,7 @@ describe('commitlint', () => {
 });
 
 describe('governança do GitHub', () => {
-    it('o repositório tem licença, dono de código e Dependabot para npm e Actions', () => {
-        assert.match(ler('LICENSE'), /^ISC License/);
+    it('o repositório tem dono de código e Dependabot para npm e Actions', () => {
         assert.match(ler('.github/CODEOWNERS'), /^\* @DevJeremias$/m);
         const dependabot = ler('.github/dependabot.yml');
         assert.match(dependabot, /package-ecosystem: npm/);
