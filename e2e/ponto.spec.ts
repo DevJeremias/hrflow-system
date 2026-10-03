@@ -17,9 +17,9 @@ test('o colaborador troca a senha provisória, entra, marca a entrada e o regist
 
   // O primeiro acesso só abre a troca de senha; depois dela a pessoa volta ao login com a senha nova.
   await entrar(page, email, SENHA, /\/trocar-senha$/);
-  await page.locator('[name="senhaAtual"]').fill(SENHA);
-  await page.locator('[name="novaSenha"]').fill(SENHA_NOVA);
-  await page.locator('[name="confirmacao"]').fill(SENHA_NOVA);
+  await page.getByLabel('Senha provisória').fill(SENHA);
+  await page.getByLabel(/^Nova senha/).fill(SENHA_NOVA);
+  await page.getByLabel('Confirmar nova senha').fill(SENHA_NOVA);
   await page.getByRole('button', { name: 'Definir senha' }).click();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('status').filter({ hasText: 'Senha definida' })).toBeVisible();
