@@ -12,8 +12,8 @@ const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const { pontoRoutes } = require('./modules/ponto/index.ts'); 
 const { dashboardRoutes } = require('./modules/dashboard/index.ts');
 const { perfilRoutes } = require('./modules/perfil/index.ts');
+const { estruturaRoutes } = require('./modules/estrutura/index.ts');
 const { folhaRoutes } = require('./modules/folha/index.ts');
-const estruturaRoutes = require('./routes/estruturaRoutes');
 
 // Importação do Middleware de Proteção
 const authMiddleware = require('./middlewares/authMiddleware');
