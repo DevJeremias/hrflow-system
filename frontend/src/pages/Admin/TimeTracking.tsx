@@ -2,8 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Clock, Search, Calendar as CalendarIcon, Users } from 'lucide-react';
 import { pontoService, type CompanyPointRecord } from '../../services/pontoService';
 import ErrorAlert from '../../components/ErrorAlert';
+import PageHeader from '../../components/ui/PageHeader';
+import StatCard from '../../components/ui/StatCard';
+import Card from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import DataTable, { type Column } from '../../components/ui/DataTable';
+import EmptyState from '../../components/ui/EmptyState';
+import Field, { Input } from '../../components/ui/Field';
+import Spinner from '../../components/ui/Spinner';
 import { mensagemDeErro } from '../../utils/erros';
 import { formatarDataIso, formatarHoraSemSegundos } from '../../utils/ponto';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 const mesAtualEmBelem = (): string => new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Belem',
@@ -22,6 +31,7 @@ interface Resultado {
 }
 
 export default function TimeTracking() {
+  usePageTitle('Gestão de ponto');
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [busca, setBusca] = useState('');
@@ -64,122 +74,70 @@ export default function TimeTracking() {
     setPagina(1);
   };
 
+  const columns: Column<CompanyPointRecord>[] = [
+    { key: 'colaborador', header: 'Colaborador', cell: (registro) => <span className="font-semibold text-ink">{registro.nome_funcionario}</span> },
+    { key: 'data', header: 'Data', cell: (registro) => <span className="text-ink-muted">{formatarDataIso(registro.date)}</span> },
+    { key: 'marcacao', header: 'Marcação', cell: (registro) => <span className="text-ink-muted">{registro.tipo_registro}</span> },
+    { key: 'horario', header: 'Horário', cell: (registro) => <span className="font-semibold text-ink">{formatarHoraSemSegundos(registro.time)}</span> },
+  ];
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Gestão de Ponto</h1>
-          <p className="text-slate-500 font-medium mt-1">Consulte as marcações reais de ponto dos colaboradores.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl font-bold shadow-sm">
-            <CalendarIcon size={18} />
-            <span className="sr-only">Mês de referência</span>
-            <input aria-label="Mês de referência" type="month" value={monthFilter} onChange={(event) => event.target.value && trocarMes(event.target.value)} className="bg-transparent outline-none" />
-          </label>
-        </div>
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <PageHeader
+        title="Gestão de Ponto"
+        description="Consulte as marcações reais de ponto dos colaboradores."
+        actions={(
+          <Field label="Mês de referência" name="mes">
+            <Input type="month" autoComplete="off" value={monthFilter} onChange={(event) => event.target.value && trocarMes(event.target.value)} />
+          </Field>
+        )}
+      />
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <StatCard label="Marcações no mês" value={loading || loadError ? '—' : total} icon={<Clock size={24} />} tone="brand" />
+        <StatCard label="Colaboradores nesta página" value={loading || loadError ? '—' : colaboradores} icon={<Users size={24} />} tone="success" />
+        <StatCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={24} />} tone="warning" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <SummaryCard label="Marcações no mês" value={loading || loadError ? '—' : total} icon={<Clock size={28} />} color="indigo" />
-        <SummaryCard label="Colaboradores nesta página" value={loading || loadError ? '—' : colaboradores} icon={<Users size={28} />} color="emerald" />
-        <SummaryCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={28} />} color="rose" />
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-50/50">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input
-              type="search"
-              placeholder="Buscar colaborador..."
-              aria-label="Buscar colaborador"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
+      <Card as="section" padding="none">
+        <div className="flex flex-col items-stretch justify-between gap-4 border-b border-line bg-surface-muted p-5 md:flex-row md:items-center">
+          <div className="w-full md:w-96">
+            <Field label="Buscar colaborador" name="busca" hideLabel>
+              <Input type="search" autoComplete="off" icon={<Search size={18} />} placeholder="Buscar colaborador..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
+            </Field>
           </div>
-          <p className="text-sm font-medium text-slate-500">Dados limitados à empresa da sua sessão.</p>
+          <p className="text-sm text-ink-muted">Dados limitados à empresa da sua sessão.</p>
         </div>
 
         {loading ? (
-          <div role="status" className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
-            <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
-            <p className="font-bold">Carregando registros de ponto...</p>
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-ink-muted">
+            <Spinner size="lg" rotulo="Carregando registros de ponto" />
+            <p className="font-semibold">Carregando registros de ponto...</p>
           </div>
         ) : loadError ? (
           <div className="p-6"><ErrorAlert message={loadError} onRetry={retry} /></div>
-        ) : total === 0 ? (
-          <p className="py-16 text-center font-medium text-slate-500">Nenhum registro de ponto encontrado neste mês.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-sm uppercase tracking-wider font-bold">
-                  <th className="p-5">Colaborador</th>
-                  <th className="p-5">Data</th>
-                  <th className="p-5">Marcação</th>
-                  <th className="p-5">Horário</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {registros.map((registro) => (
-                  <tr key={registro.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-5 font-bold text-slate-800">{registro.nome_funcionario}</td>
-                    <td className="p-5 font-medium text-slate-600">{formatarDataIso(registro.date)}</td>
-                    <td className="p-5 font-medium text-slate-600">{registro.tipo_registro}</td>
-                    <td className="p-5 font-bold text-slate-700">{formatarHoraSemSegundos(registro.time)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-3 md:p-0">
+            <DataTable
+              caption="Marcações de ponto do mês"
+              columns={columns}
+              rows={registros}
+              rowKey={(registro) => registro.id}
+              empty={<EmptyState icon={<Clock size={28} />} title="Nenhum registro de ponto encontrado neste mês." />}
+            />
           </div>
         )}
-      </div>
+      </Card>
 
       {!loading && !loadError && total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-ink-muted">
           <span>Página {pagina} de {totalDePaginas} · {total} marcações</span>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setPagina((atual) => atual - 1)}
-              disabled={pagina <= 1}
-              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
-            >Anterior</button>
-            <button
-              type="button"
-              onClick={() => setPagina((atual) => atual + 1)}
-              disabled={pagina >= totalDePaginas}
-              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50"
-            >Próxima</button>
+            <Button variant="secondary" size="sm" onClick={() => setPagina((atual) => atual - 1)} disabled={pagina <= 1}>Anterior</Button>
+            <Button variant="secondary" size="sm" onClick={() => setPagina((atual) => atual + 1)} disabled={pagina >= totalDePaginas}>Próxima</Button>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-interface SummaryCardProps {
-  label: string;
-  value: number | string;
-  icon: React.ReactNode;
-  color: 'indigo' | 'emerald' | 'rose';
-}
-
-function SummaryCard({ label, value, icon, color }: SummaryCardProps) {
-  const styles = {
-    indigo: 'bg-indigo-50 text-indigo-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    rose: 'bg-rose-50 text-rose-600'
-  };
-  return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-      <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${styles[color]}`}>{icon}</div>
-      <div>
-        <p className="text-slate-500 font-bold text-sm">{label}</p>
-        <h3 className="text-2xl font-black text-slate-800">{value}</h3>
-      </div>
     </div>
   );
 }

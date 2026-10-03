@@ -1,70 +1,89 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, FileText } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
 import PayrollSlipModal from './PayrollSlipModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { competenciaAtual } from '../../utils/competencia';
+import Card, { CardHeader } from '../ui/Card';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
+import DataTable, { type Column } from '../ui/DataTable';
+import Field, { Input } from '../ui/Field';
 
 interface Props { payrolls: EmployeePayroll[]; }
+
+const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
 const PayrollTable: React.FC<Props> = ({ payrolls }) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePayroll | null>(null);
 
-  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
   const filtered = payrolls.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const columns: Column<EmployeePayroll>[] = [
+    {
+      key: 'colaborador',
+      header: 'Colaborador',
+      semRotuloNoCartao: true,
+      cell: (emp) => (
+        <span className="block">
+          <span className="block font-semibold text-ink">{emp.name}</span>
+          <span className="block text-xs text-ink-muted">{emp.role}</span>
+        </span>
+      ),
+    },
+    { key: 'base', header: 'Salário Base', cell: (emp) => <span className="font-semibold text-ink-muted">{formatCurrency(emp.baseSalary)}</span> },
+    { key: 'proventos', header: 'Proventos (+ extras)', cell: (emp) => <Badge tone="success">+ {formatCurrency(emp.totalEarnings)}</Badge> },
+    { key: 'descontos', header: 'Descontos', cell: (emp) => <Badge tone="danger">- {formatCurrency(emp.totalDeductions)}</Badge> },
+    { key: 'liquido', header: 'Líquido Final', align: 'right', cell: (emp) => <span className="text-lg font-bold text-ink">{formatCurrency(emp.netSalary)}</span> },
+    {
+      key: 'acoes',
+      header: 'Holerite',
+      align: 'right',
+      semRotuloNoCartao: true,
+      cell: (emp) => (
+        <Button variant="secondary" size="sm" icon={<FileText size={16} aria-hidden="true" />} aria-label={`Ver holerite de ${emp.name}`} onClick={() => setSelectedEmployee(emp)}>
+          Ver holerite
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <>
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-500 delay-150">
-        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <h3 className="font-black text-slate-800">Holerites Individuais</h3>
-          <div className="relative w-64">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Buscar colaborador..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-primary text-sm font-medium" />
-          </div>
+      <Card as="section" padding="none" >
+        <CardHeader
+          title="Holerites Individuais"
+         
+          actions={(
+            <div className="w-full sm:w-72">
+              <Field label="Buscar colaborador" name="busca" hideLabel>
+                <Input type="search" autoComplete="off" icon={<Search size={18} />} placeholder="Buscar colaborador..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </Field>
+            </div>
+          )}
+        />
+        <div className="p-3 md:p-0">
+          <DataTable
+            caption="Holerites individuais da competência"
+            columns={columns}
+            rows={filtered}
+            rowKey={(emp) => emp.id}
+            empty={<p className="py-12 text-center text-sm text-ink-muted">Nenhum colaborador encontrado.</p>}
+          />
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-500 font-black">
-                <th className="p-6 border-b border-slate-100">Colaborador</th>
-                <th className="p-6 border-b border-slate-100">Salário Base</th>
-                <th className="p-6 border-b border-slate-100">Proventos (+ extras)</th>
-                <th className="p-6 border-b border-slate-100">Descontos</th>
-                <th className="p-6 border-b border-slate-100 text-right">Líquido Final</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm font-medium">
-              {filtered.map((emp) => (
-                <tr 
-                  key={emp.id} 
-                  onClick={() => setSelectedEmployee(emp)}
-                  className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0 group cursor-pointer"
-                >
-                  <td className="p-6"><div className="font-bold text-slate-900">{emp.name}</div><div className="text-xs text-slate-500">{emp.role}</div></td>
-                  <td className="p-6 text-slate-600 font-bold">{formatCurrency(emp.baseSalary)}</td>
-                  <td className="p-6"><span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-100">+ {formatCurrency(emp.totalEarnings)}</span></td>
-                  <td className="p-6"><span className="px-3 py-1 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg border border-rose-100">- {formatCurrency(emp.totalDeductions)}</span></td>
-                  <td className="p-6 text-right"><span className="text-lg font-black text-slate-900">{formatCurrency(emp.netSalary)}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      </Card>
 
-      <PayrollSlipModal 
-        isOpen={!!selectedEmployee} 
-        onClose={() => setSelectedEmployee(null)} 
-        employee={selectedEmployee} 
-        month={competenciaAtual()}
-        companyName={user?.empresaNome}
-      />
+      {selectedEmployee && (
+        <PayrollSlipModal
+          isOpen
+          onClose={() => setSelectedEmployee(null)}
+          employee={selectedEmployee}
+          month={competenciaAtual()}
+          companyName={user?.empresaNome}
+        />
+      )}
     </>
   );
 };

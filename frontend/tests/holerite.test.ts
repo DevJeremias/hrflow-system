@@ -110,3 +110,13 @@ test('o código não traz mais empresa nem CNPJ de exemplo', () => {
     assert.doesNotMatch(conteudo, /Abril de 2026/, arquivo);
   }
 });
+
+test('o holerite é um diálogo modal nomeado e o botão de imprimir tem nome acessível', async () => {
+  const { fechar } = await abrir({ month: 'outubro de 2026' });
+  const dialogo = document.querySelector('[role="dialog"]')!;
+  assert.equal(dialogo.getAttribute('aria-modal'), 'true');
+  assert.equal(document.getElementById(dialogo.getAttribute('aria-labelledby')!)?.textContent, 'Detalhes do Holerite');
+  assert.ok(dialogo.querySelector('button[aria-label="Imprimir Holerite"]'));
+  assert.ok(dialogo.closest('.holerite-impressao'), 'o contêiner do modal leva a classe que o CSS de impressão preserva');
+  await fechar();
+});

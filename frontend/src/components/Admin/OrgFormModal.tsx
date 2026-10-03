@@ -1,89 +1,69 @@
 import React, { useState, useRef } from 'react';
-import { X } from 'lucide-react';
 import ErrorAlert from '../ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import type { Department, Role } from '../../services/departmentsRolesService';
+import Modal from '../ui/Modal';
+import Button from '../ui/Button';
+import Field, { Input, Select, Textarea } from '../ui/Field';
 
-// ==========================================
-// SUBCOMPONENTE: FORMULÁRIO DE DEPARTAMENTO
-// ==========================================
-const DepartmentForm: React.FC<{ item?: any }> = ({ item }) => (
-  <div className="grid grid-cols-1 gap-6 animate-in fade-in duration-300">
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700 ml-1">Nome do Departamento *</label>
-      <input name="name" required defaultValue={item?.name} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium" placeholder="Ex: Engenharia de Software" />
+const NIVEIS = ['Júnior', 'Pleno', 'Sênior', 'Gestão', 'Coordenação'];
+
+const DepartmentForm: React.FC<{ item?: Department }> = ({ item }) => (
+  <div className="grid grid-cols-1 gap-5">
+    <Field label="Nome do Departamento" name="name" required>
+      <Input data-autofocus defaultValue={item?.name} autoComplete="off" placeholder="Ex: Engenharia de Software" />
+    </Field>
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <Field label="Sigla" name="sigla" required>
+        <Input defaultValue={item?.sigla} autoComplete="off" className="uppercase" placeholder="TI" />
+      </Field>
+      <Field label="Gestor" name="manager">
+        <Input defaultValue={item?.manager === 'Não definido' ? '' : item?.manager} autoComplete="off" placeholder="Nome do Gestor" />
+      </Field>
     </div>
-    <div className="grid grid-cols-2 gap-6">
-      <div className="space-y-2">
-        <label className="text-sm font-bold text-slate-700 ml-1">Sigla *</label>
-        <input name="sigla" required defaultValue={item?.sigla} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-bold uppercase" placeholder="TI" />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-bold text-slate-700 ml-1">Gestor</label>
-        <input name="manager" defaultValue={item?.manager} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium" placeholder="Nome do Gestor" />
-      </div>
+    <Field label="Descrição" name="description">
+      <Textarea rows={3} defaultValue={item?.description} autoComplete="off" className="resize-none" placeholder="Breve descrição das responsabilidades do setor..." />
+    </Field>
+  </div>
+);
+
+const RoleForm: React.FC<{ item?: Role; departments: Department[] }> = ({ item, departments }) => (
+  <div className="space-y-5">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <Field label="Título do Cargo" name="title" required>
+        <Input data-autofocus defaultValue={item?.title} autoComplete="off" placeholder="Ex: Analista de Sistemas" />
+      </Field>
+      <Field label="Setor Responsável" name="department" required>
+        <Select defaultValue={item?.department} autoComplete="off">
+          <option value="">Selecione...</option>
+          {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+        </Select>
+      </Field>
     </div>
-    <div className="space-y-2">
-      <label className="text-sm font-bold text-slate-700 ml-1">Descrição</label>
-      <textarea name="description" rows={3} defaultValue={item?.description} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all font-medium resize-none" placeholder="Breve descrição das responsabilidades do setor..." />
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <Field label="Nível Hierárquico" name="level">
+        <Select defaultValue={item?.level || 'Pleno'} autoComplete="off">
+          {NIVEIS.map((nivel) => <option key={nivel}>{nivel}</option>)}
+        </Select>
+      </Field>
+      <Field label="Salário Base (R$)" name="salary" required>
+        <Input type="number" min="0" step="0.01" inputMode="decimal" defaultValue={item?.salary ?? undefined} autoComplete="off" placeholder="0.00" />
+      </Field>
     </div>
   </div>
 );
 
-// ==========================================
-// SUBCOMPONENTE: FORMULÁRIO DE CARGO
-// ==========================================
-interface RoleFormProps {
-  item?: any;
-  departments: any[];
-}
-
-const RoleForm: React.FC<RoleFormProps> = ({ item, departments }) => {
-  return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-700 ml-1">Título do Cargo *</label>
-          <input name="title" required defaultValue={item?.title} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none" placeholder="Ex: Analista de Sistemas" />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-700 ml-1">Setor Responsável *</label>
-          <select name="department" required defaultValue={item?.department} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none appearance-none cursor-pointer">
-            <option value="">Selecione...</option>
-            {departments.map((d: any) => <option key={d.id} value={d.name}>{d.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-700 ml-1">Nível Hierárquico</label>
-          <select name="level" defaultValue={item?.level || 'Pleno'} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer">
-            <option>Júnior</option><option>Pleno</option><option>Sênior</option><option>Gestão</option><option>Coordenação</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-slate-700 ml-1">Salário Base (R$) *</label>
-          <input name="salary" type="number" required defaultValue={item?.salary} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none font-bold" placeholder="0.00" />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ==========================================
-// MODAL PRINCIPAL
-// ==========================================
 interface Props {
   type: 'department' | 'role';
-  item?: any;
-  departments: any[];
+  item?: Department | Role | null;
+  departments: Department[];
   onClose: () => void;
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: Record<string, FormDataEntryValue | undefined>) => Promise<void>;
 }
 
 const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSave }) => {
   const isDept = type === 'department';
-  
+
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   // O estado só muda no próximo render: o ref fecha a janela entre dois cliques seguidos.
@@ -92,8 +72,7 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (submittingRef.current) return;
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
+    const data = Object.fromEntries(new FormData(e.currentTarget).entries());
 
     submittingRef.current = true;
     setSubmitting(true);
@@ -109,44 +88,21 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose} />
-      
-      <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-        
-        <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-              {item ? 'Editar' : 'Novo'} {isDept ? 'Departamento' : 'Cargo'}
-            </h2>
-            <p className="text-slate-500 text-sm font-medium">Preencha os dados estruturais abaixo.</p>
-          </div>
-          <button onClick={onClose} className="p-3 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-2xl transition-all">
-            <X size={24} />
-          </button>
+    <Modal
+      title={`${item ? 'Editar' : 'Novo'} ${isDept ? 'Departamento' : 'Cargo'}`}
+      description="Preencha os dados estruturais abaixo."
+      onClose={() => { if (!submittingRef.current) onClose(); }}
+      form={{ onSubmit: handleSubmit }}
+      footer={(
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button variant="secondary" onClick={onClose} disabled={submitting}>Cancelar</Button>
+          <Button type="submit" loading={submitting}>{submitting ? 'Salvando...' : 'Finalizar Registro'}</Button>
         </div>
-
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          
-          {isDept ? (
-            <DepartmentForm item={item} />
-          ) : (
-            <RoleForm item={item} departments={departments} />
-          )}
-
-          {submitError && <div className="mt-8"><ErrorAlert message={submitError} /></div>}
-
-          <div className="mt-12 pt-8 border-t border-slate-100 flex gap-4">
-            <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50">
-              Cancelar
-            </button>
-            <button type="submit" disabled={submitting} className="flex-[2] py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
-              {submitting ? 'Salvando...' : 'Finalizar Registro'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      )}
+    >
+      {isDept ? <DepartmentForm item={item as Department | undefined} /> : <RoleForm item={item as Role | undefined} departments={departments} />}
+      {submitError && <div className="mt-6"><ErrorAlert message={submitError} /></div>}
+    </Modal>
   );
 };
 

@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Users, Building2, Briefcase, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardService, DashboardSummary } from '../../services/dashboardService';
-import StatCard from '../../components/Admin/DashboardStatCard';
+import StatCard from '../../components/ui/StatCard';
+import PageHeader from '../../components/ui/PageHeader';
+import Skeleton from '../../components/ui/Skeleton';
 import RecentActivities from '../../components/Admin/DashboardActivities';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { usePageTitle } from '../../hooks/usePageTitle';
 
 const Dashboard: React.FC = () => {
+  usePageTitle('Dashboard');
   const { user } = useAuth();
-  
- 
   const firstName = user?.nome?.split(' ')[0] || 'Gestor';
 
   const [data, setData] = useState<DashboardSummary | null>(null);
@@ -35,33 +37,26 @@ const Dashboard: React.FC = () => {
 
   const inactive = data?.inactiveEmployees ?? 0;
   const statConfig = data ? [
-    { label: 'Colaboradores', value: data.activeEmployees, to: '/admin/colaboradores', hint: inactive > 0 ? `${inactive} ${inactive === 1 ? 'inativo' : 'inativos'}` : undefined, icon: <Users size={24} className="text-white" />, color: 'bg-blue-500', shadow: 'shadow-blue-500/30' },
-    { label: 'Departamentos', value: data.departments, to: '/admin/estrutura', icon: <Building2 size={24} className="text-white" />, color: 'bg-indigo-500', shadow: 'shadow-indigo-500/30' },
-    { label: 'Cargos Cadastrados', value: data.roles, to: '/admin/estrutura', icon: <Briefcase size={24} className="text-white" />, color: 'bg-purple-500', shadow: 'shadow-purple-500/30' },
-    { label: 'Marcações Hoje', value: data.punchesToday, to: '/admin/gestao-ponto', icon: <Clock size={24} className="text-white" />, color: 'bg-orange-500', shadow: 'shadow-orange-500/30' },
+    { label: 'Colaboradores', value: data.activeEmployees, to: '/admin/colaboradores', hint: inactive > 0 ? `${inactive} ${inactive === 1 ? 'inativo' : 'inativos'}` : undefined, icon: <Users size={24} />, tone: 'brand' as const },
+    { label: 'Departamentos', value: data.departments, to: '/admin/estrutura', icon: <Building2 size={24} />, tone: 'brand' as const },
+    { label: 'Cargos Cadastrados', value: data.roles, to: '/admin/estrutura', icon: <Briefcase size={24} />, tone: 'brand' as const },
+    { label: 'Marcações Hoje', value: data.punchesToday, to: '/admin/gestao-ponto', icon: <Clock size={24} />, tone: 'warning' as const },
   ] : [];
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      {/* Cabeçalho */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-slate-500 font-medium mt-2 text-lg">
-            Bem-vindo de volta, <span className="text-primary font-bold">{firstName}</span>!
-          </p>
-        </div>
-      </div>
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <PageHeader
+        title="Dashboard"
+        description={<>Bem-vindo de volta, <span className="font-semibold text-brand">{firstName}</span>!</>}
+      />
 
       {loadError && <ErrorAlert message={loadError} onRetry={retry} />}
 
-      {/* Grid de Cards com Skeleton Loading */}
       {!loadError && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div aria-busy={isLoading || undefined} className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
           {isLoading
-            ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 bg-slate-100 rounded-3xl animate-pulse" />)
-            : statConfig.map((stat) => <StatCard key={stat.label} {...stat} />)
-          }
+            ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-card" />)
+            : statConfig.map((stat) => <StatCard key={stat.label} {...stat} />)}
         </div>
       )}
 

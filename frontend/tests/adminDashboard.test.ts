@@ -74,10 +74,10 @@ const cartao = (host: HTMLElement, rotulo: string) =>
 test('mostra as contagens reais da API, sem espera artificial', async () => {
   globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
   const { host, root } = await renderDashboard();
-  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^3Colaboradores1 inativo$/);
-  assert.match(cartao(host, 'Departamentos')?.textContent ?? '', /^4Departamentos$/);
-  assert.match(cartao(host, 'Cargos')?.textContent ?? '', /^4Cargos Cadastrados$/);
-  assert.match(cartao(host, 'Marcações Hoje')?.textContent ?? '', /^2Marcações Hoje$/);
+  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores31 inativo$/);
+  assert.match(cartao(host, 'Departamentos')?.textContent ?? '', /^Departamentos4$/);
+  assert.match(cartao(host, 'Cargos')?.textContent ?? '', /^Cargos Cadastrados4$/);
+  assert.match(cartao(host, 'Marcações Hoje')?.textContent ?? '', /^Marcações Hoje2$/);
   assert.doesNotMatch(host.textContent ?? '', /Aprovações Pendentes/);
   await act(async () => root.unmount());
   host.remove();
@@ -113,7 +113,7 @@ test('erro de rede mostra o alerta com "Tentar novamente" em vez de zeros, e ten
   globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
   await act(async () => { retry.click(); });
   assert.equal(host.querySelector('[role="alert"]'), null);
-  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^3Colaboradores/);
+  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores3/);
   await act(async () => root.unmount());
   host.remove();
 });
