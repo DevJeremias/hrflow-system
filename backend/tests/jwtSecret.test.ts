@@ -1,11 +1,11 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const { spawnSync } = require('node:child_process');
-const path = require('node:path');
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 
-const modulo = path.join(__dirname, '../config/jwtSecret.js');
+const modulo = path.join(import.meta.dirname, '../config/jwtSecret.js');
 
-const carregar = (secret) => {
+const carregar = (secret: string | undefined) => {
     const env = { ...process.env };
     if (secret === undefined) delete env.JWT_SECRET;
     else env.JWT_SECRET = secret;

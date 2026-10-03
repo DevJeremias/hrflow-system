@@ -5,11 +5,15 @@
 // HRFLOW_TEST_DB_PASS e, se não for 3306, HRFLOW_TEST_DB_PORT. O teste cria e apaga um banco próprio
 // (hrflow_test_<pid>), sem tocar em DB_NAME. Sem HRFLOW_TEST_DB_HOST os testes são marcados como
 // ignorados, nunca como aprovados.
-const { before, after, describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const crypto = require('node:crypto');
-const http = require('node:http');
-const mysql = require('mysql2/promise');
+import { before, after, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import type http from 'node:http';
+import bcrypt from 'bcrypt';
+import express from 'express';
+import mysql from 'mysql2/promise';
+import type { Connection, Pool, RowDataPacket } from 'mysql2/promise';
+import { pararServidor, subirServidor } from './support/servidor.ts';
 
 const host = process.env.HRFLOW_TEST_DB_HOST;
 const port = process.env.HRFLOW_TEST_DB_PORT ? Number(process.env.HRFLOW_TEST_DB_PORT) : undefined;
@@ -35,21 +39,20 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     const dbName = `hrflow_test_${process.pid}`;
     const jwtSecret = crypto.randomBytes(32).toString('hex');
     const senhaFicticia = 'senha-ficticia-1';
-    let admin, pool;
-    const servidores = [];
+    let admin: Connection | undefined;
+    let pool: Pool;
+    let criarAuthRouter: typeof import('../modules/auth/index.ts').criarAuthRouter;
+    const servidores: http.Server[] = [];
 
     // Monta o mesmo desenho do server.js: auth antes do parser global de 10mb.
-    const subir = async (limites = {}, trustProxy = false) => {
-        const express = require('express');
+    const subir = async (limites = {}, trustProxy: boolean | number = false) => {
         const app = express();
         app.set('trust proxy', trustProxy);
-        app.use('/api/auth', require('../routes/authRoutes').criarRouter({ ...FOLGADOS, ...limites }));
+        app.use('/api/auth', criarAuthRouter({ ...FOLGADOS, ...limites }));
         app.use(express.json({ limit: '10mb' }));
-        const server = http.createServer(app);
-        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const { server, baseUrl } = await subirServidor(app);
         servidores.push(server);
-        const baseUrl = `http://127.0.0.1:${server.address().port}`;
-        return (caminho, corpo, cabecalhos = {}) => fetch(`${baseUrl}/api/auth${caminho}`, {
+        return (caminho: string, corpo: unknown, cabecalhos: Record<string, string> = {}) => fetch(`${baseUrl}/api/auth${caminho}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...cabecalhos },
             body: typeof corpo === 'string' ? corpo : JSON.stringify(corpo),
@@ -61,10 +64,11 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         }));
     };
 
-    const contar = async (tabela) => (await pool.query(`SELECT COUNT(*) AS total FROM ${tabela}`))[0][0].total;
+    const contar = async (tabela: string): Promise<number> =>
+        (await pool.query<RowDataPacket[]>(`SELECT COUNT(*) AS total FROM ${tabela}`))[0][0].total;
 
     let sequencia = 0;
-    const registro = (extra = {}) => {
+    const registro = (extra: Record<string, unknown> = {}) => {
         sequencia += 1;
         return {
             nomeEmpresa: `Empresa Ficticia ${sequencia}`, nomeAdmin: `Pessoa Ficticia ${sequencia}`,
@@ -89,11 +93,13 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         process.env.DB_PASS = process.env.HRFLOW_TEST_DB_PASS;
         process.env.DB_NAME = dbName;
         process.env.JWT_SECRET = jwtSecret;
-        pool = require('../config/db');
+        // Só depois das variáveis de ambiente acima: o pool e o segredo JWT as leem ao carregar.
+        pool = (await import('../config/db.js')).default;
+        ({ criarAuthRouter } = await import('../modules/auth/index.ts'));
     });
 
     after(async () => {
-        await Promise.all(servidores.map((server) => new Promise((resolve) => server.close(resolve))));
+        await Promise.all(servidores.map(pararServidor));
         if (pool) await pool.end();
         if (admin) {
             await admin.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
@@ -146,7 +152,10 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
             const chamar = await subir();
             const original = pool.query;
             let consultas = 0;
-            pool.query = (...args) => { consultas += 1; return original.apply(pool, args); };
+            pool.query = ((...args: unknown[]) => {
+                consultas += 1;
+                return (original as (...args: unknown[]) => unknown).apply(pool, args);
+            }) as typeof pool.query;
             try {
                 for (const corpo of [{ email: { $ne: '' }, senha: 'x' }, { email: 'a@b.c', senha: 1 }, {}, []]) {
                     assert.equal((await chamar('/login', corpo)).status, 400, JSON.stringify(corpo));
@@ -165,7 +174,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
             const { status } = await chamar('/registrar', dados);
             assert.equal(status, 201);
 
-            const [[usuario]] = await pool.query('SELECT * FROM usuarios WHERE email = ?', ['pessoa.maiuscula@exemplo.invalid']);
+            const [[usuario]] = await pool.query<RowDataPacket[]>('SELECT * FROM usuarios WHERE email = ?', ['pessoa.maiuscula@exemplo.invalid']);
             assert.equal(usuario.perfil, 'Administrador');
             assert.notEqual(usuario.senha, senhaFicticia);
 
@@ -181,14 +190,14 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
             const original = pool.getConnection;
             pool.getConnection = async () => {
                 const connection = await original.call(pool);
-                const query = connection.query.bind(connection);
-                connection.query = (sql, ...resto) => {
+                const query = connection.query.bind(connection) as (...args: unknown[]) => unknown;
+                connection.query = ((sql: string, ...resto: unknown[]) => {
                     if (/INSERT INTO usuarios/.test(sql)) return Promise.reject(new Error('falha injetada'));
                     return query(sql, ...resto);
-                };
+                }) as typeof connection.query;
                 return connection;
             };
-            let resposta;
+            let resposta: Awaited<ReturnType<Awaited<ReturnType<typeof subir>>>>;
             const erro = console.error;
             console.error = () => {};
             try {
@@ -232,7 +241,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     describe('login de contas legadas', () => {
         it('aceita e-mail fora do formato do cadastro e senha curta', async () => {
             const chamar = await subir();
-            const hash = await require('bcrypt').hash('abc', 4);
+            const hash = await bcrypt.hash('abc', 4);
             await pool.query(
                 'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
                 ['Legado Ficticio', 'legado@localhost', hash, 'Colaborador', 1]
@@ -243,19 +252,19 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
 
         it('recusa o hash armazenado quando submetido como senha', async () => {
             const chamar = await subir();
-            const senhaHash = await require('bcrypt').hash('abc', 4);
+            const senhaHash = await bcrypt.hash('abc', 4);
             await pool.query(
                 'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
                 ['Hash Sintetico', 'hash@localhost', senhaHash, 'Colaborador', 1]
             );
-            const [[usuario]] = await pool.query('SELECT senha FROM usuarios WHERE email = ?', ['hash@localhost']);
+            const [[usuario]] = await pool.query<RowDataPacket[]>('SELECT senha FROM usuarios WHERE email = ?', ['hash@localhost']);
             const resposta = await chamar('/login', { email: 'hash@localhost', senha: usuario.senha });
             assert.equal(resposta.status, 401);
         });
     });
 
     describe('limitador de tentativas', () => {
-        const falhar = (chamar, email, cabecalhos) => chamar('/login', { email, senha: 'senha-errada-1' }, cabecalhos);
+        const falhar = (chamar: Awaited<ReturnType<typeof subir>>, email: string, cabecalhos?: Record<string, string>) => chamar('/login', { email, senha: 'senha-errada-1' }, cabecalhos);
 
         it('bloqueia o login por identidade depois de falhas repetidas, mesmo com a senha certa', async () => {
             const chamar = await subir({ loginPorIdentidade: { windowMs: 60_000, limit: 3 } });

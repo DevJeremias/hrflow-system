@@ -1,5 +1,5 @@
 const { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } = require('./comum');
-const { LIMITES } = require('../utils/validacaoAuth');
+const { LIMITES } = require('../modules/auth/auth.schemas.ts');
 
 const STATUS = ['Ativo', 'Inativo', 'Férias'];
 const TIPOS_CONTRATO = ['CLT', 'PJ', 'Estágio', 'Temporário'];

@@ -16,7 +16,7 @@ import { dataUrl } from './support/imagens.js';
 import db from '../config/db.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import tratarErros from '../middlewares/tratarErros.js';
-import authRoutes from '../routes/authRoutes.js';
+import { authRoutes } from '../modules/auth/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 
 const semBanco = banco.skip;

@@ -1,9 +1,11 @@
 // Funções puras do SEC-07: validação de entrada de login/cadastro e leitura de TRUST_PROXY.
 // Não precisam de banco.
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
-const { validarLogin, validarRegistro } = require('../utils/validacaoAuth');
-const { interpretarTrustProxy } = require('../utils/trustProxy');
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { validarLogin, validarRegistro } from '../modules/auth/auth.schemas.ts';
+import trustProxy from '../utils/trustProxy.js';
+
+const { interpretarTrustProxy } = trustProxy;
 
 const registroValido = () => ({
     nomeEmpresa: 'Empresa Ficticia', nomeAdmin: 'Pessoa Ficticia', email: 'Admin@Exemplo.invalid', senha: 'senha-ficticia',
@@ -13,11 +15,12 @@ describe('validarRegistro', () => {
     it('normaliza e aceita uma entrada válida', () => {
         const { dados, erro } = validarRegistro({ ...registroValido(), nomeEmpresa: '  Empresa Ficticia  ' });
         assert.equal(erro, undefined);
+        assert.ok(dados);
         assert.equal(dados.email, 'admin@exemplo.invalid');
         assert.equal(dados.nomeEmpresa, 'Empresa Ficticia');
     });
 
-    const recusas = {
+    const recusas: Record<string, [unknown, RegExp]> = {
         'corpo que não é objeto': [null, /JSON/],
         'corpo em array': [[registroValido()], /JSON/],
         'nome da empresa ausente': [{ ...registroValido(), nomeEmpresa: undefined }, /empresa/],
@@ -36,6 +39,7 @@ describe('validarRegistro', () => {
         it(`recusa ${nome}`, () => {
             const { erro, dados } = validarRegistro(corpo);
             assert.equal(dados, undefined);
+            assert.ok(erro);
             assert.match(erro, mensagem);
         });
     }
@@ -49,6 +53,7 @@ describe('validarLogin', () => {
     it('não aplica a política de cadastro, para contas legadas continuarem entrando', () => {
         const { dados, erro } = validarLogin({ email: 'legado@localhost', senha: 'x'.repeat(100) });
         assert.equal(erro, undefined);
+        assert.ok(dados);
         assert.equal(dados.email, 'legado@localhost');
     });
 
