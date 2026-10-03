@@ -9,6 +9,7 @@ const tratarErros = require('./middlewares/tratarErros');
 const authRoutes = require('./routes/authRoutes');
 const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const { pontoRoutes } = require('./modules/ponto/index.ts'); 
+const { dashboardRoutes } = require('./modules/dashboard/index.ts');
 const estruturaRoutes = require('./routes/estruturaRoutes');
 const folhaRoutes = require('./routes/folhaRoutes');
 const perfilRoutes = require('./routes/perfilRoutes');
@@ -45,6 +46,7 @@ app.use('/api/ponto', authMiddleware, pontoRoutes);
 app.use('/api/estrutura', authMiddleware, estruturaRoutes); 
 app.use('/api/folha', authMiddleware, folhaRoutes); 
 app.use('/api/perfil', authMiddleware, perfilRoutes); 
+app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 
 // Rota padrão da API
 app.get('/api', (req, res) => {

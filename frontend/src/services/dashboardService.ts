@@ -1,35 +1,38 @@
-// frontend/src/services/dashboardService.ts
+import httpClient from './httpClient.ts';
 
-export interface DashboardData {
-  stats: {
-    totalEmployees: number;
-    totalDepartments: number;
-    totalRoles: number;
-    pendingApprovals: number;
-  };
-  recentActivities: any[];
+export interface DashboardSummary {
+  activeEmployees: number;
+  inactiveEmployees: number;
+  departments: number;
+  roles: number;
+  punchesToday: number;
 }
 
+interface DashboardSummaryResponse {
+  colaboradoresAtivos: number;
+  colaboradoresInativos: number;
+  departamentos: number;
+  cargos: number;
+  marcacoesHoje: number;
+}
+
+const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
 export const dashboardService = {
-  getDashboardData: async (): Promise<DashboardData> => {
-    // Simulamos um pequeno atraso de rede (500ms) para que a animação 
-    // de carregamento (pulse) do Dashboard seja exibida suavemente.
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          stats: {
-            totalEmployees: 0,
-            totalDepartments: 0,
-            totalRoles: 0,
-            pendingApprovals: 0
-          },
-          recentActivities: []
-        });
-      }, 500);
+  getSummary: async (): Promise<DashboardSummary> => {
+    const data = await httpClient<DashboardSummaryResponse>('/dashboard/resumo', {
+      auth: true,
+      errorMessage: 'Erro ao carregar o resumo do dashboard',
     });
+    if (!data || ![data.colaboradoresAtivos, data.colaboradoresInativos, data.departamentos, data.cargos, data.marcacoesHoje].every(isCount)) {
+      throw new Error('Resposta inválida ao carregar o resumo do dashboard');
+    }
+    return {
+      activeEmployees: data.colaboradoresAtivos,
+      inactiveEmployees: data.colaboradoresInativos,
+      departments: data.departamentos,
+      roles: data.cargos,
+      punchesToday: data.marcacoesHoje,
+    };
   },
-  
-  // Mantidos por retrocompatibilidade caso outras telas utilizem
-  getDashboardMetrics: async () => ({}),
-  getRecentActivities: async () => [],
 };
