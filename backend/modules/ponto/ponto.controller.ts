@@ -4,8 +4,9 @@ import type { Request, Response } from 'express';
 import * as service from './ponto.service.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { TipoDeErro } from './ponto.erros.ts';
-import type { ConsultaDeJustificativas, CorpoDaJustificativa, DiaDaJustificativa } from './ponto.schemas.ts';
+import type { ConsultaDeJustificativas, ConsultaDePontosDaEmpresa, CorpoDaJustificativa, DiaDaJustificativa } from './ponto.schemas.ts';
 import { responderErro } from '../../utils/erros.js';
+import { enviarPagina } from '../../utils/paginacao.js';
 
 type RequisicaoDoColaborador = Request<{ funcionarioId: string }>;
 
@@ -74,7 +75,11 @@ export const listarTotais = (_req: RequisicaoDoColaborador, res: Response) => {
 
 export const listarPontos = async (req: Request, res: Response) => {
     try {
-        res.json(await service.listarPontosDaEmpresa({ empresaId: usuarioDe(req).empresa_id }));
+        const { registros, total } = await service.listarPontosDaEmpresa({
+            empresaId: usuarioDe(req).empresa_id,
+            consulta: entradaDe<ConsultaDePontosDaEmpresa>(req, 'query'),
+        });
+        enviarPagina(res, registros, total);
     } catch (erro) {
         responderFalha(res, erro, 'Erro interno ao buscar os registros.');
     }

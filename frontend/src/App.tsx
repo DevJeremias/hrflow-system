@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { Perfil, rotaInicial } from './utils/sessao';
+import { solicitacoesAtivas } from './utils/recursos';
 import ErrorAlert from './components/ErrorAlert';
 
 import Landing from './pages/Landing/Home';
@@ -83,7 +84,7 @@ function App() {
       >
         <Route index element={<EmployeeHome />} />
         <Route path="holerites" element={<Payslips />} />
-        <Route path="solicitacoes" element={<Requests />} />
+        <Route path="solicitacoes" element={solicitacoesAtivas() ? <Requests /> : <Navigate to="/meu-painel" replace />} />
         <Route path="perfil" element={<Profile />} />
       </Route>
 

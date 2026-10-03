@@ -20,7 +20,7 @@ const PayslipsTable: React.FC<Props> = ({ payslips, monthsLabels, onOpenPayslip 
         <div className="p-2.5 bg-indigo-50 text-primary rounded-xl">
           <Calendar size={20} />
         </div>
-        <h2 className="text-xl font-black text-slate-900 tracking-tight">Histórico de Recebimento</h2>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">Demonstrativo calculado com os dados atuais</h2>
       </div>
 
       {/* Corpo da Tabela */}
