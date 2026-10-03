@@ -22,6 +22,7 @@ done
 printf 'IMAGE_TAG=%s\n' "$alvo" > "$ESTADO_DIR/release.env"
 compose up -d --wait api web
 printf '%s\n' "$alvo" > "$ESTADO_DIR/current-sha"
-[ -n "$atual" ] && [ "$atual" != "$alvo" ] && printf '%s\n' "$atual" > "$ESTADO_DIR/rolled-back-from"
+# A versão de que se saiu vira a "anterior": rollback.sh sem argumento, de novo, desfaz o rollback.
+[ -n "$atual" ] && [ "$atual" != "$alvo" ] && printf '%s\n' "$atual" > "$ESTADO_DIR/previous-sha"
 compose ps
 log "em execução: ${alvo}"
