@@ -18,7 +18,16 @@ import db from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
 
 const SENHA = 'senha-ficticia-1';
-const CPF = '123.456.789-09';
+// CPF válido e diferente a cada colaborador (o banco o exige único por empresa), só com os dígitos que a API grava.
+const cpfNumero = (numero: number): string => {
+    const base = String(100000000 + numero).slice(-9);
+    const digito = (digitos: string) => {
+        const resto = [...digitos].reduce((soma, d, i) => soma + Number(d) * (digitos.length + 1 - i), 0) % 11;
+        return resto < 2 ? 0 : 11 - resto;
+    };
+    const primeiro = digito(base);
+    return `${base}${primeiro}${digito(base + primeiro)}`;
+};
 const NOME = 'Teresa Titular Ficticia';
 const ENDERECO = 'Rua dos Testes Ficticios, 42, Belém';
 const BANCO = 'Banco Titular Ficticio';
@@ -40,13 +49,20 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
     const titular = async ({ desligar = true } = {}) => {
         const nome = `${NOME} ${++sequencia}`;
         const email = `titular.${process.pid}.${sequencia}@exemplo.invalid`;
+        const cpf = cpfNumero(process.pid * 100 + sequencia);
         const cadastrado = await chamar('POST', '/api/funcionarios', admin.token, {
-            nome, email, senha: SENHA, cpf: CPF, telefone: TELEFONE, data_nascimento: '1990-04-05', data_admissao: '2024-01-02', endereco: ENDERECO,
+            nome, email, senha: SENHA, cpf, telefone: TELEFONE, data_nascimento: '1990-04-05', data_admissao: '2024-01-02',
             banco: BANCO, agencia: '0001', conta: '98765-4', tipo_conta: 'Corrente', salario_base: 4500,
+            rg: '1234567', ctps: '55555', matricula: `M${process.pid}${sequencia}`, cep: '66010000', logradouro: 'Rua dos Testes', numero: '42', bairro: 'Campina', cidade: 'Belém', uf: 'PA',
+            contato_emergencia_nome: 'Contato Ficticio', contato_emergencia_telefone: '(91) 97777-6666', contato_emergencia_parentesco: 'Mãe',
         });
         assert.equal(cadastrado.status, 201, JSON.stringify(cadastrado.corpo));
         const { id: funcionarioId, usuarioId } = await linha('SELECT f.id, u.id AS usuarioId FROM funcionarios f JOIN usuarios u ON u.funcionario_id = f.id WHERE f.email = ?', [email]) as { id: number; usuarioId: number };
+        // O texto livre do endereço é anterior às colunas e a API não o aceita mais; quem já o tinha continua com ele.
+        await db.query('UPDATE funcionarios SET endereco = ? WHERE id = ?', [ENDERECO, funcionarioId]);
         await db.query('UPDATE usuarios SET senha_provisoria = FALSE WHERE id = ?', [usuarioId]);
+        const filha = await chamar('POST', `/api/funcionarios/${funcionarioId}/dependentes`, admin.token, { nome: 'Filha Dependente Ficticia', parentesco: 'Filho(a)', data_nascimento: '2018-05-05', cpf: null });
+        assert.equal(filha.status, 201, JSON.stringify(filha.corpo));
         const token = (await chamar('POST', '/api/auth/login', null, { email, senha: SENHA })).token as string;
 
         assert.equal((await chamar('PUT', '/api/perfil/meus-dados', token, { avatar: await imagemReal('png'), telefone: TELEFONE })).status, 200);
@@ -67,7 +83,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
             const status = await chamar('PATCH', `/api/funcionarios/${funcionarioId}/status`, admin.token, { status: 'Inativo', data_desligamento: '2026-09-30', motivo_desligamento: 'Pedido de demissão por motivo de saúde' });
             assert.equal(status.status, 200, JSON.stringify(status.corpo));
         }
-        return { funcionarioId, usuarioId, nome, email, token };
+        return { funcionarioId, usuarioId, nome, email, token, cpf };
     };
 
     const linha = async (sql: string, valores: unknown[]) => (await db.query<RowDataPacket[]>(sql, valores))[0][0];
@@ -147,12 +163,15 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
 
             const dados = exportacao.corpo;
             assert.equal(dados.titular.nome, t.nome);
-            assert.equal(dados.titular.cpf, CPF);
+            assert.equal(dados.titular.cpf, t.cpf);
             assert.equal(dados.titular.endereco, ENDERECO);
             assert.equal(dados.titular.banco, BANCO);
             assert.equal(Number(dados.titular.salario_base), 4500);
             assert.equal(dados.titular.status, 'Inativo');
             assert.equal(dados.contas_de_acesso.length, 1);
+            assert.equal(dados.titular.rg, '1234567');
+            assert.equal(dados.titular.contato_emergencia_nome, 'Contato Ficticio');
+            assert.deepEqual(dados.dependentes.map((d: { nome: string }) => d.nome), ['Filha Dependente Ficticia']);
             assert.equal(dados.contas_de_acesso[0].email, t.email);
             assert.equal(dados.tem_avatar, true);
             assert.equal(dados.ponto.marcacoes.length, 2);
@@ -197,13 +216,17 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
             const cadastro = await linha('SELECT * FROM funcionarios WHERE id = ?', [t.funcionarioId]);
             assert.equal(cadastro.nome, `Colaborador anonimizado ${t.funcionarioId}`);
             assert.equal(cadastro.email, `anonimizado-${t.funcionarioId}@anonimizado.invalid`);
-            for (const coluna of ['cpf', 'telefone', 'data_nascimento', 'endereco', 'banco', 'agencia', 'conta', 'tipo_conta']) {
+            for (const coluna of [
+                'cpf', 'telefone', 'data_nascimento', 'endereco', 'banco', 'agencia', 'conta', 'tipo_conta', 'rg', 'pis', 'ctps', 'matricula', 'cep', 'logradouro', 'numero',
+                'complemento', 'bairro', 'cidade', 'uf', 'contato_emergencia_nome', 'contato_emergencia_telefone', 'contato_emergencia_parentesco',
+            ]) {
                 assert.equal(cadastro[coluna], null, coluna);
             }
             assert.ok(cadastro.anonimizado_em);
             assert.equal(Number(cadastro.salario_base), 4500, 'o salário e a situação ficam');
             assert.equal(cadastro.status, 'Inativo');
             assert.ok(!(await todoOTexto(t.funcionarioId)).includes(NOME));
+            assert.equal((await db.query<RowDataPacket[]>('SELECT id FROM dependentes WHERE funcionario_id = ?', [t.funcionarioId]))[0].length, 0, 'os dependentes saem com o titular');
 
             const marcacoes = (await db.query<RowDataPacket[]>('SELECT id, funcionario_id, latitude, longitude FROM registro_pontos WHERE funcionario_id = ?', [t.funcionarioId]))[0];
             assert.deepEqual(marcacoes.map((m) => m.id), marcacoesAntes, 'as marcações continuam, com o id');
@@ -212,7 +235,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
 
         it('apaga também a conta de acesso, a foto, o nome no holerite, o texto da justificativa e o conteúdo pessoal da trilha', async () => {
             const t = await titular();
-            await chamar('PATCH', `/api/funcionarios/${t.funcionarioId}`, admin.token, { nome: `${t.nome} Editado`, email: t.email, cpf: CPF, salario_base: 5000 });
+            await chamar('PATCH', `/api/funcionarios/${t.funcionarioId}`, admin.token, { nome: `${t.nome} Editado`, email: t.email, cpf: t.cpf, salario_base: 5000 });
             assert.equal((await chamar('POST', `/api/funcionarios/${t.funcionarioId}/anonimizar`, admin.token)).status, 200);
 
             const conta = await linha('SELECT nome, email, senha_provisoria FROM usuarios WHERE id = ?', [t.usuarioId]);
@@ -229,7 +252,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
 
             const [trilha] = await db.query<RowDataPacket[]>('SELECT acao, usuario_id, ip, antes, depois FROM auditoria WHERE funcionario_id = ? ORDER BY id', [t.funcionarioId]);
             const texto = JSON.stringify(trilha);
-            for (const pessoal of [NOME, CPF, ENDERECO, TELEFONE, t.email, 'Consulta médica', 'motivo de saúde']) {
+            for (const pessoal of [NOME, t.cpf, ENDERECO, TELEFONE, t.email, 'Consulta médica', 'motivo de saúde']) {
                 assert.ok(!texto.includes(pessoal), `a trilha ainda guarda "${pessoal}"`);
             }
             assert.ok(trilha.filter((r) => r.acao !== 'funcionario.anonimizado').every((r) => r.ip === null));
@@ -249,7 +272,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
             const t = await titular();
             await chamar('POST', `/api/funcionarios/${t.funcionarioId}/anonimizar`, admin.token);
             const texto = JSON.stringify((await chamar('GET', `/api/funcionarios/${t.funcionarioId}/exportar`, admin.token)).corpo);
-            for (const pessoal of [NOME, CPF, ENDERECO, BANCO, TELEFONE, t.email, 'Consulta médica']) {
+            for (const pessoal of [NOME, t.cpf, ENDERECO, BANCO, TELEFONE, t.email, 'Consulta médica', '1234567', 'Contato Ficticio', 'Filha Dependente Ficticia', 'Rua dos Testes']) {
                 assert.ok(!texto.includes(pessoal), `a exportação ainda traz "${pessoal}"`);
             }
         });
@@ -270,7 +293,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
             const t = await titular();
             assert.equal((await chamar('POST', `/api/funcionarios/${t.funcionarioId}/anonimizar`, rh)).status, 403);
             assert.equal((await chamar('POST', `/api/funcionarios/${t.funcionarioId}/anonimizar`, colaboradorAtivo)).status, 403);
-            assert.equal((await linha('SELECT cpf FROM funcionarios WHERE id = ?', [t.funcionarioId])).cpf, CPF);
+            assert.equal((await linha('SELECT cpf FROM funcionarios WHERE id = ?', [t.funcionarioId])).cpf, t.cpf);
         });
 
         it('quem ainda trabalha não é anonimizado, e o Administrador não anonimiza o próprio cadastro', async () => {
@@ -278,7 +301,7 @@ describe('direitos do titular (B-22)', { skip: banco.skip }, () => {
             const resposta = await chamar('POST', `/api/funcionarios/${ativo.funcionarioId}/anonimizar`, admin.token);
             assert.equal(resposta.status, 409);
             assert.match(resposta.corpo.erro, /desligado/);
-            assert.equal((await linha('SELECT cpf FROM funcionarios WHERE id = ?', [ativo.funcionarioId])).cpf, CPF);
+            assert.equal((await linha('SELECT cpf FROM funcionarios WHERE id = ?', [ativo.funcionarioId])).cpf, ativo.cpf);
 
             const funcionarioId = await criarFuncionario(db, empresa, { nome: 'Admin Com Cadastro', salario: 1 });
             const { token } = await criarUsuario(db, { empresaId: empresa, perfil: 'Administrador', funcionarioId });

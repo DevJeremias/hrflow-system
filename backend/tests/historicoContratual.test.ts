@@ -115,7 +115,7 @@ describe('histórico contratual (B-22)', { skip: banco.skip }, () => {
 
     it('editar o que não é salário, cargo nem departamento não abre período', async () => {
         const pessoa = await cadastrar({ data_admissao: '2025-02-03', salario_base: 3000 });
-        assert.equal((await editar(pessoa.id, pessoa, { salario_base: 3000, telefone: '(00) 92222-2222', endereco: 'Rua Ficticia, 1' })).status, 200);
+        assert.equal((await editar(pessoa.id, pessoa, { salario_base: 3000, telefone: '(00) 92222-2222', logradouro: 'Rua Ficticia' })).status, 200);
         assert.equal((await historico(pessoa.id)).length, 1);
     });
 
@@ -125,7 +125,7 @@ describe('histórico contratual (B-22)', { skip: banco.skip }, () => {
         await db.query('DELETE FROM historico_contratual WHERE funcionario_id = ?', [funcionarioId]);
         const [[{ email }]] = await db.query<RowDataPacket[]>('SELECT email FROM funcionarios WHERE id = ?', [funcionarioId]);
         assert.equal((await editar(funcionarioId, { email, nome: 'Antigo' }, { salario_base: 2800, data_admissao: '2023-05-01' })).status, 200);
-        assert.deepEqual(resumo(await historico(funcionarioId)), [['2023-05-01', null, 2800, null, null]]);
+        assert.deepEqual(resumo(await historico(funcionarioId)), [['2023-05-01', null, 2800, cargos[0].nome, departamentos[0].nome]]);
     });
 
     it('desligar o colaborador não mexe no histórico', async () => {

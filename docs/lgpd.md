@@ -12,7 +12,8 @@ O que o sistema faz com dados pessoais, quem responde por quê, quanto tempo cad
 
 | Dado | Tabela | Finalidade |
 | --- | --- | --- |
-| Nome, CPF, e-mail, telefone, nascimento, endereço, dados bancários | `funcionarios` | Cadastro do colaborador, folha e holerite |
+| Nome, CPF, RG, PIS, CTPS, matrícula, e-mail, telefone, nascimento, endereço, contato de emergência, dados bancários | `funcionarios` | Cadastro do colaborador, folha e holerite |
+| Dependentes (nome, parentesco, nascimento, CPF) | `dependentes` | Dedução e benefícios ligados ao colaborador. São dados de terceiros |
 | Salário, cargo, departamento, contrato, jornada | `funcionarios` e `historico_contratual` | Folha, apuração do ponto e histórico do vínculo |
 | Conta de acesso (nome, e-mail, perfil, hash da senha) | `usuarios` | Autenticação. A senha só existe como hash (bcrypt) |
 | Foto (original e miniatura de 128 px), em binário | `avatares` | Identificação visual. Nunca trafega em listas: as respostas trazem só o endereço da miniatura |
@@ -43,7 +44,7 @@ Registrado: entrada e falha de entrada no sistema, criação, edição, alteraç
 
 | Direito | Como a empresa atende |
 | --- | --- |
-| Acesso e portabilidade | `GET /api/funcionarios/:id/exportar` (Administrador e RH) devolve um JSON com cadastro, contas de acesso (sem senha), histórico contratual, marcações e justificativas, holerites, pedidos de alteração e a trilha daquele colaborador. A foto não vai (só `tem_avatar`). A exportação fica registrada na trilha |
+| Acesso e portabilidade | `GET /api/funcionarios/:id/exportar` (Administrador e RH) devolve um JSON com cadastro, dependentes, contas de acesso (sem senha), histórico contratual, marcações e justificativas, holerites, pedidos de alteração e a trilha daquele colaborador. A foto não vai (só `tem_avatar`). A exportação fica registrada na trilha |
 | Correção | O colaborador altera telefone e foto na hora. Nome, e-mail, endereço e dados bancários viram um pedido (`POST /api/solicitacoes-alteracao`, ou `PUT /api/perfil/meus-dados`, que responde 403 e cria o pedido) que o RH aprova em **Aprovações**. O pedido de um RH vai ao Administrador. O Administrador altera os próprios dados direto |
 | Eliminação | `POST /api/funcionarios/:id/anonimizar` (só o Administrador) |
 
@@ -53,7 +54,7 @@ Trocar o e-mail de login exige a senha atual e incrementa `sessao_versao`, que d
 
 Só vale para cadastro **já desligado** (status Inativo), nunca para o do próprio operador, e não tem volta. Numa transação:
 
-* **Apagado ou trocado por valor neutro:** nome (`Colaborador anonimizado <id>`), e-mail (`anonimizado-<id>@anonimizado.invalid`), CPF, telefone, data de nascimento, endereço, banco, agência, conta e tipo de conta; nome e e-mail da conta de acesso, cuja senha vira o hash de um valor aleatório que ninguém conhece e cujas sessões caem; a foto; o nome impresso nos holerites; a latitude e a longitude das marcações; o texto livre das justificativas (que pode contar motivos de saúde ou família); o conteúdo dos pedidos de alteração (os pendentes viram cancelados); `antes`, `depois` e o IP da trilha do colaborador, e o nome de quem agiu quando era ele.
+* **Apagado ou trocado por valor neutro:** nome (`Colaborador anonimizado <id>`), e-mail (`anonimizado-<id>@anonimizado.invalid`), CPF, RG, PIS, CTPS, matrícula, telefone, data de nascimento, endereço (texto e colunas), contato de emergência, banco, agência, conta e tipo de conta; os dependentes; nome e e-mail da conta de acesso, cuja senha vira o hash de um valor aleatório que ninguém conhece e cujas sessões caem; a foto; o nome impresso nos holerites; a latitude e a longitude das marcações; o texto livre das justificativas (que pode contar motivos de saúde ou família); o conteúdo dos pedidos de alteração (os pendentes viram cancelados); `antes`, `depois` e o IP da trilha do colaborador, e o nome de quem agiu quando era ele.
 * **Mantido:** o cadastro com o mesmo `id`, o salário, o cargo, o departamento e a situação; as marcações de ponto, com o `id` do colaborador e sem localização; as decisões sobre justificativas; os valores dos holerites e as rubricas; o histórico contratual; na trilha, quem agiu, quando e qual ação, e os valores de salário (`funcionario.salario_alterado`), que são registro da folha.
 * O cadastro anonimizado aparece na lista como **Anonimizado** e não pode mais ser editado, reativado nem ganhar senha. `funcionarios.anonimizado_em` marca o momento. A própria anonimização fica na trilha, sem o que foi apagado.
 

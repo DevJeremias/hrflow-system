@@ -372,7 +372,7 @@ describe('migrations', { skip: banco.skip }, () => {
             await alvo.query('DELETE FROM funcionarios WHERE id IN (?)', [[soDigitos, curto]]);
             await alvo.query('DELETE FROM cargos WHERE id = ?', [cargoRepetido]);
             await alvo.query('DELETE FROM departamentos WHERE id = ?', [departamentoRepetido]);
-            assert.deepEqual(await migrator.migrar(parcial), ['0016']);
+            assert.deepEqual(await migrator.migrar(parcial), ['0016', '0017', '0018', '0019', '0020']);
         });
 
         it('a migração guarda o CPF só com dígitos e esvazia o que era vazio', async () => {
