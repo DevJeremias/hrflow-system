@@ -21,7 +21,7 @@ import Payslips from './pages/Portal/Payslips';
 import Requests from './pages/Portal/Requests';
 import Profile from './pages/Portal/Profile';
 
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: readonly Perfil[] }) => {
+export const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: readonly Perfil[] }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return null;
