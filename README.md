@@ -217,7 +217,7 @@ Os testes de componente (`frontend/tests/*Modal.test.ts`, `protectedRoute.test.t
 
 ### Testes de ponta a ponta (Playwright)
 
-Dois fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, e o RH cadastra um colaborador e o encontra na folha (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
+Três fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, o RH cadastra um colaborador e o encontra na folha, e o colaborador pede a troca do nome, o RH aprova e a auditoria registra a mudança (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
 
 ```bash
 npm run db:setup

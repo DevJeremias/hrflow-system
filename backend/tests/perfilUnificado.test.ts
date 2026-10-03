@@ -116,9 +116,8 @@ test('o avatar gravado volta como URL da miniatura no perfil e na sessão, para 
     for (const quem of [ctx.admin, ctx.colaborador]) {
         const avatar = await imagemReal('png');
         const { usuario } = quem;
-        const salvo = await chamar('PUT', '/perfil/meus-dados', quem.token, {
-            nome: usuario.nome, email: usuario.email, telefone: '', avatar,
-        });
+        // Só telefone e foto: nome e e-mail do colaborador dependem de aprovação (modules/solicitacoes).
+        const salvo = await chamar('PUT', '/perfil/meus-dados', quem.token, { telefone: '', avatar });
         assert.equal(salvo.status, 200, usuario.perfil);
 
         const url = (await chamar('GET', '/perfil/meus-dados', quem.token)).corpo.avatar;

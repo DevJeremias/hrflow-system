@@ -62,7 +62,7 @@ jobs:
       # Lint, typecheck, build e testes de backend em banco migrado.
       - run: npm run verify
 
-  # Os dois fluxos de ponta a ponta (e2e/): navegador de verdade contra a API e o front-end de verdade,
+  # Os fluxos de ponta a ponta (e2e/): navegador de verdade contra a API e o front-end de verdade,
   # num banco criado pelas migrations e fixtures. Job à parte para rodar em paralelo ao verify.
   e2e:
     runs-on: ubuntu-latest
