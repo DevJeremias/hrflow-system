@@ -24,6 +24,7 @@ const QUEBRA = {
     rodape: 'md:table-footer-group',
     linha: 'md:table-row md:mb-0 md:rounded-none md:border-0 md:p-0 md:shadow-none',
     celula: 'md:table-cell md:px-6 md:py-4 md:before:hidden',
+    celulaCompacta: 'md:table-cell md:px-2.5 md:py-3 md:before:hidden',
     alinhamento: { left: 'md:text-left', center: 'md:text-center', right: 'md:text-right' },
   },
   lg: {
@@ -34,6 +35,7 @@ const QUEBRA = {
     rodape: 'lg:table-footer-group',
     linha: 'lg:table-row lg:mb-0 lg:rounded-none lg:border-0 lg:p-0 lg:shadow-none',
     celula: 'lg:table-cell lg:px-6 lg:py-4 lg:before:hidden',
+    celulaCompacta: 'lg:table-cell lg:px-2.5 lg:py-3 lg:before:hidden',
     alinhamento: { left: 'lg:text-left', center: 'lg:text-center', right: 'lg:text-right' },
   },
   xl: {
@@ -44,6 +46,7 @@ const QUEBRA = {
     rodape: 'xl:table-footer-group',
     linha: 'xl:table-row xl:mb-0 xl:rounded-none xl:border-0 xl:p-0 xl:shadow-none',
     celula: 'xl:table-cell xl:px-6 xl:py-4 xl:before:hidden',
+    celulaCompacta: 'xl:table-cell xl:px-2.5 xl:py-3 xl:before:hidden',
     alinhamento: { left: 'xl:text-left', center: 'xl:text-center', right: 'xl:text-right' },
   },
 } as const;
@@ -59,10 +62,12 @@ interface DataTableProps<Row> {
   loadingRows?: number;
   empty?: React.ReactNode;
   stackBelow?: keyof typeof QUEBRA;
+  // Menos espaço entre colunas na tabela larga: para muitas colunas em telas com barra lateral.
+  compact?: boolean;
   className?: string;
 }
 
-function DataTable<Row>({ caption, columns, rows, rowKey, loading = false, loadingRows = 4, empty, stackBelow = 'md', className = '' }: DataTableProps<Row>) {
+function DataTable<Row>({ caption, columns, rows, rowKey, loading = false, loadingRows = 4, empty, stackBelow = 'md', compact = false, className = '' }: DataTableProps<Row>) {
   const q = QUEBRA[stackBelow];
   const classeDaLinha = `mb-3 block rounded-card border border-line bg-surface p-2 shadow-card ${q.linha}`;
   const temRodape = columns.some((coluna) => coluna.footer !== undefined);
@@ -71,7 +76,7 @@ function DataTable<Row>({ caption, columns, rows, rowKey, loading = false, loadi
     <td
       key={coluna.key}
       data-label={coluna.semRotuloNoCartao ? undefined : coluna.header}
-      className={`flex items-start justify-between gap-4 px-3 py-2 text-sm before:text-xs before:font-semibold before:uppercase before:tracking-wide before:text-ink-muted before:content-[attr(data-label)] ${q.celula} ${q.alinhamento[coluna.align ?? 'left']} ${coluna.className ?? ''}`}
+      className={`flex items-start justify-between gap-4 px-3 py-2 text-sm before:text-xs before:font-semibold before:uppercase before:tracking-wide before:text-ink-muted before:content-[attr(data-label)] ${compact ? q.celulaCompacta : q.celula} ${q.alinhamento[coluna.align ?? 'left']} ${coluna.className ?? ''}`}
     >
       <div className={`min-w-0 ${coluna.semRotuloNoCartao ? 'w-full' : 'text-right md:[text-align:inherit]'}`}>{conteudo}</div>
     </td>
@@ -86,7 +91,7 @@ function DataTable<Row>({ caption, columns, rows, rowKey, loading = false, loadi
         <thead className={`sr-only ${q.cabecalho}`}>
           <tr className="border-b border-line bg-surface-muted">
             {columns.map((coluna) => (
-              <th key={coluna.key} scope="col" className={`px-6 py-3 text-xs font-semibold uppercase tracking-wider text-ink-muted ${q.alinhamento[coluna.align ?? 'left']}`}>{coluna.header}</th>
+              <th key={coluna.key} scope="col" className={`${compact ? 'px-2.5' : 'px-6'} py-3 text-xs font-semibold uppercase tracking-wider text-ink-muted ${q.alinhamento[coluna.align ?? 'left']}`}>{coluna.header}</th>
             ))}
           </tr>
         </thead>

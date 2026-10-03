@@ -39,7 +39,7 @@ interface FieldProps {
   children: React.ReactElement<Record<string, unknown>>;
 }
 
-// Dona do par rótulo e controle: o <label for> aponta para o id que ela injeta no campo, junto de name,
+// Dona do par rótulo e controle: o rótulo (label for) aponta para o id que ela injeta no campo, junto de name,
 // required e as ligações aria da dica e do erro.
 const Field: React.FC<FieldProps> = ({ label, name, hint, error, required, hideLabel, className = '', children }) => {
   const uid = useId().replace(/:/g, '');

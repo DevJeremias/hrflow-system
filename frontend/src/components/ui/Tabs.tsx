@@ -19,10 +19,10 @@ interface TabsProps<Id extends string> {
   className?: string;
 }
 
-const LISTA = { underline: 'flex gap-6 overflow-x-auto border-b border-line', pill: 'inline-flex max-w-full gap-1 overflow-x-auto rounded-card bg-surface-sunken p-1.5' } as const;
+const LISTA = { underline: 'flex gap-4 overflow-x-auto sm:gap-6 border-b border-line', pill: 'inline-flex max-w-full gap-1 overflow-x-auto rounded-card bg-surface-sunken p-1.5' } as const;
 const ABA = {
-  underline: (ativa: boolean) => `-mb-px flex shrink-0 items-center gap-2 border-b-4 py-4 text-sm font-semibold ${ativa ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink'}`,
-  pill: (ativa: boolean) => `flex shrink-0 items-center gap-2 rounded-control px-5 py-2.5 text-sm font-semibold ${ativa ? 'bg-surface text-brand shadow-card' : 'text-ink-muted hover:text-ink'}`,
+  underline: (ativa: boolean) => `-mb-px flex shrink-0 items-center gap-1.5 border-b-4 py-3 sm:gap-2 sm:py-4 text-sm font-semibold ${ativa ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink'}`,
+  pill: (ativa: boolean) => `flex shrink-0 items-center gap-1.5 rounded-control px-2.5 py-2.5 sm:gap-2 sm:px-5 text-sm font-semibold ${ativa ? 'bg-surface text-brand shadow-card' : 'text-ink-muted hover:text-ink'}`,
 } as const;
 
 // Padrão WAI-ARIA de abas: só a aba ativa entra na ordem de Tab; as setas, Home e End movem entre elas.
