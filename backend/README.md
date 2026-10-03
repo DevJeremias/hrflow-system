@@ -8,13 +8,14 @@ O back-end é um monólito modular escrito inteiramente em TypeScript, com módu
 
 ```text
 backend/
-├── app.ts                  # criarApp: monta o app Express (parsers, rotas de cada módulo, tratador de erros)
-├── server.ts               # ponto de entrada: carrega o .env, testa o banco, abre a porta e encerra limpo no SIGTERM
+├── app.ts                  # criarApp: monta o app Express (log de requisições, parsers, rotas de cada módulo, tratador de erros)
+├── server.ts               # ponto de entrada: carrega o .env, confere o ambiente, abre a porta e encerra com ordem no SIGTERM
 ├── modules/<área>/         # uma pasta por área do domínio, em camadas (padrão abaixo)
 ├── shared/                 # o que mais de uma área usa
-│   ├── config/             # segredo JWT, leitura de TRUST_PROXY
+│   ├── config/             # ambiente (DB_*, PORT), segredo JWT, leitura de TRUST_PROXY
 │   ├── db/                 # pool do MySQL, aplicador de migrations, fixtures de desenvolvimento
 │   ├── middlewares/        # autenticação, perfis, validação de entrada, limites de tentativas, erros
+│   ├── observabilidade/    # logger pino, log por requisição (reqId), encerramento ordenado, Sentry opcional
 │   ├── schemas/            # blocos zod comuns, regras de texto, e-mail e senha, paginação
 │   └── utils/              # tradução de erros do MySQL, paginação das respostas
 ├── migrations/             # schema versionado (SQL numerado) e auditorias; não é código
@@ -60,7 +61,7 @@ rotas -> controlador -> serviço -> repositório -> banco
 * **Controlador** é fino: extrai da requisição o que o serviço precisa (a empresa e o colaborador vêm do token em `req.usuario`, nunca do corpo), chama uma função do serviço e responde. Não tem regra nem SQL.
 * **Serviço** decide. Recebe parâmetros simples, devolve o formato que o front-end consome e lança `ErroDePonto` quando uma regra recusa a operação. O tipo do erro (`proibido`, `invalido`, `inexistente`, `conflito`) diz o que aconteceu; quem o transforma em status HTTP (403, 400, 404, 409) é o controlador.
 * **Repositório** executa as consultas e devolve as linhas como o MySQL as entrega. `emTransacao` reserva uma conexão, confirma se o trabalho terminar e desfaz se ele lançar erro; o repositório que ele entrega usa essa conexão, e é assim que o serviço mantém uma regra e a escrita dela na mesma transação.
-* **Falhas inesperadas** viram 500 com a mensagem do endpoint. Onde o endpoint já traduzia erros do MySQL em 4xx e 503 (`shared/utils/erros.ts`), o controlador liga `traduzirBanco`.
+* **Falhas inesperadas** vão ao `responderErro` (`shared/utils/erros.ts`), que traduz o erro do MySQL ou do pool em 4xx ou 503 (com `Retry-After` quando o banco está fora ou o pool cheio) e devolve o resto como 500 com a mensagem do endpoint. Todo 5xx é registrado com o `reqId` da requisição (`res.req.log`) e vai ao Sentry quando há `SENTRY_DSN`. Não use `console.error` nem responda `res.status(500)` à mão num controlador.
 
 ## TypeScript sem etapa de build
 

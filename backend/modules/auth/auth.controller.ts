@@ -6,15 +6,15 @@ import { ErroDeAuth } from './auth.erros.ts';
 import type { TipoDeErro } from './auth.erros.ts';
 import type { DadosDeLogin, DadosDeRegistro } from './auth.schemas.ts';
 import { encerrarSessao, iniciarSessao } from './auth.sessao.ts';
+import { responderErro } from '../../shared/utils/erros.ts';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { naoAutenticado: 401, proibido: 403, conflito: 409 };
 
-// Falha de regra vira a resposta que o serviço descreveu; qualquer outra é 500 com a mensagem do
-// endpoint.
+// Falha de regra vira a resposta que o serviço descreveu; falha do banco vira 4xx/503 (shared/utils/erros.ts)
+// e qualquer outra é 500 com a mensagem do endpoint.
 const responderFalha = (res: Response, erro: unknown, mensagem500: string) => {
     if (erro instanceof ErroDeAuth) return res.status(STATUS_POR_TIPO[erro.tipo]).json(erro.corpo);
-    console.error(`${mensagem500}:`, erro);
-    return res.status(500).json({ erro: mensagem500 });
+    return responderErro(res, erro, mensagem500);
 };
 
 // O authMiddleware, que roda antes da rota da sessão, preenche req.usuario.
