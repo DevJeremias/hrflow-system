@@ -82,12 +82,15 @@ describe('folha por competência', { skip: banco.skip }, () => {
             assert.equal(status, 200);
             const folha = corpo as FolhaDaCompetencia;
             assert.deepEqual(folha.empresa, { razaoSocial, cnpj });
-            assert.equal(itemDe(folha, caio).totalDeductions, 753.51);
-            assert.equal(itemDe(folha, caio).netSalary, 6046.49);
+            assert.equal(itemDe(folha, caio).totalDeductions, 1434.33);
+            assert.equal(itemDe(folha, caio).netSalary, 5365.67);
             assert.equal(itemDe(folha, dora).totalDeductions, 236.69);
-            assert.deepEqual(folha.totais, { bruto: 9700, descontos: 990.2, liquido: 8709.8, encargos: 2696.6 });
+            assert.deepEqual(folha.totais, { bruto: 9700, descontos: 1671.02, liquido: 8028.98, encargos: 3472.6, inss: 990.2, irrf: 680.82, fgts: 776 });
             assert.deepEqual(folha.pendencias, []);
-            assert.deepEqual(itemDe(folha, caio).deductionsList, [{ description: 'Desconto INSS', value: 753.51, isPercentage: false }]);
+            assert.deepEqual(itemDe(folha, caio).deductionsList, [
+                { description: 'Desconto INSS', value: 753.51, isPercentage: false, reference: null },
+                { description: 'IRRF', value: 680.82, isPercentage: false, reference: null },
+            ]);
         });
 
         it('PJ não tem INSS nem encargo CLT, estágio não tem INSS nem encargo, e os demais seguem a regra geral', async () => {
@@ -103,9 +106,9 @@ describe('folha por competência', { skip: banco.skip }, () => {
                 const { totalDeductions, netSalary, employerCharges, deductionsList, contract } = itemDe(folha, id);
                 return { totalDeductions, netSalary, employerCharges, rubricasDeDesconto: deductionsList.length, contract };
             };
-            assert.deepEqual(resumo(clt), { totalDeductions: 529.51, netSalary: 4670.49, employerCharges: 1445.6, rubricasDeDesconto: 1, contract: 'CLT' });
-            assert.deepEqual(resumo(temporario), { totalDeductions: 236.69, netSalary: 2663.31, employerCharges: 806.2, rubricasDeDesconto: 1, contract: 'Temporário' });
-            assert.deepEqual(resumo(semContrato), { totalDeductions: 236.69, netSalary: 2663.31, employerCharges: 806.2, rubricasDeDesconto: 1, contract: null });
+            assert.deepEqual(resumo(clt), { totalDeductions: 601.13, netSalary: 4598.87, employerCharges: 1861.6, rubricasDeDesconto: 2, contract: 'CLT' });
+            assert.deepEqual(resumo(temporario), { totalDeductions: 236.69, netSalary: 2663.31, employerCharges: 1038.2, rubricasDeDesconto: 1, contract: 'Temporário' });
+            assert.deepEqual(resumo(semContrato), { totalDeductions: 236.69, netSalary: 2663.31, employerCharges: 1038.2, rubricasDeDesconto: 1, contract: null });
             assert.deepEqual(resumo(pj), { totalDeductions: 0, netSalary: 3000, employerCharges: 0, rubricasDeDesconto: 0, contract: 'PJ' });
             assert.deepEqual(resumo(estagio), { totalDeductions: 0, netSalary: 1500, employerCharges: 0, rubricasDeDesconto: 0, contract: 'Estágio' });
         });
@@ -286,7 +289,8 @@ describe('folha por competência', { skip: banco.skip }, () => {
 
             const deBruno = (await meuHolerite(bruno.token)).corpo as HoleritePublicado;
             assert.equal(deBruno.id, String(bruno.funcionarioId));
-            assert.equal(deBruno.totalDeductions, 753.51);
+            assert.equal(deBruno.inss, 753.51);
+            assert.equal(deBruno.totalDeductions, 1434.33);
         });
 
         it('o colaborador só vê folha fechada: a aberta é rascunho do RH', async () => {

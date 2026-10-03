@@ -82,7 +82,7 @@ const getBalance = async (employeeId: number): Promise<VacationBalance> =>
   httpClient<VacationBalance>(`${API_URL}/saldo/${employeeId}`, { auth: true, errorMessage: (err) => err?.erro || 'Erro ao calcular o saldo de férias' });
 
 const getAttachment = async (id: number): Promise<Blob> =>
-  httpClient<Blob>(`${API_URL}/${id}/anexo`, { auth: true, blob: true, errorMessage: (err) => err?.erro || 'Erro ao baixar o anexo' });
+  httpClient<Blob>(`${API_URL}/${id}/anexo`, { auth: true, responseType: 'blob', errorMessage: (err) => err?.erro || 'Erro ao baixar o anexo' });
 
 export const requestService = {
   getMyRequests,

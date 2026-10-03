@@ -514,8 +514,8 @@ describe('férias e afastamentos', { skip: banco.skip }, () => {
             assert.equal(processada.status, 201);
             const caio = processada.corpo.itens.find((i: { id: string }) => i.id === String(ids.Caio));
             // 10 dias: 3000 / 30 * 10 / 3 = 333,33, e o INSS incide sobre 3333,33.
-            const esperado = calcularHolerite(3000, '2026-10-01', undefined, 'CLT', 10);
-            assert.deepEqual(caio.earningsList, [{ description: 'Terço Constitucional de Férias', value: 333.33, isPercentage: false }]);
+            const esperado = calcularHolerite({ salario: 3000, dia: '2026-10-01', tipoContrato: 'CLT', diasDeFerias: 10 });
+            assert.deepEqual(caio.earningsList, [{ description: 'Terço Constitucional de Férias', value: 333.33, isPercentage: false, reference: '10 dias' }]);
             assert.equal(caio.totalEarnings, 333.33);
             assert.equal(caio.totalDeductions, esperado.inss);
             assert.equal(caio.netSalary, esperado.netSalary);

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Lock, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, Lock, RefreshCw } from 'lucide-react';
 import { useAcaoDaFolha, useFolhaDaCompetencia } from '../../queries/folha';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
@@ -11,6 +11,8 @@ import Card from '../../components/ui/Card';
 import EmptyState from '../../components/ui/EmptyState';
 import Field, { Input, Select } from '../../components/ui/Field';
 import { useConfirm } from '../../components/ui/confirmContext';
+import { useToast } from '../../components/ui/toastContext';
+import { downloadPayrollPdf } from '../../services/payrollService';
 import { mensagemDeErro } from '../../utils/erros';
 import { mesAtualEmBelem, rotuloDaCompetencia, formatarMomento } from '../../utils/competencia';
 import { usePageTitle } from '../../hooks/usePageTitle';
@@ -18,8 +20,10 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 const Payroll: React.FC = () => {
   usePageTitle('Folha de pagamento');
   const confirmar = useConfirm();
+  const toast = useToast();
   const [competencia, setCompetencia] = useState(mesAtualEmBelem);
   const [deptFilter, setDeptFilter] = useState('Todos');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // A folha de cada competência fica em cache: trocar de mês e voltar não refaz a chamada.
   const { data, error, isPending, refetch } = useFolhaDaCompetencia(competencia);
@@ -60,15 +64,26 @@ const Payroll: React.FC = () => {
   const dynamicMetrics = useMemo(() => {
     return displayedPayrolls.reduce((acc, curr) => ({
       gross: acc.gross + curr.totalGross,
-      deductions: acc.deductions + curr.totalDeductions,
+      retentions: acc.retentions + curr.inss + curr.irrf,
       net: acc.net + curr.netSalary,
       charges: acc.charges + curr.employerCharges
-    }), { gross: 0, deductions: 0, net: 0, charges: 0 });
+    }), { gross: 0, retentions: 0, net: 0, charges: 0 });
   }, [displayedPayrolls]);
 
   const departmentsList = useMemo(() => Array.from(new Set((itens ?? []).map(p => p.department))), [itens]);
   const rotulo = rotuloDaCompetencia(competencia);
   const fechada = folha?.status === 'fechada';
+
+  const baixarPdfDaFolha = async () => {
+    setDownloadingPdf(true);
+    try {
+      await downloadPayrollPdf(competencia);
+    } catch (error) {
+      toast.error(mensagemDeErro(error, 'Não foi possível gerar o PDF dos holerites.'));
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const fecharMes = async () => {
     if (!folha) return;
@@ -141,19 +156,33 @@ const Payroll: React.FC = () => {
                 </p>
               </div>
             </div>
-            {!fechada && (
-              <div className="flex flex-wrap gap-3">
-                <Button variant="secondary" icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar')} loading={acao === 'processar'} disabled={acao !== null}>
-                  {acao === 'processar' ? 'Processando...' : 'Processar novamente'}
+            <div className="flex flex-wrap gap-3">
+              {folha.itens.length > 0 && (
+                <Button variant="secondary" icon={<Download size={16} aria-hidden="true" />} onClick={baixarPdfDaFolha} loading={downloadingPdf}>
+                  {downloadingPdf ? 'Gerando PDF...' : 'Baixar PDF dos holerites'}
                 </Button>
-                <Button icon={<Lock size={16} aria-hidden="true" />} onClick={fecharMes} loading={acao === 'fechar'} disabled={acao !== null}>
-                  {acao === 'fechar' ? 'Fechando...' : 'Fechar mês'}
-                </Button>
-              </div>
-            )}
+              )}
+              {!fechada && (
+                <>
+                  <Button variant="secondary" icon={<RefreshCw size={16} aria-hidden="true" />} onClick={() => executar('processar')} loading={acao === 'processar'} disabled={acao !== null}>
+                    {acao === 'processar' ? 'Processando...' : 'Processar novamente'}
+                  </Button>
+                  <Button icon={<Lock size={16} aria-hidden="true" />} onClick={fecharMes} loading={acao === 'fechar'} disabled={acao !== null}>
+                    {acao === 'fechar' ? 'Fechando...' : 'Fechar mês'}
+                  </Button>
+                </>
+              )}
+            </div>
           </Card>
 
           {actionError && <ErrorAlert message={actionError} />}
+
+          {!fechada && folha.regimeTributario === null && (
+            <Card className="border-warning-line bg-warning-soft text-sm text-warning">
+              <p className="font-semibold">O regime tributário da empresa não foi informado.</p>
+              <p>Os encargos usam a regra geral (INSS patronal 20%, RAT 2% e terceiros 5,8%, mais 8% de FGTS). Peça a um Administrador para informá-lo na tela Empresa e processe a folha de novo.</p>
+            </Card>
+          )}
 
           {folha.pendencias.length > 0 && (
             <Card className="border-warning-line bg-warning-soft">
@@ -176,7 +205,7 @@ const Payroll: React.FC = () => {
           )}
 
           <PayrollSummaryCards metrics={dynamicMetrics} />
-          <PayrollTable payrolls={displayedPayrolls} competencia={competencia} empresa={folha.empresa} />
+          <PayrollTable payrolls={displayedPayrolls} competencia={competencia} empresa={folha.empresa} locked={fechada} />
         </>
       )}
     </div>

@@ -178,6 +178,8 @@ export const ehFimDeSemana = (data: string): boolean => {
     return dia === 0 || dia === 6;
 };
 
+export const ehDomingo = (data: string): boolean => new Date(`${data}T00:00:00Z`).getUTCDay() === 0;
+
 // Apura cada dia do mês. `hoje` e `admissao` ('AAAA-MM-DD' ou null) dizem de onde a apuração vale:
 // dias futuros e anteriores à admissão ficam abertos e sem pendência.
 export const apurarMes = (dias: readonly DiaParaApurar[], jornada: Jornada, { hoje, admissao }: { hoje: string; admissao: string | null }): DiaApurado[] => (

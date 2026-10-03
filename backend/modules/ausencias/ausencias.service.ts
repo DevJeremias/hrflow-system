@@ -190,11 +190,21 @@ export const anexoDaAusencia = async ({ empresaId, id, ator }: { empresaId: numb
     return { nome: anexo.nome, tipo: anexo.tipo_mime, conteudo: anexo.conteudo };
 };
 
-// Dias de férias aprovadas de cada colaborador dentro de [de, ate], para a folha da competência.
-export const feriasAprovadasNoPeriodo = async (empresaId: number, de: string, ate: string): Promise<Map<number, number>> => {
-    const dias = new Map<number, number>();
-    for (const { funcionario_id: id, inicio, fim } of await repositorio.feriasAprovadasNoPeriodo(empresaId, de, ate)) {
-        dias.set(id, (dias.get(id) ?? 0) + regras.diasNoIntervalo(inicio, fim, de, ate));
+export interface PeriodoAprovado {
+    tipo: TipoDeAusencia;
+    inicio: string;
+    fim: string;
+}
+
+// As ausências aprovadas que tocam [de, ate], por colaborador: a folha e a apuração do ponto as leem.
+export const ausenciasAprovadasNoPeriodo = async (empresaId: number, de: string, ate: string): Promise<Map<number, PeriodoAprovado[]>> => {
+    const porColaborador = new Map<number, PeriodoAprovado[]>();
+    for (const { funcionario_id: id, tipo, inicio, fim } of await repositorio.aprovadasNoPeriodo(empresaId, de, ate)) {
+        porColaborador.set(id, [...(porColaborador.get(id) ?? []), { tipo, inicio, fim }]);
     }
-    return dias;
+    return porColaborador;
 };
+
+// Dias de férias aprovadas de cada colaborador dentro de [de, ate], para o terço de férias da folha.
+export const diasDeFeriasNoPeriodo = (ausencias: ReadonlyMap<number, readonly PeriodoAprovado[]>, funcionarioId: number, de: string, ate: string): number =>
+    (ausencias.get(funcionarioId) ?? []).filter((a) => a.tipo === 'Férias').reduce((total, a) => total + regras.diasNoIntervalo(a.inicio, a.fim, de, ate), 0);

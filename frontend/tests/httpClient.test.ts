@@ -224,16 +224,15 @@ test('uma resposta de erro do servidor não é erro de rede', async () => {
   await assert.rejects(httpClient('/x'), (erro: unknown) => erro instanceof HttpError && !erro.isNetworkError);
 });
 
-test('com blob a resposta de sucesso é o arquivo, e o erro continua sendo lido como JSON', async () => {
-  globalThis.fetch = (async () => new Response('%PDF-1.4 atestado', { status: 200, headers: { 'Content-Type': 'application/pdf' } })) as typeof fetch;
-  entrar();
-  const arquivo = await httpClient<Blob>('/ausencias/1/anexo', { auth: true, blob: true });
-  assert.equal(await arquivo.text(), '%PDF-1.4 atestado');
-  assert.equal(arquivo.type, 'application/pdf');
+test('responseType blob entrega o arquivo da resposta bem-sucedida e mantém o erro em JSON', async () => {
+  globalThis.fetch = (async () => new Response('%PDF-1.3 ficticio', { status: 200, headers: { 'Content-Type': 'application/pdf' } })) as typeof fetch;
+  const arquivo = await httpClient<Blob>('/folha/competencias/2026-10/holerites.pdf', { auth: true, responseType: 'blob' });
+  assert.equal(arquivo instanceof Blob, true);
+  assert.equal(await arquivo.text(), '%PDF-1.3 ficticio');
 
-  responder(404, { erro: 'Anexo não encontrado.' });
+  responder(404, { erro: 'A folha de 10/2026 ainda não foi processada.' });
   await assert.rejects(
-    () => httpClient('/ausencias/1/anexo', { auth: true, blob: true, errorMessage: (corpo) => corpo?.erro ?? 'Erro ao baixar o anexo' }),
-    (erro: HttpError) => erro.status === 404 && erro.message === 'Anexo não encontrado.',
+    httpClient<Blob>('/folha/competencias/2026-10/holerites.pdf', { auth: true, responseType: 'blob' }),
+    (erro: unknown) => erro instanceof HttpError && erro.status === 404 && erro.message === 'A folha de 10/2026 ainda não foi processada.',
   );
 });

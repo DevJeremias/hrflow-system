@@ -160,22 +160,20 @@ interface JornadaDoMes extends Jornada {
     saida: string;
 }
 
-// Lê o mês inteiro do colaborador e apura cada dia, inclusive os sem marcação.
-const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }) => {
-    if (!fuso.mesValido(mes)) {
-        throw new ErroDePonto('invalido', 'Informe o mês no formato AAAA-MM (ex.: 2026-03).');
-    }
-    const { inicio, fim } = fuso.limitesDoMes(mes);
-    const { de, ate } = datasDoMes(mes);
+// O que a apuração precisa do colaborador: a jornada e a admissão, como o repositório as devolve.
+export type JornadaParaApurar = Pick<repositorio.JornadaDoColaborador, 'carga_semanal' | 'entrada' | 'saida' | 'entrada_min' | 'tolerancia_min' | 'admissao'>;
 
-    const [registro, pontos, justificativas, ausencias] = await Promise.all([
-        repositorio.jornadaDoColaborador(funcionarioId, empresaId),
-        repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
-        repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
-        repositorio.ausenciasAprovadasDoColaborador(funcionarioId, empresaId, de, ate),
-    ]);
-    if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
-
+// Apura cada dia do mês 'AAAA-MM' do colaborador a partir das marcações e justificativas já lidas,
+// inclusive os dias sem marcação. É a única apuração do sistema: a tela de ponto e a folha a usam.
+export const apurarDiasDoMes = (
+    mes: string,
+    registro: JornadaParaApurar,
+    pontos: readonly Pick<repositorio.RegistroDoColaborador, 'tipo_registro' | 'instante'>[],
+    justificativas: readonly Pick<repositorio.JustificativaDoDia, 'dia' | 'status'>[],
+    // Férias e afastamentos aprovados (modules/ausencias): os dias úteis deles são abonados como uma
+    // justificativa aprovada, não são falta.
+    ausencias: readonly { inicio: string; fim: string }[] = [],
+) => {
     const cargaSemanalHoras = Number(registro.carga_semanal);
     const jornada: JornadaDoMes = {
         cargaSemanalHoras,
@@ -192,7 +190,6 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
         marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(p.instante) }]);
     }
     const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j]));
-    // Dia útil coberto por férias ou afastamento aprovado: abonado como a justificativa aprovada, não é falta.
     const emAusencia = (data: string): boolean => !regras.ehFimDeSemana(data) && ausencias.some((a) => a.inicio <= data && data <= a.fim);
 
     const dias = regras.apurarMes(
@@ -204,7 +201,27 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
         jornada,
         { hoje: fuso.diaLocal(agoraEmSegundos()), admissao: registro.admissao }
     );
-    return { dias, jornada, justificativaDoDia };
+    return { dias, jornada };
+};
+
+// Lê o mês inteiro do colaborador e apura cada dia, inclusive os sem marcação.
+const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborador & { mes: unknown }) => {
+    if (!fuso.mesValido(mes)) {
+        throw new ErroDePonto('invalido', 'Informe o mês no formato AAAA-MM (ex.: 2026-03).');
+    }
+    const { inicio, fim } = fuso.limitesDoMes(mes);
+    const { de, ate } = datasDoMes(mes);
+
+    const [registro, pontos, justificativas, ausencias] = await Promise.all([
+        repositorio.jornadaDoColaborador(funcionarioId, empresaId),
+        repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
+        repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
+        repositorio.ausenciasAprovadasDoColaborador(funcionarioId, empresaId, de, ate),
+    ]);
+    if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
+
+    const { dias, jornada } = apurarDiasDoMes(mes, registro, pontos, justificativas, ausencias);
+    return { dias, jornada, justificativaDoDia: new Map(justificativas.map((j) => [j.dia, j])) };
 };
 
 export const listarHistorico = async (consulta: ConsultaDoColaborador & { mes: unknown }): Promise<DiaDoHistorico[]> => {

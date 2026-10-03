@@ -47,8 +47,9 @@ export interface AnexoGravado extends RowDataPacket {
     conteudo: Buffer;
 }
 
-export interface FeriasDoPeriodo extends RowDataPacket {
+export interface AusenciaAprovadaDoPeriodo extends RowDataPacket {
     funcionario_id: number;
+    tipo: TipoDeAusencia;
     inicio: string;
     fim: string;
 }
@@ -205,11 +206,11 @@ const criarRepositorio = (executor: Connection) => ({
         return linhas[0];
     },
 
-    // Férias aprovadas que tocam o intervalo [de, ate] (a folha de uma competência).
-    async feriasAprovadasNoPeriodo(empresaId: number, de: string, ate: string): Promise<FeriasDoPeriodo[]> {
-        const [linhas] = await executor.query<FeriasDoPeriodo[]>(
-            `SELECT a.funcionario_id, ${DIAS} FROM ausencias a
-             WHERE a.empresa_id = ? AND a.tipo = 'Férias' AND a.status = 'Aprovada' AND a.data_inicio <= ? AND a.data_fim >= ?`,
+    // Ausências aprovadas que tocam o intervalo [de, ate] (a folha de uma competência).
+    async aprovadasNoPeriodo(empresaId: number, de: string, ate: string): Promise<AusenciaAprovadaDoPeriodo[]> {
+        const [linhas] = await executor.query<AusenciaAprovadaDoPeriodo[]>(
+            `SELECT a.funcionario_id, a.tipo, ${DIAS} FROM ausencias a
+             WHERE a.empresa_id = ? AND a.status = 'Aprovada' AND a.data_inicio <= ? AND a.data_fim >= ?`,
             [empresaId, ate, de]
         );
         return linhas;
@@ -249,4 +250,4 @@ export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDeAusenc
     }
 };
 
-export const { colaborador, feriasPedidas, ausenciaDaEmpresa, ausenciasDoColaborador, ausenciasDaEmpresa, contarDaEmpresa, anexoDaAusencia, feriasAprovadasNoPeriodo } = criarRepositorio(db);
+export const { colaborador, feriasPedidas, ausenciaDaEmpresa, ausenciasDoColaborador, ausenciasDaEmpresa, contarDaEmpresa, anexoDaAusencia, aprovadasNoPeriodo } = criarRepositorio(db);

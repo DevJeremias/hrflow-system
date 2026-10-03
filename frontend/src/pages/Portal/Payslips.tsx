@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FileText } from 'lucide-react';
-import type { Payslip } from '../../services/payrollService';
+import { downloadMyPayslipPdf, type Payslip } from '../../services/payrollService';
 import { useMeusHolerites } from '../../queries/folha';
 import PayslipsSummaryCards from '../../components/Portal/PayslipsMetrics';
 import PayslipsHistoryTable from '../../components/Portal/PayslipsTable';
@@ -9,6 +9,7 @@ import ErrorAlert from '../../components/ErrorAlert';
 import EmptyState from '../../components/ui/EmptyState';
 import PageHeader from '../../components/ui/PageHeader';
 import Spinner from '../../components/ui/Spinner';
+import { useToast } from '../../components/ui/toastContext';
 import { mensagemDeErro } from '../../utils/erros';
 import { rotuloDaCompetencia } from '../../utils/competencia';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,11 +20,20 @@ const MyPayslips: React.FC = () => {
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
 
   const { user } = useAuth();
+  const toast = useToast();
 
   const { data, error, isPending, refetch } = useMeusHolerites();
   const payslips = data ?? [];
   const loading = isPending;
   const loadError = error ? mensagemDeErro(error, 'Erro ao buscar meu holerite') : null;
+
+  const downloadPdf = async (payslip: Payslip) => {
+    try {
+      await downloadMyPayslipPdf(payslip.competencia);
+    } catch (error) {
+      toast.error(mensagemDeErro(error, 'Não foi possível gerar o PDF do holerite.'));
+    }
+  };
 
   // A API entrega do mês mais recente ao mais antigo.
   const latestPayslip = payslips[0];
@@ -51,6 +61,7 @@ const MyPayslips: React.FC = () => {
           <PayslipsHistoryTable
             payslips={payslips}
             onOpenPayslip={setSelectedPayslip}
+            onDownloadPdf={downloadPdf}
           />
         </>
       ) : (
@@ -70,6 +81,7 @@ const MyPayslips: React.FC = () => {
           month={rotuloDaCompetencia(selectedPayslip.competencia)}
           companyName={selectedPayslip.empresa.razaoSocial ?? user?.empresaNome}
           cnpj={selectedPayslip.empresa.cnpj}
+          onDownloadPdf={() => downloadPdf(selectedPayslip)}
         />
       )}
     </div>
