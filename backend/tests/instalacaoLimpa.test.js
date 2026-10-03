@@ -39,7 +39,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         app.use('/api/auth', require('../routes/authRoutes'));
         app.use('/api/funcionarios', authMiddleware, require('../routes/funcionarioRoutes'));
         app.use('/api/ponto', authMiddleware, require('../modules/ponto/index.ts').pontoRoutes);
-        app.use('/api/estrutura', authMiddleware, require('../routes/estruturaRoutes'));
+        app.use('/api/estrutura', authMiddleware, require('../modules/estrutura/index.ts').estruturaRoutes);
         app.use('/api/folha', authMiddleware, require('../routes/folhaRoutes'));
         app.use('/api/perfil', authMiddleware, require('../routes/perfilRoutes'));
         server = http.createServer(app);

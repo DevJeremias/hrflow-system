@@ -11,7 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const funcionarioRoutes = require('./routes/funcionarioRoutes');
 const { pontoRoutes } = require('./modules/ponto/index.ts'); 
 const { dashboardRoutes } = require('./modules/dashboard/index.ts');
-const estruturaRoutes = require('./routes/estruturaRoutes');
+const { estruturaRoutes } = require('./modules/estrutura/index.ts');
 const folhaRoutes = require('./routes/folhaRoutes');
 const perfilRoutes = require('./routes/perfilRoutes');
 
