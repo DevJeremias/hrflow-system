@@ -72,7 +72,7 @@ export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos
       </div>
     </div>
 
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
       <div className="space-y-2">
         <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Cargo</label>
         <select name="cargoId" value={formData.cargoId} onChange={handleChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer font-bold text-slate-800">
@@ -94,7 +94,7 @@ export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos
       </div>
     </div>
 
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
       <div className="space-y-2">
         <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Setor / Departamento</label>
         <select name="departamentoId" value={formData.departamentoId} onChange={handleChange} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none cursor-pointer">

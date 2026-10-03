@@ -164,7 +164,7 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
       
       <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
         
-        <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="px-6 sm:px-10 py-6 sm:py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
               {employeeToEdit ? 'Editar Perfil' : 'Novo Colaborador'}
@@ -176,43 +176,46 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
           </button>
         </div>
 
-        <div className="flex px-10 gap-8 border-b border-slate-100">
+        <div className="flex px-6 sm:px-10 gap-5 sm:gap-8 border-b border-slate-100 overflow-x-auto">
           {[
             { id: 'personal', label: 'Pessoal', icon: <User size={18}/> },
             { id: 'work', label: 'Contrato', icon: <Briefcase size={18}/> },
             { id: 'financial', label: 'Financeiro', icon: <CreditCard size={18}/> }
           ].map(tab => (
             <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as Tab)}
-              className={`flex items-center gap-2 py-5 border-b-4 font-black text-xs uppercase tracking-widest transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+              className={`flex shrink-0 items-center gap-2 py-5 border-b-4 font-black text-xs uppercase tracking-widest transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
               {tab.icon} {tab.label}
             </button>
           ))}
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-          {listError && <div className="mb-6"><ErrorAlert message={listError} /></div>}
-          {activeTab === 'personal' && <PersonalTab formData={formData} handleChange={handleChange} />}
+        <form ref={formRef} onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar">
+            {listError && <div className="mb-6"><ErrorAlert message={listError} /></div>}
+            {activeTab === 'personal' && <PersonalTab formData={formData} handleChange={handleChange} />}
           
-          {activeTab === 'work' && (
-            <WorkTab 
-              formData={formData} 
-              handleChange={handleChange} 
-              cargos={cargosList} 
-              departamentos={departamentosList} 
-            />
-          )}
+            {activeTab === 'work' && (
+              <WorkTab 
+                formData={formData} 
+                handleChange={handleChange} 
+                cargos={cargosList} 
+                departamentos={departamentosList} 
+              />
+            )}
           
-          {activeTab === 'financial' && <FinancialTab formData={formData} handleChange={handleChange} />}
+            {activeTab === 'financial' && <FinancialTab formData={formData} handleChange={handleChange} />}
+          </div>
 
-          {submitError && <div className="mt-8"><ErrorAlert message={submitError} /></div>}
-
-          <div className="mt-12 pt-8 border-t border-slate-100 flex gap-4">
-            <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50">
-              Cancelar
-            </button>
-            <button type="submit" disabled={submitting} className="flex-[2] py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
-              {submitting ? 'Salvando...' : employeeToEdit ? 'Guardar Alterações' : 'Confirmar Cadastro'}
-            </button>
+          <div className="px-6 sm:px-10 py-5 border-t border-slate-100 space-y-4">
+            {submitError && <ErrorAlert message={submitError} />}
+            <div className="flex gap-4">
+              <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all disabled:cursor-not-allowed disabled:opacity-50">
+                Cancelar
+              </button>
+              <button type="submit" disabled={submitting} className="flex-[2] py-4 bg-slate-900 hover:bg-primary text-white font-black rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100">
+                {submitting ? 'Salvando...' : employeeToEdit ? 'Guardar Alterações' : 'Confirmar Cadastro'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
