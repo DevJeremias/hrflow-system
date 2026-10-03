@@ -1,10 +1,10 @@
 // Comportamento central do cliente HTTP (SEC-08): 401 encerra a sessão em um só lugar,
 // falha de rede vira erro com mensagem, e a sessão em cookie HttpOnly nunca passa pelo JavaScript:
 // o cliente só devolve o token CSRF nos métodos que mudam estado.
-import { test, beforeEach, afterEach } from 'node:test';
+import { test, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import httpClient, {
-  HttpError, NETWORK_ERROR_MESSAGE, forgetSession, hasSessionHint, setSessionExpiredHandler, startSessionEpoch,
+  HttpError, NETWORK_ERROR_MESSAGE, REQUEST_TIMEOUT_MS, TIMEOUT_ERROR_MESSAGE, forgetSession, hasSessionHint, setSessionExpiredHandler, startSessionEpoch,
 } from '../src/services/httpClient.ts';
 
 // Jar mínimo no lugar de document.cookie: guarda os pares e entende a expiração por Max-Age=0.
@@ -163,6 +163,60 @@ test('502, 503 e 504 (proxy sem API) também são erro de conexão, mesmo com me
 test('abort pedido pelo chamador não é tratado como falha de rede', async () => {
   globalThis.fetch = (async () => { throw new DOMException('aborted', 'AbortError'); }) as typeof fetch;
   await assert.rejects(httpClient('/x'), (erro: unknown) => !(erro instanceof HttpError));
+});
+
+// O temporizador de AbortSignal.timeout não segura o processo vivo; este segura até o sinal abortar,
+// senão o node:test acharia a promessa pendente órfã.
+const segurarAte = (sinal?: AbortSignal | null) => {
+  const vivo = setTimeout(() => {}, 5000);
+  sinal?.addEventListener('abort', () => clearTimeout(vivo));
+};
+
+// fetch que só termina quando o sinal manda abortar, como uma API que não responde.
+const semResposta = () => {
+  globalThis.fetch = ((_url: string, init?: RequestInit) => new Promise((_, rejeitar) => {
+    segurarAte(init?.signal);
+    init?.signal?.addEventListener('abort', () => rejeitar(init.signal?.reason));
+  })) as typeof fetch;
+};
+
+test('toda chamada leva um prazo de 30 s', async () => {
+  const prazo = mock.method(AbortSignal, 'timeout');
+  try {
+    responder(200, { ok: true });
+    await httpClient('/x');
+    assert.equal(REQUEST_TIMEOUT_MS, 30000);
+    assert.deepEqual(prazo.mock.calls.map((chamada) => chamada.arguments[0]), [30000]);
+    assert.ok(opcoes?.signal instanceof AbortSignal);
+  } finally {
+    prazo.mock.restore();
+  }
+});
+
+test('requisição sem resposta no prazo vira erro de conexão com a mensagem de nova tentativa', async () => {
+  semResposta();
+  await assert.rejects(httpClient('/x', { auth: true, timeoutMs: 20 }), (erro: unknown) =>
+    erro instanceof HttpError && erro.isNetworkError && erro.status === 0 && erro.message === TIMEOUT_ERROR_MESSAGE);
+  assert.equal(encerramentos, 0);
+});
+
+test('o prazo cobre também o corpo da resposta que para no meio', async () => {
+  globalThis.fetch = ((_url: string, init?: RequestInit) => Promise.resolve(new Response(new ReadableStream({
+    start(controle) {
+      segurarAte(init?.signal);
+      init?.signal?.addEventListener('abort', () => controle.error(init.signal?.reason));
+    },
+  })))) as typeof fetch;
+  await assert.rejects(httpClient('/x', { timeoutMs: 20 }), (erro: unknown) =>
+    erro instanceof HttpError && erro.message === TIMEOUT_ERROR_MESSAGE);
+});
+
+test('o abort do chamador continua valendo junto com o prazo e não vira erro de prazo', async () => {
+  semResposta();
+  const chamador = new AbortController();
+  const chamada = httpClient('/x', { signal: chamador.signal });
+  chamador.abort();
+  await assert.rejects(chamada, (erro: unknown) => !(erro instanceof HttpError));
 });
 
 test('uma resposta de erro do servidor não é erro de rede', async () => {
