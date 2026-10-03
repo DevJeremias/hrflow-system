@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diário do MySQL do HRFlow (03:30 em Belém)
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 UTC
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
