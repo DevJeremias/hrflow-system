@@ -1,9 +1,9 @@
 // Validação do avatar enviado como data URL em base64. O limite de tamanho é o mesmo que o
 // formulário de perfil já aplica ao arquivo (2 MB); o formato é conferido pelo tipo declarado e
 // pelos primeiros bytes da imagem, porque o tipo declarado sozinho é só texto do cliente.
-const TAMANHO_MAXIMO_BYTES = 2 * 1024 * 1024;
+export const TAMANHO_MAXIMO_BYTES = 2 * 1024 * 1024;
 
-const ASSINATURAS = {
+const ASSINATURAS: Record<string, (bytes: Buffer) => boolean> = {
     'image/png': (bytes) => bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
     'image/jpeg': (bytes) => bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])),
     'image/gif': (bytes) => ['GIF87a', 'GIF89a'].includes(bytes.subarray(0, 6).toString('latin1')),
@@ -15,7 +15,7 @@ const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const FORMATOS = 'PNG, JPEG, WebP ou GIF';
 
 // Devolve a mensagem de erro, ou null quando o avatar é aceitável.
-const validarAvatar = (valor) => {
+export const validarAvatar = (valor: unknown): string | null => {
     if (typeof valor !== 'string') return 'O avatar deve ser uma imagem em data URL base64.';
 
     const cabecalho = CABECALHO.exec(valor.slice(0, 80));
@@ -38,5 +38,3 @@ const validarAvatar = (valor) => {
 
     return null;
 };
-
-module.exports = { TAMANHO_MAXIMO_BYTES, validarAvatar };

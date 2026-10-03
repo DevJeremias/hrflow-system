@@ -12,7 +12,7 @@ import banco from './support/bancoDeTeste.js';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
 import pool from '../config/db.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import funcionarioRoutes from '../routes/funcionarioRoutes.js';
+import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 import { criarAuthRouter } from '../modules/auth/index.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
@@ -77,7 +77,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
             registroPorIp: { windowMs: 60_000, limit: 1000 },
             registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
         }));
-        app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
+        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
         app.use('/api/perfil', authMiddleware, perfilRoutes);
         ({ server, baseUrl } = await subirServidor(app));
 

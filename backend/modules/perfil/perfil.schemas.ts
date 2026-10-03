@@ -1,6 +1,6 @@
 import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } from '../../schemas/comum.js';
 import { LIMITES } from '../auth/auth.schemas.ts';
-import { validarAvatar } from '../../utils/validacaoAvatar.js';
+import { validarAvatar } from '../funcionarios/index.ts';
 
 const avatar = campo((valor: unknown) => {
     const erro = validarAvatar(valor);

@@ -47,7 +47,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
         const app = express();
         // Mesmo desenho do server.js: parser global de 4mb e o tratador de erros por último.
         app.use(express.json({ limit: '4mb' }));
-        app.use('/api/funcionarios', authMiddleware, require('../routes/funcionarioRoutes'));
+        app.use('/api/funcionarios', authMiddleware, require('../modules/funcionarios/index.ts').funcionariosRoutes);
         app.use('/api/estrutura', authMiddleware, require('../modules/estrutura/index.ts').estruturaRoutes);
         app.use('/api/folha', authMiddleware, require('../modules/folha/index.ts').folhaRoutes);
         app.use('/api/perfil', authMiddleware, require('../modules/perfil/index.ts').perfilRoutes);

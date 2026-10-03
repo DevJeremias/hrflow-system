@@ -15,7 +15,7 @@ import banco from './support/bancoDeTeste.js';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
 import pool from '../config/db.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
-import funcionarioRoutes from '../routes/funcionarioRoutes.js';
+import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { estruturaRoutes } from '../modules/estrutura/index.ts';
 
 interface Cargo extends RowDataPacket {
@@ -67,7 +67,7 @@ describe('referências de cargo e departamento entre empresas', { skip: banco.sk
         const app = express();
         app.use(express.json());
         app.use('/api/estrutura', authMiddleware, estruturaRoutes);
-        app.use('/api/funcionarios', authMiddleware, funcionarioRoutes);
+        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
         const servidor = http.createServer(app);
         server = servidor;
         await new Promise<void>((resolve) => servidor.listen(0, '127.0.0.1', resolve));
