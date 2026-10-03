@@ -1,4 +1,4 @@
-// Fluxo 2: o RH cadastra um colaborador pela tela e o encontra na folha, com o holerite aberto.
+// Fluxo 2: o RH cadastra um colaborador pela tela, processa a folha do mês e o encontra nela, com o holerite aberto.
 // Os valores da folha não são fixados aqui (a regra de cálculo tem testes próprios): o que importa é o
 // colaborador novo entrar no cálculo e o demonstrativo fechar a conta que ele mesmo mostra.
 import { test, expect } from '@playwright/test';
@@ -32,6 +32,9 @@ test('o RH cadastra um colaborador e ele aparece na folha com o líquido calcula
 
   await page.getByRole('link', { name: 'Folha de Pagamento' }).click();
   await expect(page).toHaveURL(/\/admin\/folha$/);
+  // A folha é por competência: a do mês corrente existe depois de processada (ou reprocessada, se outro fluxo já a abriu).
+  await page.getByRole('button', { name: /Processar (folha|novamente)/ }).click();
+  await expect(page.getByText('Folha aberta')).toBeVisible();
   await page.getByPlaceholder('Buscar colaborador...').fill(nome);
 
   const linha = page.getByRole('row').filter({ hasText: nome });
