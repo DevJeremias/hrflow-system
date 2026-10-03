@@ -1,9 +1,9 @@
 import express from 'express';
 import * as estruturaController from './estrutura.controller.ts';
-import verificarPerfil from '../../shared/middlewares/roleMiddleware.js';
-import validarEntrada from '../../shared/middlewares/validarEntrada.js';
+import verificarPerfil from '../../shared/middlewares/roleMiddleware.ts';
+import validarEntrada from '../../shared/middlewares/validarEntrada.ts';
 import { idDaRota, departamento, cargo } from './estrutura.schemas.ts';
-import { paginacao } from '../../shared/schemas/paginacao.js';
+import { paginacao } from '../../shared/schemas/paginacao.ts';
 
 export const estruturaRoutes = express.Router();
 

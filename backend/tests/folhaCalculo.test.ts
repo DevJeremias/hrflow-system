@@ -1,15 +1,15 @@
 // INSS da folha: regra pura em centavos (sem banco) e a API de folha/holerite contra MySQL real.
-// Banco e variáveis em tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST só a parte HTTP é pulada.
+// Banco e variáveis em tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST só a parte HTTP é pulada.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import express from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
-import db from '../shared/db/pool.js';
-import authMiddleware from '../shared/middlewares/authMiddleware.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
+import db from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { folhaRoutes } from '../modules/folha/index.ts';
 import type { HoleriteDoColaborador } from '../modules/folha/folha.service.ts';
 import * as regras from '../modules/folha/folha.regras.ts';

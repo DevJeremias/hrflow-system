@@ -1,8 +1,8 @@
 import express from 'express';
 import * as pontoController from './ponto.controller.ts';
-import verificarPerfil from '../../shared/middlewares/roleMiddleware.js';
+import verificarPerfil from '../../shared/middlewares/roleMiddleware.ts';
 import { verificarAcessoFuncionario } from '../funcionarios/index.ts';
-import validarEntrada from '../../shared/middlewares/validarEntrada.js';
+import validarEntrada from '../../shared/middlewares/validarEntrada.ts';
 import { diaDaJustificativa, enviarJustificativa, consultarJustificativas, consultarPontosDaEmpresa } from './ponto.schemas.ts';
 
 export const pontoRoutes = express.Router();

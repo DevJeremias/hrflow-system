@@ -1,12 +1,12 @@
 // Teste de integração do holerite contra um MySQL de teste descartável, com o schema
-// aplicado pelas migrations (tests/support/bancoDeTeste.js, variáveis HRFLOW_TEST_DB_*).
+// aplicado pelas migrations (tests/support/bancoDeTeste.ts, variáveis HRFLOW_TEST_DB_*).
 // Sem HRFLOW_TEST_DB_HOST o teste é pulado, não aprovado.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import db from '../shared/db/pool.js';
+import * as banco from './support/bancoDeTeste.ts';
+import db from '../shared/db/pool.ts';
 import { meuHolerite } from '../modules/folha/folha.controller.ts';
 
 type Token = NonNullable<Request['usuario']>;

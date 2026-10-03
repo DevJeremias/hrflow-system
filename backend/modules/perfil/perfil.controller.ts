@@ -5,11 +5,11 @@ import * as service from './perfil.service.ts';
 import { ErroDePerfil } from './perfil.erros.ts';
 import type { TipoDeErro } from './perfil.erros.ts';
 import type { CorpoDeAlterarSenha, CorpoDeAtualizarMeusDados } from './perfil.schemas.ts';
-import { responderErro } from '../../shared/utils/erros.js';
+import { responderErro } from '../../shared/utils/erros.ts';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
 
-// Falha de regra vira a resposta que o serviço descreveu; qualquer outra passa por utils/erros.js,
+// Falha de regra vira a resposta que o serviço descreveu; qualquer outra passa por shared/utils/erros.ts,
 // que traduz as falhas conhecidas do MySQL em 4xx/503 e devolve 500 com a mensagem do endpoint.
 const responderFalha = (res: Response, erro: unknown, mensagem500: string) => {
     if (erro instanceof ErroDePerfil) return res.status(STATUS_POR_TIPO[erro.tipo]).json({ erro: erro.message });

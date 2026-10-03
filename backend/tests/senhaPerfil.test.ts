@@ -1,6 +1,6 @@
 // Regressão do B-08 (limites de autenticação): a troca de senha de /api/perfil/alterar-senha tem
 // teto de tentativas por usuário e recusa uma senha nova igual à atual. Cada cenário roda de ponta
-// a ponta contra o MySQL migrado (tests/support/bancoDeTeste.js); sem HRFLOW_TEST_DB_HOST os testes
+// a ponta contra o MySQL migrado (tests/support/bancoDeTeste.ts); sem HRFLOW_TEST_DB_HOST os testes
 // são marcados como ignorados, nunca como aprovados.
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,10 +9,10 @@ import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import bcrypt from 'bcrypt';
 import express from 'express';
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
-import pool from '../shared/db/pool.js';
-import authMiddleware from '../shared/middlewares/authMiddleware.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 
 describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {

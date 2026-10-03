@@ -1,6 +1,6 @@
 // A sessão vive em cookie HttpOnly e o token CSRF protege quem muda estado. O JavaScript da página
 // nunca recebe o token: nem no corpo do login, nem em cookie legível. Banco e variáveis em
-// tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST os testes de integração são pulados.
+// tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST os testes de integração são pulados.
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
@@ -8,10 +8,10 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import type { Request } from 'express';
 import type { ResultSetHeader } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
-import pool from '../shared/db/pool.js';
-import authMiddleware from '../shared/middlewares/authMiddleware.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { criarAuthRouter } from '../modules/auth/index.ts';
 import { cookieSeguro, tokenCsrf, COOKIE_SESSAO, COOKIE_CSRF } from '../modules/auth/auth.sessao.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
@@ -114,7 +114,7 @@ describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, (
             assert.ok(!atributos(csrf).includes('httponly'));
             assert.ok(atributos(csrf).includes('samesite=lax'));
             assert.ok(atributos(csrf).includes('max-age=28800'));
-            assert.equal(csrf.split(';')[0], `${COOKIE_CSRF}=${tokenCsrf(tokenDaResposta(resposta))}`);
+            assert.equal(csrf.split(';')[0], `${COOKIE_CSRF}=${tokenCsrf(tokenDaResposta(resposta) as string)}`);
         });
 
         it('atrás do proxy com HTTPS os dois cookies são Secure', async () => {
@@ -181,7 +181,7 @@ describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, (
         }
 
         it('token CSRF qualquer, ou de outra sessão, é recusado', async () => {
-            const token = tokenDaResposta(await entrar());
+            const token = tokenDaResposta(await entrar()) as string;
             const { token: outro } = await criarUsuario(pool, { empresaId, perfil: 'Administrador' });
             for (const csrf of ['x', '', tokenCsrf(outro), `${tokenCsrf(token)}0`]) {
                 const resposta = await protegida('POST', { Cookie: `${COOKIE_SESSAO}=${token}`, 'X-CSRF-Token': csrf });

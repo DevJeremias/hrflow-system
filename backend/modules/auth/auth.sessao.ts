@@ -1,14 +1,10 @@
 // A sessão: o JWT, os dois cookies que o carregam e o token CSRF. Não consulta o banco; quem
-// confere se a sessão ainda vale a cada requisição é middlewares/authMiddleware.js.
+// confere se a sessão ainda vale a cada requisição é shared/middlewares/authMiddleware.ts.
 import crypto from 'node:crypto';
 import { parse } from 'cookie';
 import jwt from 'jsonwebtoken';
 import type { Request, Response, CookieOptions } from 'express';
-import segredoJwt from '../../shared/config/jwtSecret.js';
-
-// config/jwtSecret.js recusa a ausência do segredo ao ser carregado, mas o tipo inferido do
-// JavaScript ainda inclui undefined.
-const jwtSecret = segredoJwt as string;
+import jwtSecret from '../../shared/config/jwtSecret.ts';
 
 // Duração máxima de uma sessão (política SEC-06). Não há refresh token: depois disso, novo login.
 export const DURACAO_SESSAO_SEGUNDOS = 8 * 60 * 60;

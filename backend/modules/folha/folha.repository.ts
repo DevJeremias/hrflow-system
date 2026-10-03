@@ -1,7 +1,7 @@
 // Todo o SQL da folha: colaboradores ativos da empresa, com cargo e departamento. Devolve linhas
 // como o MySQL as entrega e não conhece HTTP nem regra de negócio.
 import type { RowDataPacket } from 'mysql2/promise';
-import db from '../../shared/db/pool.js';
+import db from '../../shared/db/pool.ts';
 
 // salario_base é DECIMAL: o mysql2 o entrega como texto.
 export interface FuncionarioDaFolha extends RowDataPacket {

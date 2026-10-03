@@ -1,4 +1,4 @@
-// Requer MySQL real: o banco é criado e migrado por tests/support/bancoDeTeste.js
+// Requer MySQL real: o banco é criado e migrado por tests/support/bancoDeTeste.ts
 // (variáveis HRFLOW_TEST_DB_*). Sem HRFLOW_TEST_DB_HOST os testes são marcados como
 // ignorados, nunca como aprovados.
 // O perfil tem uma única API (/api/perfil): a mesma resposta para Administrador, RH e Colaborador.
@@ -9,13 +9,13 @@ import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import bcrypt from 'bcrypt';
 import express from 'express';
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
-import { dataUrl } from './support/imagens.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
+import { dataUrl } from './support/imagens.ts';
 
-import db from '../shared/db/pool.js';
-import authMiddleware from '../shared/middlewares/authMiddleware.js';
-import tratarErros from '../shared/middlewares/tratarErros.js';
+import db from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
+import tratarErros from '../shared/middlewares/tratarErros.ts';
 import { authRoutes } from '../modules/auth/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 

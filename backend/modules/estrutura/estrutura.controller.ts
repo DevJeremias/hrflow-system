@@ -5,13 +5,13 @@ import * as service from './estrutura.service.ts';
 import { ErroDeEstrutura } from './estrutura.erros.ts';
 import type { TipoDeErro } from './estrutura.erros.ts';
 import type { DadosDoCargo, DadosDoDepartamento, IdDaRota } from './estrutura.schemas.ts';
-import { responderErro } from '../../shared/utils/erros.js';
-import { enviarPagina } from '../../shared/utils/paginacao.js';
+import { responderErro } from '../../shared/utils/erros.ts';
+import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
 
 // Falha de regra vira a resposta que o serviço descreveu; qualquer outra passa por
-// responderErro (utils/erros.js), que traduz falhas conhecidas do MySQL e devolve 500 com a
+// responderErro (shared/utils/erros.ts), que traduz falhas conhecidas do MySQL e devolve 500 com a
 // mensagem do endpoint para o resto.
 const responderFalha = (res: Response, erro: unknown, mensagem500: string) => {
     if (erro instanceof ErroDeEstrutura) return res.status(STATUS_POR_TIPO[erro.tipo]).json(erro.corpo);

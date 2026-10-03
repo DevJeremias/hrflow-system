@@ -1,8 +1,8 @@
 import express from 'express';
 import * as perfilController from './perfil.controller.ts';
-import verificarPerfil from '../../shared/middlewares/roleMiddleware.js';
-import validarEntrada from '../../shared/middlewares/validarEntrada.js';
-import { criarLimitadores } from '../../shared/middlewares/limitesAuth.js';
+import verificarPerfil from '../../shared/middlewares/roleMiddleware.ts';
+import validarEntrada from '../../shared/middlewares/validarEntrada.ts';
+import { criarLimitadores } from '../../shared/middlewares/limitesAuth.ts';
 import { atualizarMeusDados, alterarSenha } from './perfil.schemas.ts';
 
 const limitadores = criarLimitadores();

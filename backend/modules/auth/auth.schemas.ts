@@ -2,9 +2,9 @@
 // Os limites de tamanho seguem as colunas (VARCHAR(100) no README) e o bcrypt, que
 // ignora em silêncio tudo que passa de 72 bytes da senha.
 //
-// Não usa zod nem middlewares/validarEntrada.js: a resposta de 400 da autenticação é só
+// Não usa zod nem shared/middlewares/validarEntrada.ts: a resposta de 400 da autenticação é só
 // { erro }, sem a lista `detalhes` que o validarEntrada acrescentaria. As regras de texto, e-mail
-// e senha também valem para schemas/comum.js, que as importa daqui.
+// e senha também valem para shared/schemas/comum.ts, que as importa daqui.
 export const LIMITES = {
     nome: 100,
     email: 100,

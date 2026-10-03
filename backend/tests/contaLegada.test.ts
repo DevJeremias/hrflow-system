@@ -1,15 +1,15 @@
 // Contas criadas antes da troca de bcryptjs por bcrypt nativo guardam hashes $2b$ (gerados pelo
 // bcryptjs 3) ou $2a$ (bibliotecas mais antigas). Os dois formatos precisam continuar entrando.
 // Os hashes abaixo são literais gerados pelas bibliotecas originais, não pelo bcrypt em uso.
-// Banco e variáveis em tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST os testes são pulados.
+// Banco e variáveis em tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST os testes são pulados.
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
 import express from 'express';
 import type { ResultSetHeader } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, tokenDaResposta } from './support/sessao.js';
-import pool from '../shared/db/pool.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, tokenDaResposta } from './support/sessao.ts';
+import pool from '../shared/db/pool.ts';
 import { criarAuthRouter } from '../modules/auth/index.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
 

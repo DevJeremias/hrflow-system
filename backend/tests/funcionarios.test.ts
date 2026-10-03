@@ -1,18 +1,18 @@
 // Contrato HTTP de funcionários (/api/funcionarios): quem acessa, o que cada rota responde e o que
-// ela grava. Exige um MySQL real (variáveis HRFLOW_TEST_DB_*, veja tests/support/bancoDeTeste.js):
+// ela grava. Exige um MySQL real (variáveis HRFLOW_TEST_DB_*, veja tests/support/bancoDeTeste.ts):
 // sem ele os testes são marcados como ignorados, nunca como aprovados.
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import banco from './support/bancoDeTeste.js';
-import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
+import * as banco from './support/bancoDeTeste.ts';
+import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import express from 'express';
 import bcrypt from 'bcrypt';
-import db from '../shared/db/pool.js';
-import authMiddleware from '../shared/middlewares/authMiddleware.js';
-import tratarErros from '../shared/middlewares/tratarErros.js';
+import db from '../shared/db/pool.ts';
+import authMiddleware from '../shared/middlewares/authMiddleware.ts';
+import tratarErros from '../shared/middlewares/tratarErros.ts';
 import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 
 describe('funcionários', { skip: banco.skip }, () => {

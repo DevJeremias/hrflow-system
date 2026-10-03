@@ -1,4 +1,4 @@
-import { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../shared/schemas/comum.js';
+import { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../shared/schemas/comum.ts';
 import { LIMITES } from '../auth/auth.schemas.ts';
 
 const STATUS = ['Ativo', 'Inativo', 'Férias'] as const;
@@ -57,9 +57,8 @@ export const atualizarFuncionario = corpoEstrito({
     status: opcional(enumerado('Status', STATUS)).transform((status: Status | null) => status ?? 'Ativo'),
 }).check(admissaoDepoisDoNascimento);
 
-// O que cada schema entrega em req.dadosValidados. schemas/comum.js ainda é JavaScript e seus
-// construtores não declaram o tipo que devolvem, então estes tipos são escritos à mão: mude-os
-// junto com o schema.
+// O que cada schema entrega em req.dadosValidados. Os tipos são escritos à mão: mude-os junto com
+// o schema.
 export interface IdDaRota {
     id: number;
 }

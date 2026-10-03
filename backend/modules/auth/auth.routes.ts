@@ -3,8 +3,8 @@ import type { NextFunction, Request, Response } from 'express';
 import * as authController from './auth.controller.ts';
 import { validarLogin, validarRegistro } from './auth.schemas.ts';
 import type { Validacao } from './auth.schemas.ts';
-import authMiddleware from '../../shared/middlewares/authMiddleware.js';
-import { corpoJson, criarLimitadores, tratarErroDeCorpo } from '../../shared/middlewares/limitesAuth.js';
+import authMiddleware from '../../shared/middlewares/authMiddleware.ts';
+import { corpoJson, criarLimitadores, tratarErroDeCorpo } from '../../shared/middlewares/limitesAuth.ts';
 
 // Ordem em cada rota: limite por IP (barato, antes de ler o corpo), corpo pequeno,
 // validação de entrada, limite por identidade e só então o controller.

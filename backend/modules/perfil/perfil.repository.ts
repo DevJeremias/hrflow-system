@@ -1,7 +1,7 @@
 // Todo o SQL do perfil. Devolve linhas como o MySQL as entrega e não conhece HTTP nem regra de
 // negócio. As consultas rodam no pool ou, dentro de emTransacao, numa conexão reservada.
 import type { Connection, RowDataPacket } from 'mysql2/promise';
-import db from '../../shared/db/pool.js';
+import db from '../../shared/db/pool.ts';
 
 // Tudo o que depende do vínculo com o funcionário vem null quando ele não existe.
 export interface PerfilDoUsuario extends RowDataPacket {

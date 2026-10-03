@@ -1,6 +1,6 @@
 import express from 'express';
 import * as dashboardController from './dashboard.controller.ts';
-import verificarPerfil from '../../shared/middlewares/roleMiddleware.js';
+import verificarPerfil from '../../shared/middlewares/roleMiddleware.ts';
 
 export const dashboardRoutes = express.Router();
 

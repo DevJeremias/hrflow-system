@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-const modulo = path.join(import.meta.dirname, '../shared/config/jwtSecret.js');
+const modulo = path.join(import.meta.dirname, '../shared/config/jwtSecret.ts');
 
 const carregar = (secret: string | undefined) => {
     const env = { ...process.env };
     if (secret === undefined) delete env.JWT_SECRET;
     else env.JWT_SECRET = secret;
-    return spawnSync(process.execPath, ['-e', `require(${JSON.stringify(modulo)})`], {
+    return spawnSync(process.execPath, ['--input-type=module', '-e', `import ${JSON.stringify(modulo)}`], {
         encoding: 'utf8',
         env,
     });

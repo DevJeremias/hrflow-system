@@ -3,9 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { validarLogin, validarRegistro } from '../modules/auth/auth.schemas.ts';
-import trustProxy from '../shared/config/trustProxy.js';
-
-const { interpretarTrustProxy } = trustProxy;
+import { interpretarTrustProxy } from '../shared/config/trustProxy.ts';
 
 const registroValido = () => ({
     nomeEmpresa: 'Empresa Ficticia', nomeAdmin: 'Pessoa Ficticia', email: 'Admin@Exemplo.invalid', senha: 'senha-ficticia',
