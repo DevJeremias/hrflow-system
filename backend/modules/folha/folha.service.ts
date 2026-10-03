@@ -1,11 +1,13 @@
 // Regras da folha por competência: quem entra, o cálculo de cada colaborador (folha.regras.ts), o
 // processamento que pode se repetir enquanto a folha está aberta e o fechamento que a trava. Não
 // conhece HTTP (falhas de regra saem como ErroDeFolha) e só chega ao banco pelo repositório.
-import { relogio, diaLocal } from '../ponto/index.ts';
-import { competenciaDoDia, primeiroDia, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
-import { CODIGO_SALARIO, calcularHolerite, emCentavos, emReais, haTabelaVigente, rubricasDoHolerite } from './folha.regras.ts';
+import { apurarDiasDoMes, relogio, diaLocal, limitesDoMes } from '../ponto/index.ts';
+import { competenciaDoDia, primeiroDia, proximoMes, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
+import { CODIGO_SALARIO, SEM_LANCAMENTOS, calcularHolerite, emCentavos, emReais, haTabelaDeIrrfVigente, haTabelaVigente } from './folha.regras.ts';
+import type { Lancamentos, RegimeTributario, Rubrica } from './folha.regras.ts';
+import { eventosDoPonto } from './folha.ponto.ts';
 import * as repositorio from './folha.repository.ts';
-import type { ColaboradorDaFolha, DadosDaEmpresa, FolhaGravada, ItemGravado, NovoItem, Pendencia, StatusDaFolha } from './folha.repository.ts';
+import type { ColaboradorDaFolha, DadosDaEmpresa, FolhaGravada, ItemGravado, JustificativaDoMes, MarcacaoDoMes, NovoItem, Pendencia, StatusDaFolha } from './folha.repository.ts';
 import { ErroDeFolha } from './folha.erros.ts';
 import type { Autoria } from '../../shared/utils/auditar.ts';
 
@@ -13,8 +15,19 @@ export { relogio };
 
 const NAO_DEFINIDO = 'Não definido';
 const MOTIVO_SEM_SALARIO = 'Salário base não informado';
+const MOTIVO_DESCONTOS_ACIMA_DOS_PROVENTOS = 'Os descontos superam os proventos do mês';
 
-// Formato que o front-end consome (frontend/src/services/payrollService.ts).
+export interface LinhaDoHolerite {
+    description: string;
+    value: number;
+    isPercentage: boolean;
+    // O texto da coluna de referência: dias, horas, alíquota.
+    reference: string | null;
+}
+
+// Formato que o front-end consome (frontend/src/services/payrollService.ts). `earningsList` não
+// repete o salário base, que vem em `baseSalary`; `chargesList` é o que a empresa paga além do salário
+// (FGTS e contribuições patronais), que não sai do líquido.
 export interface HoleriteDoColaborador {
     id: string;
     name: string;
@@ -27,8 +40,16 @@ export interface HoleriteDoColaborador {
     totalGross: number;
     netSalary: number;
     employerCharges: number;
-    earningsList: { description: string; value: number; isPercentage: boolean }[];
-    deductionsList: { description: string; value: number; isPercentage: boolean }[];
+    inss: number;
+    irrf: number;
+    fgts: number;
+    dependents: number;
+    // Nulas nos holerites emitidos antes do IRRF.
+    bases: { inss: number; fgts: number; irrf: number } | null;
+    lancamentos: Lancamentos;
+    earningsList: LinhaDoHolerite[];
+    deductionsList: LinhaDoHolerite[];
+    chargesList: LinhaDoHolerite[];
 }
 
 export interface EmpresaDoHolerite {
@@ -47,7 +68,9 @@ export interface FolhaDaCompetencia {
     processadaEm: string;
     fechadaEm: string | null;
     empresa: EmpresaDoHolerite;
-    totais: { bruto: number; descontos: number; liquido: number; encargos: number };
+    // O regime que valeu nos encargos; nulo quando a empresa não o informou (vale a regra geral).
+    regimeTributario: RegimeTributario | null;
+    totais: { bruto: number; descontos: number; liquido: number; encargos: number; inss: number; irrf: number; fgts: number };
     itens: HoleriteDoColaborador[];
     pendencias: Pendencia[];
 }
@@ -56,7 +79,7 @@ const paraIso = (segundos: number): string => new Date(segundos * 1000).toISOStr
 
 const hojeEmCompetencia = (): string => competenciaDoDia(diaLocal(Math.floor(relogio.agora() / 1000)));
 
-// A folha só existe para um mês que já começou e para o qual há tabela de INSS.
+// A folha só existe para um mês que já começou e para o qual há tabela de INSS e de IRRF.
 const exigirCompetenciaProcessavel = (competencia: string) => {
     if (competencia > hojeEmCompetencia()) {
         throw new ErroDeFolha('invalido', `A competência ${rotuloDaCompetencia(competencia)} ainda não começou: não é possível processar a folha.`);
@@ -64,16 +87,23 @@ const exigirCompetenciaProcessavel = (competencia: string) => {
     if (!haTabelaVigente(primeiroDia(competencia))) {
         throw new ErroDeFolha('invalido', `Não há tabela de INSS para a competência ${rotuloDaCompetencia(competencia)}.`);
     }
+    if (!haTabelaDeIrrfVigente(primeiroDia(competencia))) {
+        throw new ErroDeFolha('invalido', `Não há tabela de IRRF para a competência ${rotuloDaCompetencia(competencia)}.`);
+    }
 };
 
 const valorDe = (decimal: string): number => Number(decimal);
 
+const emLista = (rubricas: Rubrica[]): LinhaDoHolerite[] =>
+    rubricas.map((rubrica) => ({ description: rubrica.descricao, value: rubrica.valor, isPercentage: false, reference: rubrica.referencia ?? null }));
+
+const somaDe = (rubricas: Rubrica[]): number => emReais(rubricas.reduce((total, rubrica) => total + emCentavos(rubrica.valor), 0));
+
 const holeriteDe = (item: ItemGravado): HoleriteDoColaborador => {
     const proventos = item.rubricas.filter((rubrica) => rubrica.tipo === 'provento');
     const descontos = item.rubricas.filter((rubrica) => rubrica.tipo === 'desconto');
+    const encargos = item.rubricas.filter((rubrica) => rubrica.tipo === 'encargo');
     const extras = proventos.filter((rubrica) => rubrica.codigo !== CODIGO_SALARIO);
-    const emLista = (rubricas: typeof proventos) => rubricas.map((rubrica) => ({ description: rubrica.descricao, value: rubrica.valor, isPercentage: false }));
-    const soma = (rubricas: typeof proventos) => emReais(rubricas.reduce((total, rubrica) => total + emCentavos(rubrica.valor), 0));
     return {
         id: item.funcionario_id.toString(),
         name: item.nome,
@@ -81,13 +111,20 @@ const holeriteDe = (item: ItemGravado): HoleriteDoColaborador => {
         department: item.departamento || NAO_DEFINIDO,
         contract: item.tipo_contrato,
         baseSalary: valorDe(item.bruto),
-        totalEarnings: soma(extras),
-        totalDeductions: soma(descontos),
-        totalGross: soma(proventos),
+        totalEarnings: somaDe(extras),
+        totalDeductions: somaDe(descontos),
+        totalGross: somaDe(proventos),
         netSalary: valorDe(item.liquido),
         employerCharges: valorDe(item.encargos),
+        inss: valorDe(item.inss),
+        irrf: valorDe(item.irrf),
+        fgts: valorDe(item.fgts),
+        dependents: item.dependentes,
+        bases: item.bases,
+        lancamentos: item.lancamentos ?? SEM_LANCAMENTOS,
         earningsList: emLista(extras),
         deductionsList: emLista(descontos),
+        chargesList: emLista(encargos),
     };
 };
 
@@ -98,7 +135,7 @@ const empresaDe = (dados: { razao_social: string | null; cnpj: string | null }):
 
 const montarFolha = (folha: FolhaGravada, itens: ItemGravado[]): FolhaDaCompetencia => {
     const holerites = itens.map(holeriteDe);
-    const somar = (campo: 'totalGross' | 'totalDeductions' | 'netSalary' | 'employerCharges') =>
+    const somar = (campo: 'totalGross' | 'totalDeductions' | 'netSalary' | 'employerCharges' | 'inss' | 'irrf' | 'fgts') =>
         emReais(holerites.reduce((total, holerite) => total + emCentavos(holerite[campo]), 0));
     return {
         competencia: folha.competencia,
@@ -106,15 +143,45 @@ const montarFolha = (folha: FolhaGravada, itens: ItemGravado[]): FolhaDaCompeten
         processadaEm: paraIso(folha.processada_em),
         fechadaEm: folha.fechada_em === null ? null : paraIso(folha.fechada_em),
         empresa: empresaDe(folha),
-        totais: { bruto: somar('totalGross'), descontos: somar('totalDeductions'), liquido: somar('netSalary'), encargos: somar('employerCharges') },
+        regimeTributario: folha.regime_tributario,
+        totais: {
+            bruto: somar('totalGross'), descontos: somar('totalDeductions'), liquido: somar('netSalary'), encargos: somar('employerCharges'),
+            inss: somar('inss'), irrf: somar('irrf'), fgts: somar('fgts'),
+        },
         itens: holerites,
         pendencias: folha.pendencias,
     };
 };
 
+const agruparPorColaborador = <T extends { funcionario_id: number }>(linhas: readonly T[]): Map<number, T[]> => {
+    const grupos = new Map<number, T[]>();
+    for (const linha of linhas) grupos.set(linha.funcionario_id, [...(grupos.get(linha.funcionario_id) ?? []), linha]);
+    return grupos;
+};
+
+// O que a folha precisa saber do ponto de cada colaborador no mês, lido de uma vez para a empresa
+// (ou para um colaborador): a apuração é a de modules/ponto, a mesma que a tela de ponto mostra.
+const carregarPonto = async (repo: repositorio.RepositorioDaFolha, empresaId: number, competencia: string, funcionarioId: number | null) => {
+    const { inicio, fim } = limitesDoMes(competencia);
+    const [marcacoes, justificativas] = await Promise.all([
+        repo.marcacoesDoMes(empresaId, inicio, fim, funcionarioId),
+        repo.justificativasDoMes(empresaId, primeiroDia(competencia), proximoMes(competencia), funcionarioId),
+    ]);
+    return { marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas) };
+};
+
+type PontoDoMes = Awaited<ReturnType<typeof carregarPonto>>;
+
 // Separa quem entra na folha de quem fica pendente. Salário ausente ou zero não vira holerite de
-// R$ 0,00: o colaborador aparece nas pendências até alguém cadastrar o salário.
-const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string): { itens: NovoItem[]; pendencias: Pendencia[] } => {
+// R$ 0,00: o colaborador aparece nas pendências até alguém cadastrar o salário, e descontos que
+// superam os proventos também não viram holerite negativo.
+const apurar = (
+    colaboradores: ColaboradorDaFolha[],
+    competencia: string,
+    regime: RegimeTributario | null,
+    ponto: PontoDoMes,
+    lancamentosDe: ReadonlyMap<number, Lancamentos>,
+): { itens: NovoItem[]; pendencias: Pendencia[] } => {
     const itens: NovoItem[] = [];
     const pendencias: Pendencia[] = [];
     for (const colaborador of colaboradores) {
@@ -123,7 +190,22 @@ const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string): { ite
             pendencias.push({ funcionarioId: colaborador.id, nome: colaborador.nome, motivo: MOTIVO_SEM_SALARIO });
             continue;
         }
-        const holerite = calcularHolerite(salario, primeiroDia(competencia), undefined, colaborador.tipo_contrato);
+        const { dias } = apurarDiasDoMes(competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? []);
+        const lancamentos = lancamentosDe.get(colaborador.id) ?? SEM_LANCAMENTOS;
+        const holerite = calcularHolerite({
+            salario,
+            dia: primeiroDia(competencia),
+            tipoContrato: colaborador.tipo_contrato,
+            regime,
+            dependentes: colaborador.dependentes,
+            cargaSemanalHoras: Number(colaborador.carga_semanal),
+            ponto: eventosDoPonto(dias, colaborador.desligamento).eventos,
+            lancamentos,
+        });
+        if (holerite.netSalary < 0) {
+            pendencias.push({ funcionarioId: colaborador.id, nome: colaborador.nome, motivo: MOTIVO_DESCONTOS_ACIMA_DOS_PROVENTOS });
+            continue;
+        }
         itens.push({
             funcionarioId: colaborador.id,
             nome: colaborador.nome,
@@ -132,9 +214,14 @@ const apurar = (colaboradores: ColaboradorDaFolha[], competencia: string): { ite
             tipoContrato: colaborador.tipo_contrato,
             bruto: holerite.baseSalary,
             inss: holerite.inss,
+            irrf: holerite.irrf,
             liquido: holerite.netSalary,
             encargos: holerite.employerCharges,
-            rubricas: rubricasDoHolerite(holerite),
+            fgts: holerite.fgts,
+            dependentes: colaborador.dependentes,
+            bases: holerite.bases,
+            lancamentos,
+            rubricas: holerite.rubricas,
         });
     }
     return { itens, pendencias };
@@ -166,8 +253,11 @@ export const processarFolha = async ({ empresaId, competencia, autoria }: { empr
         if (folha.status === 'fechada') {
             throw new ErroDeFolha('conflito', `A folha de ${rotuloDaCompetencia(competencia)} está fechada e não pode ser processada de novo.`);
         }
-        const { itens, pendencias } = apurar(await repo.colaboradoresDaCompetencia(empresaId, primeiroDia(competencia), ultimoDia(competencia)), competencia);
-        await repo.gravarProcessamento(folha.id, empresaId, itens, pendencias, await dadosDaEmpresa(repo, empresaId));
+        const empresa = await dadosDaEmpresa(repo, empresaId);
+        const colaboradores = await repo.colaboradoresDaCompetencia(empresaId, primeiroDia(competencia), ultimoDia(competencia));
+        // Reprocessar parte do que o RH já lançou em cada colaborador.
+        const { itens, pendencias } = apurar(colaboradores, competencia, empresa.regime_tributario, await carregarPonto(repo, empresaId, competencia, null), await repo.lancamentosDaFolha(folha.id));
+        await repo.gravarProcessamento(folha.id, empresaId, itens, pendencias, empresa);
         await repo.auditar(autoria, {
             acao: 'folha.processada',
             entidade: 'folha',
@@ -221,4 +311,59 @@ export const meuHolerite = async ({ usuarioId, empresaId, competencia }: { usuar
 export const meusHolerites = async ({ usuarioId, empresaId }: { usuarioId: number; empresaId: number }): Promise<HoleritePublicado[]> => {
     const funcionarioId = await funcionarioOuErro(usuarioId, empresaId);
     return (await repositorio.holeritesFechados(funcionarioId, empresaId, null)).map(publicado);
+};
+
+// Substitui os lançamentos de um colaborador na folha aberta e recalcula só o holerite dele. Os
+// valores que não vierem são zero: o que o RH não informa deixa de ser lançado.
+export const lancarEventos = async ({ empresaId, competencia, funcionarioId, lancamentos, autoria }: { empresaId: number; competencia: string; funcionarioId: number; lancamentos: Lancamentos; autoria: Autoria }): Promise<HoleriteDoColaborador> => {
+    await repositorio.emTransacao(async (repo) => {
+        const folha = await repo.travarFolha(empresaId, competencia);
+        if (!folha) throw new ErroDeFolha('inexistente', `A folha de ${rotuloDaCompetencia(competencia)} ainda não foi processada.`);
+        if (folha.status === 'fechada') {
+            throw new ErroDeFolha('conflito', `A folha de ${rotuloDaCompetencia(competencia)} está fechada: os lançamentos não podem mais mudar.`);
+        }
+        if ((await repo.itensDaFolha(folha.id, funcionarioId)).length === 0) {
+            throw new ErroDeFolha('inexistente', 'Este colaborador não tem holerite na folha. Corrija o cadastro e processe a folha de novo.');
+        }
+        const colaboradores = await repo.colaboradoresDaCompetencia(empresaId, primeiroDia(competencia), ultimoDia(competencia), funcionarioId);
+        const ponto = await carregarPonto(repo, empresaId, competencia, funcionarioId);
+        const { itens, pendencias } = apurar(colaboradores, competencia, folha.regime_tributario, ponto, new Map([[funcionarioId, lancamentos]]));
+        if (itens.length === 0) {
+            throw new ErroDeFolha('invalido', `Não foi possível calcular o holerite: ${pendencias[0]?.motivo.toLowerCase() ?? 'colaborador fora da folha'}.`);
+        }
+        const anteriores = (await repo.lancamentosDaFolha(folha.id)).get(funcionarioId) ?? null;
+        await repo.substituirItem(folha.id, empresaId, itens[0]);
+        await repo.auditar(autoria, {
+            acao: 'folha.lancamentos_alterados', entidade: 'folha', entidadeId: folha.id, funcionarioId,
+            antes: { competencia, lancamentos: anteriores }, depois: { competencia, lancamentos },
+        });
+    });
+    const folha = await folhaOuErro(empresaId, competencia);
+    return holeriteDe((await repositorio.itensDaFolha(folha.id, funcionarioId))[0]);
+};
+
+// O que o PDF imprime: uma página por holerite, com a empresa e a competência da folha.
+export interface DadosDoPdf {
+    competencia: string;
+    status: StatusDaFolha;
+    empresa: EmpresaDoHolerite;
+    holerites: HoleriteDoColaborador[];
+}
+
+// Os holerites da folha, de todos os colaboradores ou só de um, para o RH imprimir. A folha aberta
+// também sai, marcada como em conferência no PDF.
+export const holeritesParaPdf = async ({ empresaId, competencia, funcionarioId }: { empresaId: number; competencia: string; funcionarioId: number | null }): Promise<DadosDoPdf> => {
+    const folha = await consultarFolha({ empresaId, competencia });
+    const holerites = funcionarioId === null ? folha.itens : folha.itens.filter((item) => item.id === String(funcionarioId));
+    if (holerites.length === 0) {
+        throw new ErroDeFolha('inexistente', funcionarioId === null
+            ? `A folha de ${rotuloDaCompetencia(competencia)} não tem holerites para imprimir.`
+            : `Este colaborador não tem holerite na folha de ${rotuloDaCompetencia(competencia)}.`);
+    }
+    return { competencia, status: folha.status, empresa: folha.empresa, holerites };
+};
+
+export const meuHoleritePdf = async (consulta: { usuarioId: number; empresaId: number; competencia: string }): Promise<DadosDoPdf> => {
+    const holerite = await meuHolerite(consulta);
+    return { competencia: holerite.competencia, status: 'fechada', empresa: holerite.empresa, holerites: [holerite] };
 };

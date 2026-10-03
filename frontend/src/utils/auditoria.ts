@@ -17,6 +17,7 @@ const ACOES: Record<string, string> = {
   'funcionario.anonimizado': 'Cadastro anonimizado',
   'folha.processada': 'Folha processada',
   'folha.fechada': 'Folha fechada',
+  'folha.lancamentos_alterados': 'Lançamentos do holerite alterados',
   'justificativa.enviada': 'Justificativa de ponto enviada',
   'justificativa.decidida': 'Justificativa de ponto decidida',
   'senha.alterada': 'Senha trocada pela própria pessoa',

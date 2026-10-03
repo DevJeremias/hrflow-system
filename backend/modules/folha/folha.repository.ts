@@ -4,7 +4,9 @@ import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import db from '../../shared/db/pool.ts';
 import { gravarAuditoria } from '../../shared/utils/auditar.ts';
 import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
-import type { Rubrica } from './folha.regras.ts';
+import type { DecisaoDaJustificativa, TipoRegistro } from '../ponto/index.ts';
+import type { Lancamentos, Rubrica } from './folha.regras.ts';
+import type { RegimeTributario } from './folha.tabelas.ts';
 
 export type StatusDaFolha = 'aberta' | 'fechada';
 
@@ -20,13 +22,15 @@ export interface FolhaGravada extends RowDataPacket {
     status: StatusDaFolha;
     razao_social: string | null;
     cnpj: string | null;
+    regime_tributario: RegimeTributario | null;
     // JSON: o mysql2 já o entrega como objeto.
     pendencias: Pendencia[];
     processada_em: number;
     fechada_em: number | null;
 }
 
-// salario_base é DECIMAL: o mysql2 o entrega como texto.
+// salario_base e carga_semanal são DECIMAL: o mysql2 os entrega como texto. A jornada, a admissão e o
+// desligamento alimentam a apuração do ponto (modules/ponto) e `dependentes` conta os do IRRF.
 export interface ColaboradorDaFolha extends RowDataPacket {
     id: number;
     nome: string;
@@ -34,6 +38,27 @@ export interface ColaboradorDaFolha extends RowDataPacket {
     salario_base: string | null;
     cargo_nome: string | null;
     departamento_nome: string | null;
+    carga_semanal: string;
+    entrada: string;
+    saida: string;
+    entrada_min: number;
+    tolerancia_min: number;
+    admissao: string | null;
+    desligamento: string | null;
+    dependentes: number;
+}
+
+// Marcações e justificativas do mês de toda a empresa, lidas de uma vez para a apuração da folha.
+export interface MarcacaoDoMes extends RowDataPacket {
+    funcionario_id: number;
+    tipo_registro: TipoRegistro;
+    instante: number;
+}
+
+export interface JustificativaDoMes extends RowDataPacket {
+    funcionario_id: number;
+    dia: string;
+    status: DecisaoDaJustificativa;
 }
 
 // Os valores em reais são DECIMAL: texto.
@@ -45,8 +70,14 @@ export interface ItemGravado extends RowDataPacket {
     tipo_contrato: string | null;
     bruto: string;
     inss: string;
+    irrf: string;
     liquido: string;
     encargos: string;
+    fgts: string;
+    dependentes: number;
+    // Nulos nos itens emitidos antes do IRRF (migration 0016).
+    bases: { inss: number; fgts: number; irrf: number } | null;
+    lancamentos: Lancamentos | null;
     rubricas: Rubrica[];
 }
 
@@ -59,6 +90,7 @@ export interface HoleritePublicado extends ItemGravado {
 export interface DadosDaEmpresa extends RowDataPacket {
     razao_social: string | null;
     cnpj: string | null;
+    regime_tributario: RegimeTributario | null;
 }
 
 export interface NovoItem {
@@ -69,38 +101,91 @@ export interface NovoItem {
     tipoContrato: string | null;
     bruto: number;
     inss: number;
+    irrf: number;
     liquido: number;
     encargos: number;
+    fgts: number;
+    dependentes: number;
+    bases: { inss: number; fgts: number; irrf: number };
+    lancamentos: Lancamentos;
     rubricas: Rubrica[];
 }
 
-const COLUNAS_DA_FOLHA = `id, competencia, status, razao_social, cnpj, pendencias,
+const COLUNAS_DA_FOLHA = `id, competencia, status, razao_social, cnpj, regime_tributario, pendencias,
     UNIX_TIMESTAMP(processada_em) AS processada_em, UNIX_TIMESTAMP(fechada_em) AS fechada_em`;
 
-const COLUNAS_DO_ITEM = 'i.funcionario_id, i.nome, i.cargo, i.departamento, i.tipo_contrato, i.bruto, i.inss, i.liquido, i.encargos, i.rubricas';
+const COLUNAS_DO_ITEM = `i.funcionario_id, i.nome, i.cargo, i.departamento, i.tipo_contrato, i.bruto, i.inss, i.irrf, i.liquido, i.encargos,
+    i.fgts, i.dependentes, i.bases, i.lancamentos, i.rubricas`;
+
+const COLUNAS_DO_NOVO_ITEM = `folha_id, empresa_id, funcionario_id, nome, cargo, departamento, tipo_contrato, bruto, inss, irrf, liquido,
+    encargos, fgts, dependentes, bases, lancamentos, rubricas`;
+
+const linhaDoItem = (folhaId: number, empresaId: number, item: NovoItem) => [
+    folhaId, empresaId, item.funcionarioId, item.nome, item.cargo, item.departamento, item.tipoContrato,
+    item.bruto, item.inss, item.irrf, item.liquido, item.encargos, item.fgts, item.dependentes,
+    JSON.stringify(item.bases), JSON.stringify(item.lancamentos), JSON.stringify(item.rubricas),
+];
 
 const criarRepositorio = (executor: Connection) => ({
     async dadosDaEmpresa(empresaId: number): Promise<DadosDaEmpresa | undefined> {
-        const [empresas] = await executor.query<DadosDaEmpresa[]>('SELECT razao_social, cnpj FROM empresas WHERE id = ?', [empresaId]);
+        const [empresas] = await executor.query<DadosDaEmpresa[]>('SELECT razao_social, cnpj, regime_tributario FROM empresas WHERE id = ?', [empresaId]);
         return empresas[0];
     },
 
     // Quem entra na folha de uma competência: ativos e de férias, mais quem foi desligado no mês dela
     // ou depois (o desligado continua na folha do mês do desligamento e sai a partir da seguinte),
     // desde que já admitido até o último dia dela. Inativo sem data de desligamento fica de fora.
-    async colaboradoresDaCompetencia(empresaId: number, primeiroDia: string, ultimoDia: string): Promise<ColaboradorDaFolha[]> {
+    // Com `funcionarioId` a consulta se restringe a um colaborador (o recálculo dos lançamentos).
+    async colaboradoresDaCompetencia(empresaId: number, primeiroDia: string, ultimoDia: string, funcionarioId: number | null = null): Promise<ColaboradorDaFolha[]> {
         const [colaboradores] = await executor.query<ColaboradorDaFolha[]>(
-            `SELECT f.id, f.nome, f.tipo_contrato, f.salario_base, c.nome AS cargo_nome, d.nome AS departamento_nome
+            `SELECT f.id, f.nome, f.tipo_contrato, f.salario_base, c.nome AS cargo_nome, d.nome AS departamento_nome,
+                    f.carga_horaria_semanal AS carga_semanal, TIME_FORMAT(f.hora_entrada, '%H:%i') AS entrada,
+                    TIME_FORMAT(f.hora_saida, '%H:%i') AS saida, TIME_TO_SEC(f.hora_entrada) DIV 60 AS entrada_min,
+                    f.tolerancia_min, DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS admissao,
+                    DATE_FORMAT(f.data_desligamento, '%Y-%m-%d') AS desligamento,
+                    (SELECT COUNT(*) FROM dependentes dep WHERE dep.funcionario_id = f.id AND dep.empresa_id = f.empresa_id) AS dependentes
              FROM funcionarios f
              LEFT JOIN cargos c ON f.cargo_id = c.id
              LEFT JOIN departamentos d ON f.departamento_id = d.id
              WHERE f.empresa_id = ?
                AND (f.status IN ('Ativo', 'Férias') OR (f.status = 'Inativo' AND f.data_desligamento >= ?))
-               AND (f.data_admissao IS NULL OR f.data_admissao <= ?)
+               AND (f.data_admissao IS NULL OR f.data_admissao <= ?)${funcionarioId === null ? '' : ' AND f.id = ?'}
              ORDER BY f.nome, f.id`,
-            [empresaId, primeiroDia, ultimoDia]
+            funcionarioId === null ? [empresaId, primeiroDia, ultimoDia] : [empresaId, primeiroDia, ultimoDia, funcionarioId]
         );
         return colaboradores;
+    },
+
+    // As marcações do mês [inicio, fim) (segundos Unix) de toda a empresa, ou de um colaborador.
+    async marcacoesDoMes(empresaId: number, inicio: number, fim: number, funcionarioId: number | null = null): Promise<MarcacaoDoMes[]> {
+        const [marcacoes] = await executor.query<MarcacaoDoMes[]>(
+            `SELECT funcionario_id, tipo_registro, UNIX_TIMESTAMP(data_hora_oficial) AS instante
+             FROM registro_pontos
+             WHERE empresa_id = ? AND data_hora_oficial >= FROM_UNIXTIME(?) AND data_hora_oficial < FROM_UNIXTIME(?)${funcionarioId === null ? '' : ' AND funcionario_id = ?'}
+             ORDER BY data_hora_oficial, id`,
+            funcionarioId === null ? [empresaId, inicio, fim] : [empresaId, inicio, fim, funcionarioId]
+        );
+        return marcacoes;
+    },
+
+    // As justificativas com data de referência em [de, ate) ('AAAA-MM-DD').
+    async justificativasDoMes(empresaId: number, de: string, ate: string, funcionarioId: number | null = null): Promise<JustificativaDoMes[]> {
+        const [justificativas] = await executor.query<JustificativaDoMes[]>(
+            `SELECT funcionario_id, DATE_FORMAT(data_referencia, '%Y-%m-%d') AS dia, status
+             FROM justificativas_ponto
+             WHERE empresa_id = ? AND data_referencia >= ? AND data_referencia < ?${funcionarioId === null ? '' : ' AND funcionario_id = ?'}`,
+            funcionarioId === null ? [empresaId, de, ate] : [empresaId, de, ate, funcionarioId]
+        );
+        return justificativas;
+    },
+
+    // Os lançamentos que o RH fez em cada item da folha, para o reprocessamento partir deles.
+    async lancamentosDaFolha(folhaId: number): Promise<Map<number, Lancamentos>> {
+        const [itens] = await executor.query<(RowDataPacket & { funcionario_id: number; lancamentos: Lancamentos })[]>(
+            'SELECT funcionario_id, lancamentos FROM folha_itens WHERE folha_id = ? AND lancamentos IS NOT NULL',
+            [folhaId]
+        );
+        return new Map(itens.map((item) => [item.funcionario_id, item.lancamentos]));
     },
 
     async folhaDaCompetencia(empresaId: number, competencia: string): Promise<FolhaGravada | undefined> {
@@ -135,20 +220,18 @@ const criarRepositorio = (executor: Connection) => ({
     async gravarProcessamento(folhaId: number, empresaId: number, itens: NovoItem[], pendencias: Pendencia[], empresa: DadosDaEmpresa): Promise<void> {
         await executor.query('DELETE FROM folha_itens WHERE folha_id = ?', [folhaId]);
         if (itens.length > 0) {
-            await executor.query(
-                `INSERT INTO folha_itens
-                 (folha_id, empresa_id, funcionario_id, nome, cargo, departamento, tipo_contrato, bruto, inss, liquido, encargos, rubricas)
-                 VALUES ?`,
-                [itens.map((item) => [
-                    folhaId, empresaId, item.funcionarioId, item.nome, item.cargo, item.departamento, item.tipoContrato,
-                    item.bruto, item.inss, item.liquido, item.encargos, JSON.stringify(item.rubricas),
-                ])]
-            );
+            await executor.query(`INSERT INTO folha_itens (${COLUNAS_DO_NOVO_ITEM}) VALUES ?`, [itens.map((item) => linhaDoItem(folhaId, empresaId, item))]);
         }
         await executor.query(
-            'UPDATE folhas SET pendencias = ?, razao_social = ?, cnpj = ?, processada_em = CURRENT_TIMESTAMP WHERE id = ?',
-            [JSON.stringify(pendencias), empresa.razao_social, empresa.cnpj, folhaId]
+            'UPDATE folhas SET pendencias = ?, razao_social = ?, cnpj = ?, regime_tributario = ?, processada_em = CURRENT_TIMESTAMP WHERE id = ?',
+            [JSON.stringify(pendencias), empresa.razao_social, empresa.cnpj, empresa.regime_tributario, folhaId]
         );
+    },
+
+    // Troca o item de um colaborador (os lançamentos recalculam só o dele) e deixa o resto da folha como está.
+    async substituirItem(folhaId: number, empresaId: number, item: NovoItem): Promise<void> {
+        await executor.query('DELETE FROM folha_itens WHERE folha_id = ? AND funcionario_id = ?', [folhaId, item.funcionarioId]);
+        await executor.query(`INSERT INTO folha_itens (${COLUNAS_DO_NOVO_ITEM}) VALUES (?)`, [linhaDoItem(folhaId, empresaId, item)]);
     },
 
     async fecharFolha(folhaId: number, usuarioId: number, empresa: DadosDaEmpresa): Promise<void> {
@@ -163,10 +246,10 @@ const criarRepositorio = (executor: Connection) => ({
         return gravarAuditoria(executor, autoria, evento);
     },
 
-    async itensDaFolha(folhaId: number): Promise<ItemGravado[]> {
+    async itensDaFolha(folhaId: number, funcionarioId: number | null = null): Promise<ItemGravado[]> {
         const [itens] = await executor.query<ItemGravado[]>(
-            `SELECT ${COLUNAS_DO_ITEM} FROM folha_itens i WHERE i.folha_id = ? ORDER BY i.nome, i.funcionario_id`,
-            [folhaId]
+            `SELECT ${COLUNAS_DO_ITEM} FROM folha_itens i WHERE i.folha_id = ?${funcionarioId === null ? '' : ' AND i.funcionario_id = ?'} ORDER BY i.nome, i.funcionario_id`,
+            funcionarioId === null ? [folhaId] : [folhaId, funcionarioId]
         );
         return itens;
     },

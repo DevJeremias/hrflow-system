@@ -83,7 +83,7 @@ test('a tabela de cargos não esconde colunas com overflow-hidden nem largura m�
 test('folha: tabela semântica com legenda e um botão de holerite rotulado por colaborador', async () => {
   const host = await abrirTela(Payroll);
   assert.equal(host.querySelector('caption')?.textContent, 'Holerites individuais da competência');
-  assert.deepEqual(cabecalhos(host).map(([nome]) => nome), ['Colaborador', 'Salário Base', 'Proventos (+ extras)', 'Descontos', 'Líquido Final', 'Holerite']);
+  assert.deepEqual(cabecalhos(host).map(([nome]) => nome), ['Colaborador', 'Salário Base', 'Proventos (+ extras)', 'Descontos', 'Líquido Final', 'Ações']);
   const ver = host.querySelector<HTMLButtonElement>('button[aria-label="Ver holerite de Bia Ficticia"]')!;
   assert.ok(ver, 'abrir o holerite é um botão, não uma linha clicável sem teclado');
   assert.ok(host.querySelector('select[name="setor"]'), 'o filtro de setor tem name');

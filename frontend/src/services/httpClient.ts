@@ -66,6 +66,9 @@ export interface HttpRequestOptions extends RequestInit {
   errorMessage?: ErrorMessage;
   onResponse?: (response: Response) => void;
   timeoutMs?: number;
+  // 'blob' entrega o corpo de uma resposta bem-sucedida como arquivo (o PDF do holerite); o corpo de
+  // erro continua sendo lido como JSON ou texto.
+  responseType?: 'json' | 'blob';
 }
 
 export class HttpError extends Error {
@@ -98,7 +101,7 @@ const parseResponse = async (response: Response): Promise<unknown> => {
 
 export const httpClient = async <T = unknown>(path: string, options: HttpRequestOptions = {}): Promise<T> => {
   const {
-    auth = false, errorMessage, onResponse, timeoutMs = REQUEST_TIMEOUT_MS, headers: optionHeaders, signal: callerSignal, ...requestOptions
+    auth = false, errorMessage, onResponse, timeoutMs = REQUEST_TIMEOUT_MS, responseType = 'json', headers: optionHeaders, signal: callerSignal, ...requestOptions
   } = options;
   const headers = new Headers(optionHeaders);
 
@@ -117,7 +120,7 @@ export const httpClient = async <T = unknown>(path: string, options: HttpRequest
   const signal = callerSignal ? AbortSignal.any([callerSignal, timeout]) : timeout;
 
   let response: Response;
-  let data: Awaited<ReturnType<typeof parseResponse>>;
+  let data: Awaited<ReturnType<typeof parseResponse>> | Blob;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       credentials: 'same-origin',
@@ -126,7 +129,7 @@ export const httpClient = async <T = unknown>(path: string, options: HttpRequest
       signal,
     });
     // O prazo vale também para o corpo: uma resposta que para no meio não pode pendurar a tela.
-    data = await parseResponse(response);
+    data = responseType === 'blob' && response.ok ? await response.blob() : await parseResponse(response);
   } catch (error) {
     if (timeout.aborted && !callerSignal?.aborted) throw new HttpError(TIMEOUT_ERROR_MESSAGE, 0, undefined);
     // fetch só rejeita com TypeError quando não há resposta; um abort do chamador segue como está.

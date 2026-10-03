@@ -90,7 +90,7 @@ export type CadastroAtual = RowDataPacket & Record<typeof COLUNAS_AUDITADAS[numb
     departamento_nome: string | null;
 };
 
-// Um período do histórico contratual (migration 0018).
+// Um período do histórico contratual (migration 0019).
 export interface PeriodoContratual extends RowDataPacket {
     id: number;
     salario_base: string | null;

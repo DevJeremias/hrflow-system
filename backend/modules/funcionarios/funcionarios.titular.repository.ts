@@ -85,7 +85,7 @@ const criarRepositorio = (executor: Connection) => ({
     async holerites(funcionarioId: number, empresaId: number): Promise<RowDataPacket[]> {
         const [linhas] = await executor.query<RowDataPacket[]>(
             `SELECT p.competencia, p.status AS situacao_da_folha, i.nome, i.cargo, i.departamento, i.tipo_contrato,
-                    i.bruto, i.inss, i.liquido, i.encargos, i.rubricas
+                    i.bruto, i.inss, i.irrf, i.fgts, i.liquido, i.encargos, i.rubricas
              FROM folha_itens i JOIN folhas p ON p.id = i.folha_id AND p.empresa_id = i.empresa_id
              WHERE i.funcionario_id = ? AND i.empresa_id = ? ORDER BY p.competencia`, [funcionarioId, empresaId]
         );

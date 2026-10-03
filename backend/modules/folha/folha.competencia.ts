@@ -17,3 +17,9 @@ export const competenciaDoDia = (dia: string): string => dia.slice(0, 7);
 
 // 'AAAA-MM' como 'MM/AAAA', o jeito que a mensagem para o usuário escreve.
 export const rotuloDaCompetencia = (competencia: string): string => `${competencia.slice(5)}/${competencia.slice(0, 4)}`;
+
+// O primeiro dia do mês seguinte ('AAAA-MM-DD'): o limite de cima, exclusivo, das consultas do mês.
+export const proximoMes = (competencia: string): string => {
+    const [, ano, mes] = COMPETENCIA.exec(competencia)!;
+    return Number(mes) === 12 ? `${Number(ano) + 1}-01-01` : `${ano}-${String(Number(mes) + 1).padStart(2, '0')}-01`;
+};

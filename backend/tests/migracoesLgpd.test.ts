@@ -1,4 +1,4 @@
-// B-22: as migrations 0017 a 0020 sobre um banco que já tem dados. A foto sai de usuarios e funcionarios
+// B-22: as migrations 0018 a 0021 sobre um banco que já tem dados. A foto sai de usuarios e funcionarios
 // (base64) para avatares (binário), e quem já era colaborador entra no histórico contratual.
 // Banco e variáveis em tests/support/bancoDeTeste.ts; sem HRFLOW_TEST_DB_HOST o teste é pulado.
 import { before, after, describe, it } from 'node:test';
@@ -8,7 +8,7 @@ import * as banco from './support/bancoDeTeste.ts';
 import * as migrator from '../shared/db/migrator.ts';
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
-describe('migrations de auditoria, histórico, avatares e LGPD (0017 a 0020)', { skip: banco.skip }, () => {
+describe('migrations de auditoria, histórico, avatares e LGPD (0018 a 0021)', { skip: banco.skip }, () => {
     const parcial = { ...banco.config, database: `${banco.config.database}_lgpd` };
     let conexao: Connection;
     let empresa: number;
@@ -23,7 +23,7 @@ describe('migrations de auditoria, histórico, avatares e LGPD (0017 a 0020)', {
         await banco.preparar();
         await migrator.removerBanco(parcial);
         await migrator.criarBanco(parcial);
-        await migrator.migrar(parcial, () => {}, { ate: '0016' });
+        await migrator.migrar(parcial, () => {}, { ate: '0017' });
         conexao = await migrator.conectar(parcial);
 
         png = await sharp({ create: { width: 40, height: 40, channels: 3, background: '#336699' } }).png().toBuffer();
@@ -55,7 +55,7 @@ describe('migrations de auditoria, histórico, avatares e LGPD (0017 a 0020)', {
         );
         ids.semFoto = await inserir('INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)', ['Sem Foto', 'semfoto.migracao@exemplo.invalid', 'hash-ficticio', 'RH', empresa]);
 
-        assert.deepEqual(await migrator.migrar(parcial), ['0017', '0018', '0019', '0020']);
+        assert.deepEqual(await migrator.migrar(parcial), ['0018', '0019', '0020', '0021']);
     });
 
     after(async () => {

@@ -4,7 +4,8 @@ import type { Request, Response } from 'express';
 import * as service from './folha.service.ts';
 import { ErroDeFolha } from './folha.erros.ts';
 import type { TipoDeErro } from './folha.erros.ts';
-import type { CompetenciaDaRota, ConsultaDeHolerite } from './folha.schemas.ts';
+import type { CompetenciaDaRota, CompetenciaEColaborador, ConsultaDeHolerite, CorpoDosLancamentos } from './folha.schemas.ts';
+import { criarPdfDeHolerites, nomeDeArquivo } from './folha.pdf.ts';
 import { autoriaDe } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 
@@ -25,7 +26,7 @@ const usuarioDe = (req: Request) => {
 };
 
 // O validarEntrada da rota já validou e normalizou a entrada; os tipos vêm de folha.schemas.ts.
-const entradaDe = <T>(req: Request, parte: 'params' | 'query'): T => {
+const entradaDe = <T>(req: Request, parte: 'params' | 'query' | 'body'): T => {
     if (!req.dadosValidados?.[parte]) throw new Error(`req.dadosValidados.${parte} ausente: a rota precisa do validarEntrada.`);
     return req.dadosValidados[parte] as T;
 };
@@ -76,5 +77,53 @@ export const meusHolerites = async (req: Request, res: Response) => {
         res.json(await service.meusHolerites({ usuarioId: id, empresaId: empresa_id }));
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao buscar holerites');
+    }
+};
+
+export const lancarEventos = async (req: Request, res: Response) => {
+    try {
+        const { competencia, funcionarioId } = entradaDe<CompetenciaEColaborador>(req, 'params');
+        const lancamentos = entradaDe<CorpoDosLancamentos>(req, 'body');
+        res.json(await service.lancarEventos({ empresaId: usuarioDe(req).empresa_id, competencia, funcionarioId, lancamentos, autoria: autoriaDe(req) }));
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao lançar os eventos da folha');
+    }
+};
+
+// O PDF é montado de dados já lidos e sai direto para a resposta; uma falha antes dele vira o JSON
+// de erro de sempre, porque nada foi escrito ainda.
+const enviarPdf = (res: Response, dados: service.DadosDoPdf, arquivo: string) => {
+    res.type('application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${arquivo}.pdf"`);
+    criarPdfDeHolerites(dados).pipe(res);
+};
+
+export const holeritesEmPdf = async (req: Request, res: Response) => {
+    try {
+        const { competencia } = entradaDe<CompetenciaDaRota>(req, 'params');
+        const dados = await service.holeritesParaPdf({ empresaId: usuarioDe(req).empresa_id, competencia, funcionarioId: null });
+        enviarPdf(res, dados, `holerites-${competencia}`);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao gerar os holerites em PDF');
+    }
+};
+
+export const holeriteEmPdf = async (req: Request, res: Response) => {
+    try {
+        const { competencia, funcionarioId } = entradaDe<CompetenciaEColaborador>(req, 'params');
+        const dados = await service.holeritesParaPdf({ empresaId: usuarioDe(req).empresa_id, competencia, funcionarioId });
+        enviarPdf(res, dados, `holerite-${competencia}-${nomeDeArquivo(dados.holerites[0].name)}`);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao gerar o holerite em PDF');
+    }
+};
+
+export const meuHoleriteEmPdf = async (req: Request, res: Response) => {
+    try {
+        const { id, empresa_id } = usuarioDe(req);
+        const { competencia } = entradaDe<ConsultaDeHolerite>(req, 'query');
+        enviarPdf(res, await service.meuHoleritePdf({ usuarioId: id, empresaId: empresa_id, competencia }), `holerite-${competencia}`);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao gerar o holerite em PDF');
     }
 };

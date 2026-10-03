@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { closePayroll, getMyPayslips, getPayroll, processPayroll, type MonthlyPayroll } from '../services/payrollService';
+import { closePayroll, getMyPayslips, getPayroll, processPayroll, savePayrollEntries, type MonthlyPayroll, type PayrollEntries } from '../services/payrollService';
 import { chaves } from './chaves';
 
 // A folha de uma competência fica em cache: trocar de mês e voltar não refaz a chamada, e o filtro
@@ -24,3 +24,13 @@ export const useAcaoDaFolha = (competencia: string, acao: 'processar' | 'fechar'
 };
 
 export const useMeusHolerites = () => useQuery({ queryKey: chaves.meusHolerites, queryFn: getMyPayslips });
+
+// O servidor recalcula só o holerite do colaborador, mas os totais da folha mudam com ele: a folha
+// da competência é lida de novo e a mutação só termina depois, para a tela já mostrar os valores novos.
+export const useSalvarLancamentos = (competencia: string, funcionarioId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (lancamentos: PayrollEntries) => savePayrollEntries(competencia, funcionarioId, lancamentos),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.folhaDaCompetencia(competencia) }),
+  });
+};
