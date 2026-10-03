@@ -5,7 +5,7 @@ import * as service from './funcionarios.service.ts';
 import type { Ator } from './funcionarios.service.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { TipoDeErro } from './funcionarios.erros.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, IdDaRota, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, DependenteDaRota, IdDaRota, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 import { enviarPagina } from '../../shared/utils/paginacao.ts';
 
@@ -95,5 +95,33 @@ export const redefinirSenha = async (req: Request, res: Response) => {
         });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao redefinir a senha do colaborador.');
+    }
+};
+
+export const listarDependentes = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        res.json(await service.listarDependentes(empresaDe(req), id));
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao buscar os dependentes.');
+    }
+};
+
+export const adicionarDependente = async (req: Request, res: Response) => {
+    try {
+        const { id } = entradaDe<IdDaRota>(req, 'params');
+        res.status(201).json(await service.adicionarDependente(empresaDe(req), id, atorDe(req), entradaDe<CorpoDoDependente>(req, 'body')));
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao cadastrar o dependente.');
+    }
+};
+
+export const removerDependente = async (req: Request, res: Response) => {
+    try {
+        const { id, dependenteId } = entradaDe<DependenteDaRota>(req, 'params');
+        await service.removerDependente(empresaDe(req), id, dependenteId, atorDe(req));
+        res.status(204).end();
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao excluir o dependente.');
     }
 };

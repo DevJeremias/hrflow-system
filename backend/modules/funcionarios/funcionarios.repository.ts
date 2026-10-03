@@ -100,6 +100,14 @@ export interface AtualizacaoDoFuncionario extends DadosDoFuncionario {
     empresaId: number;
 }
 
+// Os dependentes que reduzem o IRRF do colaborador na folha.
+export interface DependenteGravado extends RowDataPacket {
+    id: number;
+    nome: string;
+    parentesco: string;
+    data_nascimento: string | null;
+}
+
 const criarRepositorio = (executor: Connection) => ({
     // `limite` e `deslocamento` recortam a página, em ordem alfabética (o desempate por id mantém a
     // paginação estável).
@@ -251,6 +259,31 @@ const criarRepositorio = (executor: Connection) => ({
         await executor.query('DELETE FROM usuarios WHERE funcionario_id = ? AND empresa_id = ?', [funcionarioId, empresaId]);
     },
 
+    async dependentesDoFuncionario(funcionarioId: number, empresaId: number): Promise<DependenteGravado[]> {
+        const [dependentes] = await executor.query<DependenteGravado[]>(
+            `SELECT id, nome, parentesco, DATE_FORMAT(data_nascimento, '%Y-%m-%d') AS data_nascimento
+             FROM dependentes WHERE funcionario_id = ? AND empresa_id = ? ORDER BY id`,
+            [funcionarioId, empresaId]
+        );
+        return dependentes;
+    },
+
+    async inserirDependente(funcionarioId: number, empresaId: number, { nome, parentesco, data_nascimento }: Pick<DependenteGravado, 'nome' | 'parentesco' | 'data_nascimento'>): Promise<number> {
+        const [resultado] = await executor.query<ResultSetHeader>(
+            'INSERT INTO dependentes (empresa_id, funcionario_id, nome, parentesco, data_nascimento) VALUES (?, ?, ?, ?, ?)',
+            [empresaId, funcionarioId, nome, parentesco, data_nascimento]
+        );
+        return resultado.insertId;
+    },
+
+    // Devolve false quando o dependente não existe nesse colaborador.
+    async excluirDependente(dependenteId: number, funcionarioId: number, empresaId: number): Promise<boolean> {
+        const [resultado] = await executor.query<ResultSetHeader>(
+            'DELETE FROM dependentes WHERE id = ? AND funcionario_id = ? AND empresa_id = ?', [dependenteId, funcionarioId, empresaId]
+        );
+        return resultado.affectedRows > 0;
+    },
+
     // Devolve false quando o funcionário não existe na empresa.
     async excluirFuncionario(funcionarioId: number, empresaId: number): Promise<boolean> {
         const [resultado] = await executor.query<ResultSetHeader>(
@@ -279,4 +312,4 @@ export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDeFuncio
     }
 };
 
-export const { listarDaEmpresa, contarDaEmpresa } = criarRepositorio(db);
+export const { listarDaEmpresa, contarDaEmpresa, dependentesDoFuncionario } = criarRepositorio(db);

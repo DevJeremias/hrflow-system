@@ -5,6 +5,7 @@ import { paginacao } from '../../shared/schemas/paginacao.ts';
 const STATUS = ['Ativo', 'Inativo', 'Férias'] as const;
 const TIPOS_CONTRATO = ['CLT', 'PJ', 'Estágio', 'Temporário'] as const;
 const TIPOS_CONTA = ['Corrente', 'Poupanca', 'Salario'] as const;
+const PARENTESCOS = ['Cônjuge', 'Filho(a)', 'Pai ou mãe', 'Outro'] as const;
 
 export type Status = typeof STATUS[number];
 
@@ -68,6 +69,14 @@ export const consultaDeFuncionarios = paginacao.extend({
 
 export const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 
+export const dependenteDaRota = z.object({ id: inteiroPositivo('Identificador'), dependenteId: inteiroPositivo('Dependente') });
+
+export const criarDependente = corpoEstrito({
+    nome: texto('Nome', LIMITES.nome),
+    parentesco: enumerado('Parentesco', PARENTESCOS),
+    data_nascimento: opcional(data('Data de nascimento', hoje, 'a data de hoje')),
+});
+
 // O status do cadastro novo é sempre Ativo: o campo, se enviado, é aceito e ignorado.
 export const criarFuncionario = corpoEstrito({ ...dadosDoFuncionario, senha: senhaNova, status: z.unknown().optional().transform(() => undefined) }).check(admissaoDepoisDoNascimento);
 
@@ -95,6 +104,17 @@ export const alterarStatus = corpoEstrito({
 // o schema.
 export interface IdDaRota {
     id: number;
+}
+
+export interface DependenteDaRota {
+    id: number;
+    dependenteId: number;
+}
+
+export interface CorpoDoDependente {
+    nome: string;
+    parentesco: typeof PARENTESCOS[number];
+    data_nascimento: string | null;
 }
 
 export interface DadosDoFuncionario {

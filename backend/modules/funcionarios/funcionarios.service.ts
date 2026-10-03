@@ -4,10 +4,10 @@
 // ErroDeFuncionario) e só chega ao banco pelo repositório.
 import bcrypt from 'bcrypt';
 import * as repositorio from './funcionarios.repository.ts';
-import type { AlvoDoCicloDeVida, FuncionarioListado, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
+import type { AlvoDoCicloDeVida, DependenteGravado, FuncionarioListado, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import { gerarSenhaProvisoria } from './funcionarios.regras.ts';
-import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoStatus, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
+import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, ConsultaDeFuncionarios } from './funcionarios.schemas.ts';
 import { EMAIL_DUPLICADO } from '../../shared/utils/erros.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 import { motivoDeNegacaoDoCadastro } from '../../shared/utils/permissoes.ts';
@@ -167,5 +167,38 @@ export const deletarFuncionario = async (empresaId: number, id: number, ator: At
 
         await repo.excluirUsuarios(id, empresaId);
         await repo.excluirFuncionario(id, empresaId);
+    });
+};
+
+// Dependentes do colaborador: cada um reduz a base do IRRF na folha processada depois. O RH vê os de
+// qualquer colaborador, mas só altera os que o alcance sobre o cadastro permite (exigirAlcance).
+export interface DependenteDoColaborador {
+    id: number;
+    nome: string;
+    parentesco: string;
+    data_nascimento: string | null;
+}
+
+const paraDependente = ({ id, nome, parentesco, data_nascimento }: DependenteGravado): DependenteDoColaborador => ({ id, nome, parentesco, data_nascimento });
+
+export const listarDependentes = async (empresaId: number, id: number): Promise<DependenteDoColaborador[]> => {
+    if (!(await repositorio.emTransacao((repo) => repo.alvoDoCicloDeVida(id, empresaId)))) {
+        throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
+    }
+    return (await repositorio.dependentesDoFuncionario(id, empresaId)).map(paraDependente);
+};
+
+export const adicionarDependente = async (empresaId: number, id: number, ator: Ator, corpo: CorpoDoDependente): Promise<DependenteDoColaborador> => {
+    const dependenteId = await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, id, ator);
+        return repo.inserirDependente(id, empresaId, corpo);
+    });
+    return { id: dependenteId, ...corpo };
+};
+
+export const removerDependente = async (empresaId: number, id: number, dependenteId: number, ator: Ator): Promise<void> => {
+    await repositorio.emTransacao(async (repo) => {
+        await exigirAlcance(repo, empresaId, id, ator);
+        if (!(await repo.excluirDependente(dependenteId, id, empresaId))) throw new ErroDeFuncionario('inexistente', 'Dependente não encontrado.');
     });
 };

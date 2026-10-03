@@ -14,7 +14,7 @@ import * as regras from '../modules/folha/folha.regras.ts';
 import { TABELAS_INSS, type TabelaInss } from '../modules/folha/folha.tabelas.ts';
 
 const DIA = '2026-10-02';
-const inss = (salario: number, dia = DIA, tabelas: readonly TabelaInss[] = TABELAS_INSS) => regras.calcularHolerite(salario, dia, tabelas).inss;
+const inss = (salario: number, dia = DIA, tabelas: readonly TabelaInss[] = TABELAS_INSS) => regras.calcularHolerite({ salario, dia, tabelasInss: tabelas }).inss;
 const duasCasas = (valor: number) => Math.abs(Math.round(valor * 100) - valor * 100) < 1e-9;
 
 test('INSS 2026 bate com a tabela progressiva nos valores de referência', () => {
@@ -62,13 +62,15 @@ test('salário zero, negativo ou inválido não gera desconto', () => {
 
 test('todo valor do holerite tem no máximo duas casas', () => {
     for (const salario of [1412, 1621.01, 2321.33, 3333.33, 5200.07, 7777.77, 12000.99]) {
-        for (const [campo, valor] of Object.entries(regras.calcularHolerite(salario, DIA))) {
+        const { bases, rubricas, ...valores } = regras.calcularHolerite({ salario, dia: DIA });
+        for (const [campo, valor] of [...Object.entries(valores), ...Object.entries(bases), ...rubricas.map((r) => [r.codigo, r.valor] as const)]) {
             assert.ok(duasCasas(valor), `${campo} de ${salario} saiu como ${valor}`);
         }
     }
-    const h = regras.calcularHolerite(2770, DIA);
-    assert.equal(h.employerCharges, 770.06);
-    assert.equal(h.netSalary, regras.emReais(277000 - regras.emCentavos(h.inss)));
+    // Sem regime informado vale a regra geral: 27,8% patronais (770,06) mais 8% de FGTS (221,60).
+    const h = regras.calcularHolerite({ salario: 2770, dia: DIA });
+    assert.equal(h.employerCharges, 991.66);
+    assert.equal(h.netSalary, regras.emReais(277000 - regras.emCentavos(h.inss) - regras.emCentavos(h.irrf)));
 });
 
 test('tabela nova entra pela vigência, sem mexer no cálculo', () => {
@@ -95,24 +97,26 @@ test('a tabela publicada tem vigência e faixas crescentes', () => {
 
 test('PJ e estágio não pagam INSS nem geram encargo CLT; os demais contratos seguem a regra geral', () => {
     for (const contrato of ['PJ', 'Estágio']) {
-        const h = regras.calcularHolerite(3000, DIA, TABELAS_INSS, contrato);
-        assert.deepEqual(h, { baseSalary: 3000, inss: 0, netSalary: 3000, employerCharges: 0 }, contrato);
+        const { baseSalary, inss, irrf, fgts, netSalary, employerCharges } = regras.calcularHolerite({ salario: 3000, dia: DIA, tipoContrato: contrato });
+        assert.deepEqual({ baseSalary, inss, irrf, fgts, netSalary, employerCharges }, { baseSalary: 3000, inss: 0, irrf: 0, fgts: 0, netSalary: 3000, employerCharges: 0 }, contrato);
         assert.equal(regras.temVinculoClt(contrato), false);
     }
     for (const contrato of ['CLT', 'Temporário', null]) {
-        const h = regras.calcularHolerite(2900, DIA, TABELAS_INSS, contrato);
-        assert.deepEqual(h, { baseSalary: 2900, inss: 236.69, netSalary: 2663.31, employerCharges: 806.2 }, String(contrato));
+        // 2.900,00: o IRRF é zero (a redução cobre o imposto da tabela), e os encargos são 27,8% + FGTS 8%.
+        const { baseSalary, inss, irrf, fgts, netSalary, employerCharges } = regras.calcularHolerite({ salario: 2900, dia: DIA, tipoContrato: contrato });
+        assert.deepEqual({ baseSalary, inss, irrf, fgts, netSalary, employerCharges }, { baseSalary: 2900, inss: 236.69, irrf: 0, fgts: 232, netSalary: 2663.31, employerCharges: 1038.2 }, String(contrato));
         assert.equal(regras.temVinculoClt(contrato), true);
     }
 });
 
-test('as rubricas trazem o salário e, só com INSS, o desconto', () => {
-    assert.deepEqual(regras.rubricasDoHolerite(regras.calcularHolerite(2900, DIA)), [
-        { codigo: 'SALARIO', descricao: 'Salário Base', tipo: 'provento', valor: 2900 },
+test('as rubricas trazem o salário, o INSS e, fora do holerite do colaborador, os encargos da empresa', () => {
+    assert.deepEqual(regras.calcularHolerite({ salario: 2900, dia: DIA, regime: 'Simples Nacional' }).rubricas, [
+        { codigo: 'SALARIO', descricao: 'Salário Base', tipo: 'provento', valor: 2900, referencia: '30 dias' },
         { codigo: 'INSS', descricao: 'Desconto INSS', tipo: 'desconto', valor: 236.69 },
+        { codigo: 'FGTS', descricao: 'FGTS', tipo: 'encargo', valor: 232, referencia: '8%' },
     ]);
-    assert.deepEqual(regras.rubricasDoHolerite(regras.calcularHolerite(3000, DIA, TABELAS_INSS, 'PJ')), [
-        { codigo: 'SALARIO', descricao: 'Salário Base', tipo: 'provento', valor: 3000 },
+    assert.deepEqual(regras.calcularHolerite({ salario: 3000, dia: DIA, tipoContrato: 'PJ' }).rubricas, [
+        { codigo: 'SALARIO', descricao: 'Salário Base', tipo: 'provento', valor: 3000, referencia: '30 dias' },
     ]);
 });
 
@@ -164,9 +168,10 @@ test('a folha processada e o holerite do colaborador trazem o INSS em centavos e
         const linha = folha.itens.find((item) => item.id === String(colaboradores[i].funcionarioId));
         assert.ok(linha, `holerite de ${colaboradores[i].funcionarioId} ausente da folha`);
         assert.equal(linha.baseSalary, salario);
-        assert.equal(linha.totalDeductions, esperado);
+        assert.equal(linha.inss, esperado);
         assert.equal(linha.deductionsList[0].value, esperado);
-        assert.equal(linha.netSalary, regras.emReais(regras.emCentavos(salario) - regras.emCentavos(esperado)));
+        assert.equal(linha.totalDeductions, regras.emReais(regras.emCentavos(esperado) + regras.emCentavos(linha.irrf)));
+        assert.equal(linha.netSalary, regras.emReais(regras.emCentavos(salario) - regras.emCentavos(linha.totalDeductions)));
         for (const campo of ['baseSalary', 'totalGross', 'totalDeductions', 'netSalary', 'employerCharges'] as const) {
             assert.ok(duasCasas(linha[campo]), `${campo} de ${salario} saiu como ${linha[campo]}`);
         }
@@ -177,7 +182,7 @@ test('a folha processada e o holerite do colaborador trazem o INSS em centavos e
     for (const [i, [, esperado]] of SALARIOS.entries()) {
         const res = await chamar('GET', colaboradores[i], '/meu-holerite?competencia=2026-10');
         assert.equal(res.status, 200);
-        assert.equal((res.corpo as HoleritePublicado).totalDeductions, esperado);
+        assert.equal((res.corpo as HoleritePublicado).inss, esperado);
         assert.ok(duasCasas((res.corpo as HoleritePublicado).employerCharges));
     }
 });
