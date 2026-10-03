@@ -12,7 +12,7 @@ interface TabProps {
 // Grupo de campos com título, para a aba não virar uma lista só.
 const Grupo: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
   <fieldset className="space-y-5 border-t border-line pt-5">
-    <legend className="float-left mb-1 w-full text-sm font-bold text-ink">{titulo}</legend>
+    <legend className="float-left mb-3 w-full text-sm font-bold text-ink">{titulo}</legend>
     <div className="clear-both space-y-5">{children}</div>
   </fieldset>
 );
