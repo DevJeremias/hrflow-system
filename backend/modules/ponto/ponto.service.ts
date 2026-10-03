@@ -5,6 +5,7 @@ import * as regras from './ponto.regras.ts';
 import type { TipoRegistro, Validacao } from './ponto.regras.ts';
 import * as repositorio from './ponto.repository.ts';
 import { ErroDePonto } from './ponto.erros.ts';
+import type { ConsultaDePontosDaEmpresa } from './ponto.schemas.ts';
 
 // Relógio do servidor em ms, trocável nos testes para fixar "agora" perto da virada do dia em Belém.
 export const relogio = { agora: (): number => Date.now() };
@@ -193,16 +194,21 @@ export interface PontoDaEmpresa {
     time: string;
 }
 
-export const listarPontosDaEmpresa = async ({ empresaId }: { empresaId: number }): Promise<PontoDaEmpresa[]> => {
-    const pontos = await repositorio.registrosDaEmpresa(empresaId);
+// Uma página das marcações do mês de Belém, da mais recente à mais antiga, e o total do mês.
+export const listarPontosDaEmpresa = async ({ empresaId, consulta }: { empresaId: number; consulta: ConsultaDePontosDaEmpresa }): Promise<{ registros: PontoDaEmpresa[]; total: number }> => {
+    const { mes, funcionarioId, busca, pagina, limite } = consulta;
+    const { pontos, total } = await repositorio.registrosDaEmpresa({
+        empresaId, ...fuso.limitesDoMes(mes), funcionarioId, busca, limite, deslocamento: (pagina - 1) * limite,
+    });
 
     // data_hora_oficial segue como instante ISO em UTC; date e time são o relógio de Belém.
-    return pontos.map(({ instante, ...p }) => ({
+    const registros = pontos.map(({ instante, ...p }) => ({
         ...p,
         data_hora_oficial: paraIso(instante),
         date: fuso.diaLocal(instante),
         time: fuso.horaLocal(instante),
     }));
+    return { registros, total };
 };
 
 export interface DadosDaJustificativa {

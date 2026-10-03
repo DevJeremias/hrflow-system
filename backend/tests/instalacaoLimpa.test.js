@@ -162,7 +162,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(historico.corpo.length, 1);
         assert.notEqual(historico.corpo[0].exit, '--:--');
 
-        const todos = await chamar('GET', '/api/ponto', estado.admin);
+        const todos = await chamar('GET', `/api/ponto?mes=${mes}`, estado.admin);
         assert.equal(todos.corpo.length, 4);
         assert.equal(todos.corpo[0].nome_funcionario, 'Colaborador Ficticio');
     });
