@@ -257,7 +257,7 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
                 assert.equal(paginas.length, 6);
                 assert.equal(new Set(paginas.map((p) => p.id)).size, 6, 'sem repetição entre páginas');
                 assert.ok(paginas.every((p) => p.empresa_id === empresaB));
-                assert.deepEqual(paginas.map((p) => p.id), [...paginas.map((p) => p.id)].sort((a, b) => a - b));
+                assert.deepEqual(paginas.map((p) => p.nome), [...paginas.map((p) => p.nome)].sort((a, b) => a.localeCompare(b)), 'em ordem alfabética');
                 assert.ok(total >= 1);
             });
 

@@ -4,16 +4,35 @@
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
 import { cargoDaEmpresa, departamentoDaEmpresa } from '../estrutura/index.ts';
-import type { DadosDoFuncionario, Status } from './funcionarios.schemas.ts';
+import type { DadosDoFuncionario, FiltrosDeFuncionarios, Status } from './funcionarios.schemas.ts';
 
-// Linha de funcionarios (SELECT f.*) com os nomes do cargo e do departamento da mesma empresa, o
-// perfil do acesso vinculado (null se não há) e se há ponto ou justificativa (tem_movimento).
+// Colunas que a tela de colaboradores usa, com os nomes do cargo e do departamento da mesma
+// empresa, o perfil do acesso vinculado (null se não há) e se há ponto ou justificativa
+// (tem_movimento). Fica de fora o avatar (a listagem não o mostra e ele pesa megabytes).
 export interface FuncionarioListado extends RowDataPacket {
     id: number;
+    empresa_id: number;
     nome: string;
+    email: string;
+    cpf: string | null;
+    telefone: string | null;
+    data_nascimento: string | null;
+    data_admissao: string | null;
+    endereco: string | null;
+    banco: string | null;
+    agencia: string | null;
+    conta: string | null;
+    tipo_conta: string | null;
+    nivel: string | null;
+    tipo_contrato: string | null;
+    salario_base: string | null;
+    cargo_id: number | null;
+    departamento_id: number | null;
+    status: Status;
     cargo_nome: string | null;
     departamento_nome: string | null;
     data_desligamento: string | null;
+    motivo_desligamento: string | null;
     usuario_perfil: string | null;
     tem_movimento: number;
 }
@@ -36,6 +55,34 @@ export interface NovoStatus {
     motivoDoDesligamento: string | null;
 }
 
+// A busca é um trecho de texto, não um padrão: % e _ valem como eles mesmos.
+const escaparLike = (texto: string): string => texto.replace(/[\\%_]/g, '\\$&');
+
+const CAMPOS_DA_BUSCA = ['f.nome', 'f.email', 'f.cpf', 'c.nome', 'd.nome'];
+
+// A empresa vem sempre primeiro; a busca olha nome, e-mail, CPF, cargo e departamento.
+const filtrarDaEmpresa = (empresaId: number, { busca, status, departamento_id: departamentoId }: FiltrosDeFuncionarios) => {
+    const condicoes = ['f.empresa_id = ?'];
+    const valores: (string | number)[] = [empresaId];
+    if (busca) {
+        condicoes.push(`(${CAMPOS_DA_BUSCA.map((campo) => `${campo} LIKE ?`).join(' OR ')})`);
+        valores.push(...CAMPOS_DA_BUSCA.map(() => `%${escaparLike(busca)}%`));
+    }
+    if (status) {
+        condicoes.push('f.status = ?');
+        valores.push(status);
+    }
+    if (departamentoId) {
+        condicoes.push('f.departamento_id = ?');
+        valores.push(departamentoId);
+    }
+    return { onde: condicoes.join(' AND '), valores };
+};
+
+const JUNCOES = `FROM funcionarios f
+             LEFT JOIN cargos c ON f.cargo_id = c.id AND c.empresa_id = f.empresa_id
+             LEFT JOIN departamentos d ON f.departamento_id = d.id AND d.empresa_id = f.empresa_id`;
+
 export interface NovoFuncionario extends DadosDoFuncionario {
     empresaId: number;
 }
@@ -54,29 +101,33 @@ export interface AtualizacaoDoFuncionario extends DadosDoFuncionario {
 }
 
 const criarRepositorio = (executor: Connection) => ({
-    // `limite` e `deslocamento` recortam a página, ordenada por id.
-    async listarDaEmpresa(empresaId: number, limite: number, deslocamento: number): Promise<FuncionarioListado[]> {
+    // `limite` e `deslocamento` recortam a página, em ordem alfabética (o desempate por id mantém a
+    // paginação estável).
+    async listarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios, limite: number, deslocamento: number): Promise<FuncionarioListado[]> {
+        const { onde, valores } = filtrarDaEmpresa(empresaId, filtros);
         const [linhas] = await executor.query<FuncionarioListado[]>(
-            // data_desligamento volta como AAAA-MM-DD (a coluna do f.* chegaria como Date, sujeita a fuso).
-            `SELECT f.*, DATE_FORMAT(f.data_desligamento, '%Y-%m-%d') AS data_desligamento,
-                    c.nome as cargo_nome, d.nome as departamento_nome,
+            // data_desligamento volta como AAAA-MM-DD (a coluna crua chegaria como Date, sujeita a fuso).
+            `SELECT f.id, f.empresa_id, f.nome, f.email, f.cpf, f.telefone, f.data_nascimento, f.data_admissao,
+                    f.endereco, f.banco, f.agencia, f.conta, f.tipo_conta, f.nivel, f.tipo_contrato,
+                    f.salario_base, f.cargo_id, f.departamento_id, f.status,
+                    DATE_FORMAT(f.data_desligamento, '%Y-%m-%d') AS data_desligamento, f.motivo_desligamento,
+                    c.nome AS cargo_nome, d.nome AS departamento_nome,
                     (SELECT u.perfil FROM usuarios u WHERE u.funcionario_id = f.id AND u.empresa_id = f.empresa_id LIMIT 1) AS usuario_perfil,
                     (EXISTS (SELECT 1 FROM registro_pontos r WHERE r.funcionario_id = f.id)
                      OR EXISTS (SELECT 1 FROM justificativas_ponto j WHERE j.funcionario_id = f.id)) AS tem_movimento
-             FROM funcionarios f
-             LEFT JOIN cargos c ON f.cargo_id = c.id AND c.empresa_id = f.empresa_id
-             LEFT JOIN departamentos d ON f.departamento_id = d.id AND d.empresa_id = f.empresa_id
-             WHERE f.empresa_id = ?
-             ORDER BY f.id
+             ${JUNCOES}
+             WHERE ${onde}
+             ORDER BY f.nome, f.id
              LIMIT ? OFFSET ?`,
-            [empresaId, limite, deslocamento]
+            [...valores, limite, deslocamento]
         );
         return linhas;
     },
 
-    async contarDaEmpresa(empresaId: number): Promise<number> {
+    async contarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios): Promise<number> {
+        const { onde, valores } = filtrarDaEmpresa(empresaId, filtros);
         const [[{ total }]] = await executor.query<(RowDataPacket & { total: number })[]>(
-            'SELECT COUNT(*) AS total FROM funcionarios WHERE empresa_id = ?', [empresaId]
+            `SELECT COUNT(*) AS total ${JUNCOES} WHERE ${onde}`, valores
         );
         return total;
     },
