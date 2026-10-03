@@ -56,7 +56,7 @@ Os arquivos JavaScript importados por um módulo (`config/db.js`, `schemas/comum
 
 ## Testes
 
-Os testes de integração continuam em `tests/`, em JavaScript, contra um MySQL real (veja o README da raiz). Ao migrar um módulo:
+Os testes de integração ficam em `tests/`, contra um MySQL real (veja o README da raiz). Os das áreas ainda não migradas continuam em JavaScript (CommonJS); os das áreas migradas são TypeScript em `tests/<área>/*.test.ts`, onde um `package.json` com `"type": "module"` os torna ES modules, como em `modules/`. Os dois formatos rodam no mesmo `npm test`. Ao migrar um módulo:
 
 * Os testes existentes devem passar sem mudar nenhuma asserção. Só mudam os `require` que apontam para os arquivos movidos.
 * Para fixar "agora", o serviço expõe `relogio.agora`; o teste a substitui e a restaura no fim.
