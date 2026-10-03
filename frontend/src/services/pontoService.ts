@@ -32,6 +32,18 @@ export interface CompanyPointRecord {
   time: string;
 }
 
+export interface CompanyPointQuery {
+  mes: string;
+  pagina: number;
+  limite: number;
+  busca?: string;
+}
+
+export interface CompanyPointPage {
+  registros: CompanyPointRecord[];
+  total: number;
+}
+
 export interface WeeklyTotal {
   id: string;
   weekLabel: string;
@@ -49,16 +61,24 @@ export interface WeeklyTotal {
 const API_URL = '/ponto'; 
 
 export const pontoService = {
-  getRegistrosDaEmpresa: async (): Promise<CompanyPointRecord[]> => {
-    const data = await httpClient<CompanyPointRecord[]>(API_URL, {
+  // Uma página das marcações do mês 'AAAA-MM'; `total` é o de todo o mês (X-Total-Count).
+  getRegistrosDaEmpresa: async ({ mes, pagina, limite, busca }: CompanyPointQuery): Promise<CompanyPointPage> => {
+    const params = new URLSearchParams({ mes, pagina: String(pagina), limite: String(limite) });
+    if (busca) params.set('busca', busca);
+    let total = 0;
+    const data = await httpClient<CompanyPointRecord[]>(`${API_URL}?${params}`, {
       auth: true,
-      errorMessage: 'Erro ao buscar os registros de ponto'
+      errorMessage: 'Erro ao buscar os registros de ponto',
+      onResponse: (response) => {
+        const header = response.headers.get('X-Total-Count');
+        if (header === null || !/^\d+$/.test(header)) throw new Error('Resposta da API sem total válido de registros de ponto');
+        total = Number(header);
+      }
     });
     if (!Array.isArray(data)) throw new Error('Resposta inválida ao buscar os registros de ponto');
-    return data;
+    return { registros: data, total };
   },
 
-  
   getRegistrosHoje: async (funcionarioId: number): Promise<PointRecord[]> => {
     const data = await httpClient(`${API_URL}/hoje/${funcionarioId}`, { auth: true, errorMessage: 'Erro ao buscar os registros de hoje' });
     return Array.isArray(data) ? data : [];

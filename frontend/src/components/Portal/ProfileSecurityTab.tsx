@@ -1,26 +1,32 @@
 import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { userService } from '../../services/userService';
+import { useAuth } from '../../contexts/AuthContext';
+import { HttpError } from '../../services/httpClient';
 import { mensagemDeErro } from '../../utils/erros';
+import { mensagemDeLimite } from '../../utils/espera';
+
+// A troca de senha derruba a sessão no servidor; o aviso explica a volta ao login.
+const AVISO_SENHA_ALTERADA = 'Senha alterada. Entre novamente.';
 
 const ProfileSecurityTab: React.FC = () => {
   const [senhas, setSenhas] = useState({ atual: '', nova: '', confirmacao: '' });
-  const [status, setStatus] = useState({ loading: false, erro: '', sucesso: '' });
+  const [status, setStatus] = useState({ loading: false, erro: '' });
+  const { logout } = useAuth();
 
   const handleTrocarSenha = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus({ loading: true, erro: '', sucesso: '' });
-    if (senhas.nova !== senhas.confirmacao) return setStatus({ loading: false, erro: 'As senhas não coincidem.', sucesso: '' });
+    setStatus({ loading: true, erro: '' });
+    if (senhas.nova !== senhas.confirmacao) return setStatus({ loading: false, erro: 'As senhas não coincidem.' });
     
     try {
-      const mensagem = await userService.changeMyPassword(senhas.atual, senhas.nova);
-
-      setStatus({ loading: false, erro: '', sucesso: mensagem });
-      setSenhas({ atual: '', nova: '', confirmacao: '' });
-      setTimeout(() => setStatus(s => ({ ...s, sucesso: '' })), 4000);
+      await userService.changeMyPassword(senhas.atual, senhas.nova);
     } catch (error) {
-      setStatus({ loading: false, erro: mensagemDeErro(error, 'Erro ao alterar senha'), sucesso: '' });
+      const mensagem = mensagemDeErro(error, 'Erro ao alterar senha');
+      const erro = error instanceof HttpError && error.status === 429 ? mensagemDeLimite(error.data, mensagem) : mensagem;
+      return setStatus({ loading: false, erro });
     }
+    await logout(AVISO_SENHA_ALTERADA);
   };
 
   return (
@@ -30,7 +36,6 @@ const ProfileSecurityTab: React.FC = () => {
       </h2>
       
       {status.erro && <div className="p-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm mb-6">{status.erro}</div>}
-      {status.sucesso && <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl font-bold text-sm mb-6">{status.sucesso}</div>}
       
       <form onSubmit={handleTrocarSenha} className="space-y-6">
         <input required type="password" placeholder="Senha Atual" value={senhas.atual} onChange={e => setSenhas({...senhas, atual: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-600" />

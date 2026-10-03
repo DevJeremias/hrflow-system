@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, PlusCircle } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
 import PayrollSlipModal from './PayrollSlipModal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,7 +37,6 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
                 <th className="p-6 border-b border-slate-100">Proventos (+ extras)</th>
                 <th className="p-6 border-b border-slate-100">Descontos</th>
                 <th className="p-6 border-b border-slate-100 text-right">Líquido Final</th>
-                <th className="p-6 border-b border-slate-100 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="text-sm font-medium">
@@ -52,18 +51,6 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
                   <td className="p-6"><span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-100">+ {formatCurrency(emp.totalEarnings)}</span></td>
                   <td className="p-6"><span className="px-3 py-1 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg border border-rose-100">- {formatCurrency(emp.totalDeductions)}</span></td>
                   <td className="p-6 text-right"><span className="text-lg font-black text-slate-900">{formatCurrency(emp.netSalary)}</span></td>
-                  <td className="p-6 text-center">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation(); 
-                        alert('Aqui abriremos o modal de Lançamento Avulso no futuro!');
-                      }}
-                      className="p-2 text-slate-400 hover:text-primary hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center mx-auto" 
-                      title="Adicionar Lançamento Avulso"
-                    >
-                      <PlusCircle size={20} />
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>

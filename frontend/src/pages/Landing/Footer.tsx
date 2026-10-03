@@ -1,5 +1,6 @@
 import React from 'react';
-import { Command, Instagram, Linkedin, Twitter, Github } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Command, Github } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -27,11 +28,15 @@ export default function Footer() {
             </p>
 
             <div className="flex gap-5 pt-2">
-              {[Instagram, Linkedin, Twitter, Github].map((Icon, i) => (
-                <a key={i} href="#" className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all text-slate-400">
-                  <Icon size={20} />
-                </a>
-              ))}
+              <a
+                href="https://github.com/DevJeremias/hrflow-system"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Código-fonte do HRFlow no GitHub"
+                className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all text-slate-400"
+              >
+                <Github size={20} />
+              </a>
             </div>
           </div>
 
@@ -53,9 +58,9 @@ export default function Footer() {
           <div className="space-y-8">
             <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em]">Produto</h4>
             <ul className="space-y-4 text-lg font-bold text-slate-400">
-              <li><a href="#" className="hover:text-white transition-colors">Funcionalidades</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Segurança</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Roadmap</a></li>
+              <li><Link to="/#funcionalidades" className="hover:text-white transition-colors">Funcionalidades</Link></li>
+              <li><Link to="/#beneficios" className="hover:text-white transition-colors">Benefícios</Link></li>
+              <li><Link to="/#contato" className="hover:text-white transition-colors">Criar conta</Link></li>
             </ul>
           </div>
 
@@ -65,9 +70,8 @@ export default function Footer() {
         <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-500 font-bold text-sm">
           <p>© {new Date().getFullYear()} HRFlow. Todos os direitos reservados.</p>
           <div className="flex gap-8">
-            <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
-            <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-white transition-colors">LGPD</a>
+            <Link to="/termos" className="hover:text-white transition-colors">Termos de Uso</Link>
+            <Link to="/privacidade" className="hover:text-white transition-colors">Privacidade</Link>
           </div>
         </div>
 

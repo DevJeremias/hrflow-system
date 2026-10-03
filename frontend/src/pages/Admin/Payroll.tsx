@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { CheckCircle2, Download, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { generateMonthlyPayroll, EmployeePayroll } from '../../services/payrollService';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
@@ -12,7 +12,6 @@ const Payroll: React.FC = () => {
   const [allPayrolls, setAllPayrolls] = useState<EmployeePayroll[]>([]);
   
   const [deptFilter, setDeptFilter] = useState('Todos');
-  const [monthFilter, setMonthFilter] = useState('2026-04'); 
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -34,7 +33,7 @@ const Payroll: React.FC = () => {
         setLoadError(mensagemDeErro(error, 'Erro ao processar folha de pagamento'));
       })
       .finally(() => setLoading(false));
-  }, [monthFilter, reloadKey]); 
+  }, [reloadKey]);
 
   const displayedPayrolls = useMemo(() => {
     if (deptFilter === 'Todos') return allPayrolls;
@@ -59,7 +58,7 @@ const Payroll: React.FC = () => {
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Folha</h1>
-          <p className="text-slate-500 font-medium mt-1">Visão financeira e lançamentos do período.</p>
+          <p className="text-slate-500 font-medium mt-1">Visão financeira calculada com os dados atuais dos colaboradores.</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-4">
@@ -71,12 +70,6 @@ const Payroll: React.FC = () => {
             </select>
           </div>
 
-          <input type="month" value={monthFilter} onChange={(e) => { startLoading(); setMonthFilter(e.target.value); }} 
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 rounded-xl outline-none focus:border-primary cursor-pointer" />
-
-          <button className="flex items-center gap-2 bg-slate-900 hover:bg-primary text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95">
-            <CheckCircle2 size={18} /><span>Fechar Mês</span>
-          </button>
         </div>
       </div>
 

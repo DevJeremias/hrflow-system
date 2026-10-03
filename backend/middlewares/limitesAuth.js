@@ -12,6 +12,7 @@ const LIMITES_PADRAO = {
     loginPorIdentidade: { windowMs: 15 * MINUTO, limit: 10 },
     registroPorIp: { windowMs: 60 * MINUTO, limit: 5 },
     registroPorIdentidade: { windowMs: 60 * MINUTO, limit: 3 },
+    alterarSenhaPorUsuario: { windowMs: 15 * MINUTO, limit: 5 },
 };
 
 const corpoJson = express.json({ limit: LIMITE_CORPO });
@@ -39,7 +40,9 @@ const criarLimitador = (opcoes, extra = {}) => rateLimit({
 const criarLimitadores = (limites = {}) => {
     const config = { ...LIMITES_PADRAO, ...limites };
     return {
-        loginPorIp: criarLimitador(config.loginPorIp),
+        // Só falhas contam: um escritório inteiro atrás do mesmo IP entra no início do expediente
+        // sem esgotar a cota, e quem tenta adivinhar senhas continua limitado.
+        loginPorIp: criarLimitador(config.loginPorIp, { skipSuccessfulRequests: true }),
         // Só falhas contam: quem acerta a senha não esgota a própria cota.
         loginPorIdentidade: criarLimitador(config.loginPorIdentidade, {
             keyGenerator: emailDoCorpo,
@@ -47,6 +50,12 @@ const criarLimitadores = (limites = {}) => {
         }),
         registroPorIp: criarLimitador(config.registroPorIp),
         registroPorIdentidade: criarLimitador(config.registroPorIdentidade, { keyGenerator: emailDoCorpo }),
+        // A troca de senha confere a senha atual: sem teto, quem tem uma sessão (ou um computador
+        // deixado aberto) a descobriria por tentativa. Conta por usuário, só as falhas.
+        alterarSenhaPorUsuario: criarLimitador(config.alterarSenhaPorUsuario, {
+            keyGenerator: (req) => String(req.usuario.id),
+            skipSuccessfulRequests: true,
+        }),
     };
 };
 
