@@ -2,7 +2,8 @@
 # Liga o deploy por pull na máquina: pasta de estado, versão em execução registrada e timer habilitado.
 # Uso (uma vez, como root): sudo /opt/hrflow/deploy/install-deploy.sh [sha em execução]
 # Sem argumento, a versão em execução é o HEAD de /opt/hrflow/repo: passe o SHA se o HEAD andou sem rebuild. Numa máquina que ainda roda imagens compiladas ali
-# (hrflow-api:latest), elas ganham a tag do SHA para o rollback da primeira publicação ter para onde voltar.
+# (hrflow-api:latest), elas ganham a tag do SHA (a web, também o Caddyfile) para o rollback da primeira publicação
+# ter para onde voltar.
 set -euo pipefail
 source "$(dirname "$(readlink -f "$0")")/lib.sh"
 
@@ -13,7 +14,14 @@ sha_valido "$sha" || { echo "SHA inválido: $sha" >&2; exit 1; }
 install -d -o ec2-user -g ec2-user "$ESTADO_DIR"
 if [ ! -s "$ESTADO_DIR/current-sha" ]; then
   for imagem in hrflow-api hrflow-web; do
-    if ! docker image inspect "$PREFIXO_IMAGENS/$imagem:$sha" >/dev/null 2>&1 && docker image inspect "$imagem:latest" >/dev/null 2>&1; then
+    docker image inspect "$PREFIXO_IMAGENS/$imagem:$sha" >/dev/null 2>&1 && continue
+    docker image inspect "$imagem:latest" >/dev/null 2>&1 || continue
+    if [ "$imagem" = hrflow-web ]; then
+      # A imagem antiga recebia o Caddyfile por bind mount; a nova o traz dentro. Sem esta cópia, o rollback para
+      # ela subiria o Caddy com o Caddyfile de fábrica (só HTTP na porta 80).
+      printf 'FROM %s:latest\nCOPY Caddyfile /etc/caddy/Caddyfile\n' "$imagem" \
+        | docker build -q -t "$PREFIXO_IMAGENS/$imagem:$sha" -f - "$DEPLOY_DIR" >/dev/null
+    else
       docker tag "$imagem:latest" "$PREFIXO_IMAGENS/$imagem:$sha"
     fi
   done
