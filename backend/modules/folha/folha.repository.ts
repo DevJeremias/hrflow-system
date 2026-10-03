@@ -18,7 +18,7 @@ const NA_FOLHA = `(f.status = 'Ativo' OR (f.status = 'Inativo' AND f.data_deslig
 
 export const funcionariosAtivos = async (empresaId: number, limite: number, deslocamento: number): Promise<FuncionarioDaFolha[]> => {
     const [funcionarios] = await db.query<FuncionarioDaFolha[]>(
-        `SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome
+        `SELECT f.id, f.nome, f.salario_base, c.nome as cargo_nome, d.nome as departamento_nome
             FROM funcionarios f
             LEFT JOIN cargos c ON f.cargo_id = c.id
             LEFT JOIN departamentos d ON f.departamento_id = d.id
@@ -42,7 +42,7 @@ export const contarFuncionariosAtivos = async (empresaId: number): Promise<numbe
 // usuarios.funcionario_id, e só vale dentro da mesma empresa do usuário.
 export const funcionarioDoUsuario = async (usuarioId: number, empresaId: number): Promise<FuncionarioDaFolha | undefined> => {
     const [funcionarios] = await db.query<FuncionarioDaFolha[]>(
-        `SELECT f.*, c.nome as cargo_nome, d.nome as departamento_nome
+        `SELECT f.id, f.nome, f.salario_base, c.nome as cargo_nome, d.nome as departamento_nome
             FROM usuarios u
             JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
             LEFT JOIN cargos c ON f.cargo_id = c.id
