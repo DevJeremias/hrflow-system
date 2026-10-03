@@ -4,6 +4,7 @@ import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { createServer, type ViteDevServer } from 'vite';
+import { comConsulta } from './support/consulta.ts';
 
 const EMAIL_DUPLICADO = 'Este e-mail já está registado no sistema.';
 const CARGOS = [
@@ -77,7 +78,7 @@ const montar = async (Tela: ComponentType) => {
   document.body.append(host);
   const root = createRoot(host);
   montados.push({ host, root });
-  await act(async () => { root.render(createElement(Tela)); });
+  await act(async () => { root.render(comConsulta(createElement(Tela))); });
   await esperar();
   return host;
 };

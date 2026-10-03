@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { EmployeePayroll } from '../../services/payrollService';
 import PayrollSlipModal from './PayrollSlipModal';
@@ -7,14 +7,32 @@ import { competenciaAtual } from '../../utils/competencia';
 
 interface Props { payrolls: EmployeePayroll[]; }
 
+// Só uma página de linhas vai ao DOM: com milhares de colaboradores, desenhar todos trava a tela.
+const PAGE_SIZE = 50;
+
+const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatCurrency = (val: number) => currency.format(val);
+
+// Sem acento nem caixa, para a busca achar "Jose" em "José".
+const normalizar = (texto: string) => texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
 const PayrollTable: React.FC<Props> = ({ payrolls }) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeePayroll | null>(null);
 
-  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  // O campo responde na hora; o filtro sobre a lista inteira roda com prioridade menor e não
+  // segura a digitação.
+  const termo = useDeferredValue(searchTerm);
+  const filtered = useMemo(() => {
+    const procurado = normalizar(termo.trim());
+    return procurado ? payrolls.filter(p => normalizar(p.name).includes(procurado)) : payrolls;
+  }, [payrolls, termo]);
 
-  const filtered = payrolls.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <>
@@ -23,7 +41,7 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
           <h3 className="font-black text-slate-800">Holerites Individuais</h3>
           <div className="relative w-64">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="Buscar colaborador..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            <input type="text" placeholder="Buscar colaborador..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
               className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-primary text-sm font-medium" />
           </div>
         </div>
@@ -40,7 +58,7 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
               </tr>
             </thead>
             <tbody className="text-sm font-medium">
-              {filtered.map((emp) => (
+              {visible.map((emp) => (
                 <tr 
                   key={emp.id} 
                   onClick={() => setSelectedEmployee(emp)}
@@ -55,6 +73,20 @@ const PayrollTable: React.FC<Props> = ({ payrolls }) => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="px-8 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-sm text-slate-600">
+          <span>
+            {filtered.length === 0
+              ? 'Nenhum colaborador encontrado'
+              : `Página ${currentPage} de ${totalPages} · ${filtered.length} colaboradores`}
+          </span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setPage(currentPage - 1)} disabled={currentPage <= 1}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50">Anterior</button>
+            <button type="button" onClick={() => setPage(currentPage + 1)} disabled={currentPage >= totalPages}
+              className="rounded-lg border border-slate-200 px-4 py-2 font-bold disabled:cursor-not-allowed disabled:opacity-50">Próxima</button>
+          </div>
         </div>
       </div>
 

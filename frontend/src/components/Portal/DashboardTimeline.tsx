@@ -41,8 +41,8 @@ const DashboardTimeline: React.FC<Props> = ({ records }) => {
           
           <div className="space-y-6 relative">
             {records.map((reg, index) => {
-              const type = reg.type || (reg as any).tipo || 'Desconhecido';
-              const time = reg.time || (reg as any).horario || '--:--';
+              const type = reg.type || 'Desconhecido';
+              const time = reg.time || '--:--';
 
               return (
                 <div key={reg.id || index} className="flex gap-6 relative z-10 animate-in slide-in-from-left-2">

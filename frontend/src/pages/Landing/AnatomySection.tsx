@@ -1,4 +1,3 @@
-import React from 'react';
 import { Cog, Network, Database, CheckCircle2 } from 'lucide-react';
 import heroImagem from '../../assets/hero_imagem.avif';
 

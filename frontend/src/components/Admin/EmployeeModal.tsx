@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, User, Briefcase, CreditCard } from 'lucide-react';
 import { Employee, EmployeeForm } from '../../services/employeeService';
-import { getRoles, getDepartments, Role, Department } from '../../services/departmentsRolesService'
+import { useCargos, useDepartamentos } from '../../queries/estrutura';
 import { HttpError } from '../../services/httpClient';
 import { PersonalTab, WorkTab, FinancialTab } from './EmployeeModalTabs';
 import ErrorAlert from '../ErrorAlert';
@@ -75,21 +75,14 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
   // Campos que vieram do cargo e não foram digitados: só esses podem ser trocados por outro cargo.
   const filledByRole = useRef(new Set<string>());
 
-  const [cargosList, setCargosList] = useState<Role[]>([]);
-  const [departamentosList, setDepartamentosList] = useState<Department[]>([]);
-  const [listError, setListError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      Promise.all([getRoles(), getDepartments()])
-        .then(([cargos, departamentos]) => {
-          setListError(null);
-          setCargosList(cargos);
-          setDepartamentosList(departamentos);
-        })
-        .catch((error) => setListError(mensagemDeErro(error, 'Erro ao carregar cargos e departamentos')));
-    }
-  }, [isOpen]);
+  // Cargos e departamentos vêm do cache compartilhado com a tela de estrutura: abrir o modal de
+  // novo não os busca outra vez.
+  const cargos = useCargos({ enabled: isOpen });
+  const departamentos = useDepartamentos({ enabled: isOpen });
+  const cargosList = cargos.data ?? [];
+  const departamentosList = departamentos.data ?? [];
+  const listaComErro = cargos.error ?? departamentos.error;
+  const listError = listaComErro ? mensagemDeErro(listaComErro, 'Erro ao carregar cargos e departamentos') : null;
 
   useEffect(() => {
     const initial = employeeToEdit ? formFrom(employeeToEdit) : initialState;

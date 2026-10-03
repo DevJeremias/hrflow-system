@@ -7,6 +7,14 @@ const PERFIS_DE_GESTAO: readonly Perfil[] = ['Administrador', 'RH'];
 export const ehGestao = (perfil: Perfil | undefined): boolean =>
   perfil !== undefined && PERFIS_DE_GESTAO.includes(perfil);
 
+// Para onde o login leva: de volta à tela que o ProtectedRoute interrompeu (guardada em
+// `state.from`) ou, sem ela, ao painel do perfil. Só caminho interno do app é aceito.
+export const destinoDoLogin = (estado: unknown, perfil: Perfil): string => {
+  const origem = (estado as { from?: unknown } | null | undefined)?.from;
+  const interno = typeof origem === 'string' && origem.startsWith('/') && !origem.startsWith('//') && !origem.startsWith('/\\');
+  return interno && origem !== '/login' && !origem.startsWith('/login?') ? origem : rotaInicial(perfil);
+};
+
 export const rotaInicial = (perfil: Perfil): string => (ehGestao(perfil) ? '/admin' : '/meu-painel');
 
 // Quem entrou com a senha que o RH definiu só pode trocá-la: o servidor recusa o resto (403).
@@ -42,3 +50,7 @@ export const lerSessao = (dados: unknown): User | null => {
   // Ausente vale como falso: uma API anterior a este campo nunca marcou senha provisória.
   return { id, nome, role: perfil, funcionarioId, empresaNome, avatar: avatar ?? null, senhaProvisoria: senhaProvisoria === true };
 };
+
+// A API serve a miniatura do avatar em um endereço fixo; `versao` força o navegador a buscar de novo
+// quando a foto acabou de mudar.
+export const enderecoDoAvatar = (versao: number = Date.now()): string => `/api/perfil/avatar?v=${versao}`;

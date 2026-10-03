@@ -1,39 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User as UserIcon, Lock, Briefcase } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import ProfileDataTab from '../../components/Portal/ProfileDataTab';
 import ProfileContractTab from '../../components/Portal/ProfileContractTab';
 import ProfileSecurityTab from '../../components/Portal/ProfileSecurityTab';
-import { userService, PerfilUsuario, DadosEditaveis } from '../../services/userService';
+import type { DadosEditaveis } from '../../services/userService';
+import { useMeuPerfil } from '../../queries/perfil';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 
 const Profile: React.FC = () => {
   const { updateUser } = useAuth();
-  const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dados' | 'profissional' | 'seguranca'>('dados');
 
-  const carregarPerfil = async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      setPerfil(await userService.getMyProfile());
-    } catch (error) {
-      setLoadError(mensagemDeErro(error, 'Erro ao carregar o perfil'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: perfil, error, isPending, refetch } = useMeuPerfil();
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao carregar o perfil') : null;
 
-  useEffect(() => {
-    carregarPerfil();
-  }, []);
-
-  // Atualiza o estado local e global quando a aba de dados salva uma alteração
+  // O cache do perfil já foi invalidado pela mutação; aqui só a identidade da sessão acompanha.
   const handleUpdatePerfil = (novosDados: DadosEditaveis) => {
-    setPerfil((prev) => (prev ? { ...prev, ...novosDados } : prev));
     updateUser({ nome: novosDados.nome, avatar: novosDados.avatar || null });
   };
 
@@ -49,7 +34,7 @@ const Profile: React.FC = () => {
   if (loadError || !perfil) {
     return (
       <div className="max-w-4xl mx-auto">
-        <ErrorAlert message={loadError ?? 'Perfil indisponível.'} onRetry={carregarPerfil} />
+        <ErrorAlert message={loadError ?? 'Perfil indisponível.'} onRetry={() => { refetch(); }} />
       </div>
     );
   }

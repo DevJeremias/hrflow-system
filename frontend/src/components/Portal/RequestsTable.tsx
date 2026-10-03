@@ -47,7 +47,7 @@ const RequestsTable: React.FC<Props> = ({ requests }) => {
           
           <select 
             value={filterType} 
-            onChange={(e) => setFilterType(e.target.value as any)}
+            onChange={(e) => setFilterType(e.target.value as RequestType | 'Todos')}
             className="w-full sm:w-48 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-primary transition-all cursor-pointer shadow-sm"
           >
             <option value="Todos">Todos os Tipos</option>
@@ -61,7 +61,7 @@ const RequestsTable: React.FC<Props> = ({ requests }) => {
 
           <select 
             value={filterStatus} 
-            onChange={(e) => setFilterStatus(e.target.value as any)}
+            onChange={(e) => setFilterStatus(e.target.value as RequestStatus | 'Todos')}
             className="w-full sm:w-48 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-primary transition-all cursor-pointer shadow-sm"
           >
             <option value="Todos">Todos os Status</option>

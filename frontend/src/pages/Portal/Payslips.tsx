@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { EmployeePayroll, getMyPayroll } from '../../services/payrollService';
+import React, { useState } from 'react';
+import type { EmployeePayroll } from '../../services/payrollService';
+import { useMeuHolerite } from '../../queries/folha';
 import PayslipsSummaryCards from '../../components/Portal/PayslipsMetrics';
 import PayslipsHistoryTable from '../../components/Portal/PayslipsTable';
 import HoleriteModal from '../../components/Admin/PayrollSlipModal'; 
@@ -10,29 +11,16 @@ import { competenciaAtual } from '../../utils/competencia';
 import { useAuth } from '../../contexts/AuthContext';
 
 const MyPayslips: React.FC = () => {
-  const [payslips, setPayslips] = useState<EmployeePayroll[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedPayslip, setSelectedPayslip] = useState<EmployeePayroll | null>(null);
   const [selectedMonthLabel, setSelectedMonthLabel] = useState('');
 
   const { user } = useAuth();
   const monthsLabels = [competenciaAtual()];
 
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const retry = () => {
-    setLoading(true);
-    setLoadError(null);
-    setReloadKey((k) => k + 1);
-  };
-
-  useEffect(() => {
-    getMyPayroll()
-      .then(setPayslips)
-      .catch((error) => setLoadError(mensagemDeErro(error, 'Erro ao buscar meu holerite')))
-      .finally(() => setLoading(false));
-  }, [reloadKey]);
+  const { data, error, isPending, refetch } = useMeuHolerite();
+  const payslips = data ?? [];
+  const loading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao buscar meu holerite') : null;
 
   const handleOpenPayslip = (payroll: EmployeePayroll, monthLabel: string) => {
     setSelectedPayslip(payroll);
@@ -55,7 +43,7 @@ const MyPayslips: React.FC = () => {
           <p className="font-bold">A carregar demonstrativos...</p>
         </div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={retry} />
+        <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />
       ) : payslips.length > 0 ? (
         <>
           {latestPayslip && (

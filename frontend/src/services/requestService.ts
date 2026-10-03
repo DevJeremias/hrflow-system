@@ -1,27 +1,11 @@
 import httpClient from './httpClient';
+import type { SolicitacaoApi, StatusDeSolicitacaoApi, TipoDeSolicitacaoApi } from '../types/api';
 
 // src/services/requestService.ts
 
-export type RequestType = 
-  | 'Férias' 
-  | 'Licença Médica' 
-  | 'Licença Maternidade' 
-  | 'Licença Paternidade' 
-  | 'Acidente de Trabalho' 
-  | 'Outros';
-
-export type RequestStatus = 'Pendente' | 'Aprovada' | 'Recusada';
-
-export interface EmployeeRequest {
-  id: string | number;
-  type: RequestType;
-  requestDate: string;
-  startDate: string;
-  endDate: string;
-  observation: string;
-  hasAttachment: boolean;
-  status: RequestStatus;
-}
+export type RequestType = TipoDeSolicitacaoApi;
+export type RequestStatus = StatusDeSolicitacaoApi;
+export type EmployeeRequest = SolicitacaoApi;
 
 const naoImplementado = (): never => {
   throw new Error('Solicitações ainda não estão disponíveis: a API correspondente não foi implementada.');
@@ -29,7 +13,7 @@ const naoImplementado = (): never => {
 
 const getMyRequests = async (): Promise<EmployeeRequest[]> => {
   // Confirme se a URL abaixo bate com a rota de solicitações do seu backend
-  return await httpClient('/solicitacoes/minhas', { auth: true, errorMessage: 'Erro ao buscar minhas solicitações' });
+  return await httpClient<EmployeeRequest[]>('/solicitacoes/minhas', { auth: true, errorMessage: 'Erro ao buscar minhas solicitações' });
 };
 
 export const requestService = {

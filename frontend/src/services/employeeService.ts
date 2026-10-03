@@ -1,4 +1,7 @@
 import httpClient from './httpClient.ts';
+import type {
+  ConsultaDeFuncionariosApi, CorpoDeFuncionarioApi, CorpoDeStatusApi, FuncionarioApi, SenhaProvisoriaApi,
+} from '../types/api.ts';
 
 // frontend/src/services/employeeService.ts
 
@@ -14,8 +17,6 @@ export interface Employee {
   departamentoId?: string;
   status: string;
   dataAdmissao: string;
-  avatar?: string;
-
   // Desligamento: preenchidos só para quem está Inativo.
   dataDesligamento?: string;
   motivoDesligamento?: string;
@@ -47,7 +48,7 @@ export interface EmployeePage {
   total: number;
 }
 
-const mapEmployee = (d: any): Employee => ({
+const mapEmployee = (d: FuncionarioApi): Employee => ({
   id: d.id?.toString() || '',
   nomeCompleto: d.nome || '',
   emailPessoal: d.email || '',
@@ -78,10 +79,30 @@ export type StatusChange =
   | { status: 'Ativo' | 'Férias' }
   | { status: 'Inativo'; date: string; reason: string };
 
+// Os filtros vão ao servidor: a busca enxerga todos os colaboradores, não só a página aberta.
+export interface EmployeeQuery {
+  pagina: number;
+  limite: number;
+  busca?: string;
+  status?: string;
+  departamentoId?: string;
+}
+
+const paraConsulta = ({ pagina, limite, busca, status, departamentoId }: EmployeeQuery): ConsultaDeFuncionariosApi => ({
+  pagina,
+  limite,
+  ...(busca ? { busca } : {}),
+  ...(status ? { status } : {}),
+  ...(departamentoId ? { departamento_id: Number(departamentoId) } : {}),
+});
+
 export const employeeService = {
-  getPage: async (pagina: number, limite: number): Promise<EmployeePage> => {
+  getPage: async (query: EmployeeQuery): Promise<EmployeePage> => {
+    const params = new URLSearchParams(
+      Object.entries(paraConsulta(query)).map(([chave, valor]) => [chave, String(valor)])
+    );
     let total = 0;
-    const data = await httpClient<any[]>(`${API_URL}?pagina=${pagina}&limite=${limite}`, {
+    const data = await httpClient<FuncionarioApi[]>(`${API_URL}?${params}`, {
       auth: true,
       errorMessage: 'Erro ao buscar colaboradores',
       onResponse: (response) => {
@@ -95,7 +116,7 @@ export const employeeService = {
   },
 
   save: async (data: EmployeeForm): Promise<void> => {
-    const payload = {
+    const payload: CorpoDeFuncionarioApi = {
       nome: data.nomeCompleto,
       cpf: data.cpf,
       email: data.emailPessoal,
@@ -125,22 +146,36 @@ export const employeeService = {
     });
   },
 
+  // Os dados vão por PUT; a situação (Férias, Inativo com data e motivo) só muda por PATCH, e só
+  // quando o formulário a alterou.
+  saveEditingStatus: async (data: EmployeeForm, original: Employee | null): Promise<void> => {
+    await employeeService.save(data);
+    if (!original) return;
+    const { status = 'Ativo', dataDesligamento = '', motivoDesligamento = '' } = data;
+    const changed = status !== original.status
+      || (status === 'Inativo' && (dataDesligamento !== original.dataDesligamento || motivoDesligamento !== original.motivoDesligamento));
+    if (!changed) return;
+    await employeeService.changeStatus(original.id, status === 'Inativo'
+      ? { status, date: dataDesligamento, reason: motivoDesligamento.trim() }
+      : { status: status as 'Ativo' | 'Férias' });
+  },
+
   // Inativar é desligar: a API exige data e motivo e encerra as sessões da pessoa. Os demais
   // status limpam os dois campos.
   changeStatus: async (id: string, change: StatusChange): Promise<void> => {
     await httpClient(`${API_URL}/${id}/status`, {
       method: 'PATCH',
       auth: true,
-      body: JSON.stringify(change.status === 'Inativo'
+      body: JSON.stringify((change.status === 'Inativo'
         ? { status: change.status, data_desligamento: change.date, motivo_desligamento: change.reason }
-        : { status: change.status }),
+        : { status: change.status }) satisfies CorpoDeStatusApi),
       errorMessage: (err) => err?.erro || 'Erro ao alterar a situação do colaborador'
     });
   },
 
   // Devolve a senha provisória, que a API mostra uma única vez.
   resetPassword: async (id: string): Promise<string> => {
-    const data = await httpClient<{ senhaProvisoria: string }>(`${API_URL}/${id}/redefinir-senha`, {
+    const data = await httpClient<SenhaProvisoriaApi>(`${API_URL}/${id}/redefinir-senha`, {
       method: 'POST',
       auth: true,
       errorMessage: (err) => err?.erro || 'Erro ao redefinir a senha'

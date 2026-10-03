@@ -1,12 +1,13 @@
 import React from 'react';
 import type { Role, Department } from '../../services/departmentsRolesService';
+import type { EmployeeForm } from '../../services/employeeService';
 
 // ==========================================
 // ABA 1: DADOS PESSOAIS
 // ==========================================
 interface TabProps {
-  formData: any;
-  handleChange: (e: any) => void;
+  formData: EmployeeForm;
+  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }
 
 export const PersonalTab: React.FC<TabProps> = ({ formData, handleChange }) => (

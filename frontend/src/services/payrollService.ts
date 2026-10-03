@@ -1,23 +1,12 @@
 import httpClient from './httpClient.ts';
+import type { HoleriteApi } from '../types/api.ts';
 
-export interface EmployeePayroll {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-  baseSalary: number;
-  totalEarnings: number;
-  totalDeductions: number;
-  totalGross: number;
-  netSalary: number;
-  employerCharges: number;
-  earningsList: Array<{ description: string; value: number; isPercentage: boolean }>;
-  deductionsList: Array<{ description: string; value: number; isPercentage: boolean }>;
-}
+export type EmployeePayroll = HoleriteApi;
 
 const API_URL = '/folha';
 
-const PAYROLL_PAGE_SIZE = 500;
+// O maior limite que a API aceita por página: 2.000 colaboradores levam duas chamadas.
+const PAYROLL_PAGE_SIZE = 1000;
 
 export const generateMonthlyPayroll = async (): Promise<EmployeePayroll[]> => {
   let total = 0;
@@ -30,16 +19,17 @@ export const generateMonthlyPayroll = async (): Promise<EmployeePayroll[]> => {
       total = Number(header);
     }
   });
-  const payroll = [...firstPage];
   const totalPages = Math.ceil(total / PAYROLL_PAGE_SIZE);
 
-  for (let pagina = 2; pagina <= totalPages; pagina += 1) {
-    const page = await httpClient<EmployeePayroll[]>(`${API_URL}/processar?pagina=${pagina}&limite=${PAYROLL_PAGE_SIZE}`, {
-      auth: true,
-      errorMessage: 'Erro ao processar folha de pagamento'
-    });
-    payroll.push(...page);
-  }
+  const remaining = await Promise.all(
+    Array.from({ length: Math.max(0, totalPages - 1) }, (_, i) =>
+      httpClient<EmployeePayroll[]>(`${API_URL}/processar?pagina=${i + 2}&limite=${PAYROLL_PAGE_SIZE}`, {
+        auth: true,
+        errorMessage: 'Erro ao processar folha de pagamento'
+      })
+    )
+  );
+  const payroll = [...firstPage, ...remaining.flat()];
 
   if (payroll.length !== total) throw new Error('A folha recebida não corresponde ao total informado pela API');
   return payroll;
@@ -47,5 +37,5 @@ export const generateMonthlyPayroll = async (): Promise<EmployeePayroll[]> => {
 
 // Nova função para a visão do Colaborador
 export const getMyPayroll = async (): Promise<EmployeePayroll[]> => {
-  return await httpClient(`${API_URL}/meu-holerite`, { auth: true, errorMessage: 'Erro ao buscar meu holerite' });
+  return await httpClient<EmployeePayroll[]>(`${API_URL}/meu-holerite`, { auth: true, errorMessage: 'Erro ao buscar meu holerite' });
 };

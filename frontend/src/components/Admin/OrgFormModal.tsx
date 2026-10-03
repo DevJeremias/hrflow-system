@@ -2,11 +2,12 @@ import React, { useState, useRef } from 'react';
 import { X } from 'lucide-react';
 import ErrorAlert from '../ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import type { Department, DepartmentForm as DepartmentFormData, Role, RoleForm as RoleFormData } from '../../services/departmentsRolesService';
 
 // ==========================================
 // SUBCOMPONENTE: FORMULÁRIO DE DEPARTAMENTO
 // ==========================================
-const DepartmentForm: React.FC<{ item?: any }> = ({ item }) => (
+const DepartmentForm: React.FC<{ item?: Department }> = ({ item }) => (
   <div className="grid grid-cols-1 gap-6 animate-in fade-in duration-300">
     <div className="space-y-2">
       <label className="text-sm font-bold text-slate-700 ml-1">Nome do Departamento *</label>
@@ -33,8 +34,8 @@ const DepartmentForm: React.FC<{ item?: any }> = ({ item }) => (
 // SUBCOMPONENTE: FORMULÁRIO DE CARGO
 // ==========================================
 interface RoleFormProps {
-  item?: any;
-  departments: any[];
+  item?: Role;
+  departments: Department[];
 }
 
 const RoleForm: React.FC<RoleFormProps> = ({ item, departments }) => {
@@ -49,7 +50,7 @@ const RoleForm: React.FC<RoleFormProps> = ({ item, departments }) => {
           <label className="text-sm font-bold text-slate-700 ml-1">Setor Responsável *</label>
           <select name="department" required defaultValue={item?.department} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none appearance-none cursor-pointer">
             <option value="">Selecione...</option>
-            {departments.map((d: any) => <option key={d.id} value={d.name}>{d.name}</option>)}
+            {departments.map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
           </select>
         </div>
       </div>
@@ -63,7 +64,7 @@ const RoleForm: React.FC<RoleFormProps> = ({ item, departments }) => {
         </div>
         <div className="space-y-2">
           <label className="text-sm font-bold text-slate-700 ml-1">Salário Base (R$) *</label>
-          <input name="salary" type="number" required defaultValue={item?.salary} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none font-bold" placeholder="0.00" />
+          <input name="salary" type="number" required defaultValue={item?.salary ?? undefined} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:border-primary outline-none font-bold" placeholder="0.00" />
         </div>
       </div>
     </div>
@@ -73,12 +74,16 @@ const RoleForm: React.FC<RoleFormProps> = ({ item, departments }) => {
 // ==========================================
 // MODAL PRINCIPAL
 // ==========================================
+export type OrgFormData =
+  | { type: 'department'; data: DepartmentFormData }
+  | { type: 'role'; data: RoleFormData };
+
 interface Props {
   type: 'department' | 'role';
-  item?: any;
-  departments: any[];
+  item?: Department | Role | null;
+  departments: Department[];
   onClose: () => void;
-  onSave: (data: any) => Promise<void>;
+  onSave: (form: OrgFormData) => Promise<void>;
 }
 
 const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSave }) => {
@@ -93,13 +98,16 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
     e.preventDefault();
     if (submittingRef.current) return;
     const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
+    // Os campos do formulário são `name` dos inputs: o que chega aqui é só texto.
+    const data = Object.fromEntries(formData.entries()) as Record<string, string>;
 
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await onSave({ ...data, id: item?.id });
+      await onSave(isDept
+        ? { type: 'department', data: { id: item?.id, name: data.name, sigla: data.sigla, description: data.description, manager: data.manager } }
+        : { type: 'role', data: { id: item?.id, title: data.title, department: data.department, level: data.level, salary: data.salary } });
     } catch (error) {
       setSubmitError(mensagemDeErro(error, 'Não foi possível salvar. Tente novamente.'));
     } finally {
@@ -129,9 +137,9 @@ const OrgFormModal: React.FC<Props> = ({ type, item, departments, onClose, onSav
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
           
           {isDept ? (
-            <DepartmentForm item={item} />
+            <DepartmentForm item={item as Department | undefined} />
           ) : (
-            <RoleForm item={item} departments={departments} />
+            <RoleForm item={item as Role | undefined} departments={departments} />
           )}
 
           {submitError && <div className="mt-8"><ErrorAlert message={submitError} /></div>}

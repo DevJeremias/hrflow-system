@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Users, Building2, Briefcase, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { dashboardService, DashboardSummary } from '../../services/dashboardService';
+import { useResumoDoDashboard } from '../../queries/dashboard';
 import StatCard from '../../components/Admin/DashboardStatCard';
 import RecentActivities from '../../components/Admin/DashboardActivities';
 import ErrorAlert from '../../components/ErrorAlert';
@@ -13,25 +13,9 @@ const Dashboard: React.FC = () => {
  
   const firstName = user?.nome?.split(' ')[0] || 'Gestor';
 
-  const [data, setData] = useState<DashboardSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    dashboardService.getSummary()
-      .then((summary) => { if (active) setData(summary); })
-      .catch((error) => { if (active) setLoadError(mensagemDeErro(error, 'Erro ao carregar o resumo do dashboard')); })
-      .finally(() => { if (active) setIsLoading(false); });
-    return () => { active = false; };
-  }, [reloadKey]);
-
-  const retry = () => {
-    setIsLoading(true);
-    setLoadError(null);
-    setReloadKey((key) => key + 1);
-  };
+  const { data, error, isPending, refetch } = useResumoDoDashboard();
+  const isLoading = isPending;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao carregar o resumo do dashboard') : null;
 
   const inactive = data?.inactiveEmployees ?? 0;
   const statConfig = data ? [
@@ -53,7 +37,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {loadError && <ErrorAlert message={loadError} onRetry={retry} />}
+      {loadError && <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />}
 
       {/* Grid de Cards com Skeleton Loading */}
       {!loadError && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Pause, Play } from 'lucide-react';
 import mosaico1 from '../../assets/mosaico_image1.webp';

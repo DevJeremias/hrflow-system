@@ -1,39 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Filter } from 'lucide-react';
-import { generateMonthlyPayroll, EmployeePayroll } from '../../services/payrollService';
+import { useFolhaDaEmpresa } from '../../queries/folha';
 import PayrollSummaryCards from '../../components/Admin/PayrollMetrics';
 import PayrollTable from '../../components/Admin/PayrollTable';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 
+const SEM_FOLHA: never[] = [];
+
 const Payroll: React.FC = () => {
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [allPayrolls, setAllPayrolls] = useState<EmployeePayroll[]>([]);
-  
   const [deptFilter, setDeptFilter] = useState('Todos');
 
-  const [reloadKey, setReloadKey] = useState(0);
-
-  const startLoading = () => {
-    setLoading(true);
-    setLoadError(null);
-  };
-
-  const retry = () => {
-    startLoading();
-    setReloadKey((k) => k + 1);
-  };
-
-  useEffect(() => {
-    generateMonthlyPayroll()
-      .then(setAllPayrolls)
-      .catch((error) => {
-        setAllPayrolls([]);
-        setLoadError(mensagemDeErro(error, 'Erro ao processar folha de pagamento'));
-      })
-      .finally(() => setLoading(false));
-  }, [reloadKey]);
+  const { data, error, isPending, refetch } = useFolhaDaEmpresa();
+  const allPayrolls = data ?? SEM_FOLHA;
+  const loadError = error ? mensagemDeErro(error, 'Erro ao processar folha de pagamento') : null;
 
   const displayedPayrolls = useMemo(() => {
     if (deptFilter === 'Todos') return allPayrolls;
@@ -49,7 +29,7 @@ const Payroll: React.FC = () => {
     }), { gross: 0, deductions: 0, net: 0, charges: 0 });
   }, [displayedPayrolls]);
 
-  const departmentsList = Array.from(new Set(allPayrolls.map(p => p.department)));
+  const departmentsList = useMemo(() => Array.from(new Set(allPayrolls.map(p => p.department))), [allPayrolls]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -73,13 +53,13 @@ const Payroll: React.FC = () => {
         </div>
       </div>
 
-      {loading ? (
+      {isPending ? (
         <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
           <p className="font-bold">Processando base de cálculo...</p>
         </div>
       ) : loadError ? (
-        <ErrorAlert message={loadError} onRetry={retry} />
+        <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />
       ) : (
         <>
           <PayrollSummaryCards metrics={dynamicMetrics} />

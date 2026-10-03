@@ -4,80 +4,12 @@
       "count": 1
     }
   },
-  "src/components/Admin/EmployeeModalTabs.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/components/Admin/OrgFormModal.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 7
-    }
-  },
-  "src/components/Admin/OrgRolesTable.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/components/Portal/DashboardPunchForm.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/components/Portal/DashboardTimeline.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/components/Portal/RequestsTable.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
   "src/contexts/AuthContext.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
     },
     "react-refresh/only-export-components": {
       "count": 1
-    }
-  },
-  "src/pages/Admin/OrgStructure.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
-    },
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/pages/Auth/Login.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "src/pages/Portal/EmployeeDashboard.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/pages/Portal/Profile.tsx": {
-    "react-hooks/set-state-in-effect": {
-      "count": 1
-    }
-  },
-  "src/services/departmentsRolesService.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 8
-    }
-  },
-  "src/services/employeeService.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/services/httpClient.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
     }
   }
 }
