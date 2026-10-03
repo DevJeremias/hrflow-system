@@ -1,7 +1,7 @@
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import * as authController from './auth.controller.ts';
-import { validarLogin, validarRegistro } from './auth.schemas.ts';
+import { validarEsqueciSenha, validarLogin, validarRedefinicao, validarRegistro } from './auth.schemas.ts';
 import type { Validacao } from './auth.schemas.ts';
 import authMiddleware from '../../shared/middlewares/authMiddleware.ts';
 import { corpoJson, criarLimitadores, tratarErroDeCorpo } from '../../shared/middlewares/limitesAuth.ts';
@@ -26,6 +26,13 @@ export const criarRouter = (limites?: Parameters<typeof criarLimitadores>[0]) =>
     router.post('/login',
         limitadores.loginPorIp, corpoJson, validar(validarLogin), limitadores.loginPorIdentidade,
         authController.login);
+
+    router.post('/esqueci-senha',
+        limitadores.esqueciSenhaPorIp, corpoJson, validar(validarEsqueciSenha), limitadores.esqueciSenhaPorIdentidade,
+        authController.esqueciSenha);
+    router.post('/redefinir-senha',
+        limitadores.redefinirSenhaPorIp, corpoJson, validar(validarRedefinicao),
+        authController.redefinirSenha);
 
     router.post('/logout', authController.logout);
 

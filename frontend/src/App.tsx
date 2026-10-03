@@ -17,6 +17,8 @@ const Termos = lazy(() => import('./pages/Legal/Termos'));
 const Privacidade = lazy(() => import('./pages/Legal/Privacidade'));
 const Login = lazy(() => import('./pages/Auth/Login'));
 const TrocarSenha = lazy(() => import('./pages/Auth/TrocarSenha'));
+const EsqueciSenha = lazy(() => import('./pages/Auth/EsqueciSenha'));
+const RedefinirSenha = lazy(() => import('./pages/Auth/RedefinirSenha'));
 const Layout = lazy(() => import('./layouts/Layout'));
 const Dashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const Employees = lazy(() => import('./pages/Admin/Employees'));
@@ -98,6 +100,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<PublicLogin />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/termos" element={<Termos />} />
           <Route path="/privacidade" element={<Privacidade />} />
           <Route path={ROTA_TROCA_DE_SENHA} element={<ProtectedRoute trocaDeSenha><TrocarSenha /></ProtectedRoute>} />

@@ -37,6 +37,8 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `GET /api/perfil/meus-dados`, `PUT /api/perfil/meus-dados`, `PUT /api/perfil/alterar-senha` | 200 | 200 | 200 |
 | `GET /api/notificacoes`, `POST /api/notificacoes/lidas`, `POST /api/notificacoes/:id/lida` | 200, só os próprios avisos | 200, só os próprios avisos | 200, só os próprios avisos |
 
+Rotas públicas, sem sessão e com limite de tentativas: `POST /api/auth/login`, `POST /api/auth/registrar`, `POST /api/auth/esqueci-senha` e `POST /api/auth/redefinir-senha`.
+
 Decisões que a tabela esconde:
 
 * **O RH lê a estrutura e os dados da empresa, o Administrador os altera.** O RH precisa dos cargos e departamentos para cadastrar um colaborador e dos dados da empresa para conferir a folha; criar, renomear, apagar ou editar continua com o Administrador.

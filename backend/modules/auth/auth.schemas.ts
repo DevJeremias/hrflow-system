@@ -22,6 +22,17 @@ export interface DadosDeLogin {
     senha: string;
 }
 
+export interface DadosDeEsqueciSenha {
+    email: string;
+}
+
+export interface DadosDeRedefinicao {
+    token: string;
+    senha: string;
+}
+
+export const LINK_INVALIDO = 'Este link de redefinição é inválido ou expirou. Peça um novo.';
+
 const ehObjeto = (corpo: unknown): corpo is Record<string, unknown> =>
     corpo !== null && typeof corpo === 'object' && !Array.isArray(corpo);
 
@@ -60,4 +71,23 @@ export const validarLogin = (corpo: unknown): Validacao<DadosDeLogin> => {
     if (erro) return { erro };
 
     return { dados: { email: (email as string).trim(), senha: senha as string } };
+};
+
+export const validarEsqueciSenha = (corpo: unknown): Validacao<DadosDeEsqueciSenha> => {
+    if (!ehObjeto(corpo)) return { erro: 'Envie o e-mail em JSON.' };
+    const erro = validarEmail(corpo.email);
+    if (erro) return { erro };
+    return { dados: { email: (corpo.email as string).trim().toLowerCase() } };
+};
+
+// O token que o e-mail leva: 32 bytes aleatórios em base64url (43 caracteres).
+export const FORMATO_DO_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+
+export const validarRedefinicao = (corpo: unknown): Validacao<DadosDeRedefinicao> => {
+    if (!ehObjeto(corpo)) return { erro: 'Envie o token e a nova senha em JSON.' };
+    const { token, senha } = corpo;
+    if (typeof token !== 'string' || !FORMATO_DO_TOKEN.test(token)) return { erro: LINK_INVALIDO };
+    const erro = validarSenhaDeRegistro(senha);
+    if (erro) return { erro };
+    return { dados: { token, senha: senha as string } };
 };
