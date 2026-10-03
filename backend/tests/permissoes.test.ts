@@ -94,11 +94,6 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             await criarUsuario(db, { empresaId: empresa, perfil: 'Colaborador', funcionarioId });
             return `/api/funcionarios/${funcionarioId}`;
         };
-        const colaboradorComDependente = async () => {
-            const alvo = await colaboradorAlheio();
-            const dependente = await inserir('INSERT INTO dependentes (empresa_id, funcionario_id, nome, parentesco) VALUES (?, ?, ?, ?)', [empresa, Number(alvo.split('/').pop()), 'Dependente Ficticio', 'Filho(a)']);
-            return `${alvo}/dependentes/${dependente}`;
-        };
         const estruturaNova = async (tabela: 'departamentos' | 'cargos') => {
             const nome = `Alvo ${++sequencia}`;
             const id = tabela === 'departamentos'
@@ -127,9 +122,11 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
 
             { rotulo: 'listar colaboradores', metodo: 'GET', caminho: () => '/api/funcionarios', permitido: GESTAO },
             { rotulo: 'criar colaborador', metodo: 'POST', caminho: () => '/api/funcionarios', corpo: () => ({ nome: 'Novo Colaborador', email: emailNovo(), senha: 'senha-ficticia' }), permitido: GESTAO },
-            { rotulo: 'alterar colaborador', metodo: 'PUT', caminho: colaboradorAlheio, corpo: () => ({ nome: 'Renomeado', email: emailNovo() }), permitido: GESTAO },
+            { rotulo: 'alterar colaborador', metodo: 'PATCH', caminho: colaboradorAlheio, corpo: () => ({ nome: 'Renomeado', email: emailNovo() }), permitido: GESTAO },
             { rotulo: 'excluir colaborador', metodo: 'DELETE', caminho: colaboradorAlheio, permitido: GESTAO },
             { rotulo: 'alterar a situação do colaborador', metodo: 'PATCH', caminho: async () => `${await colaboradorAlheio()}/status`, corpo: () => ({ status: 'Férias' }), permitido: GESTAO },
+            { rotulo: 'listar os dependentes do colaborador', metodo: 'GET', caminho: async () => `${await colaboradorAlheio()}/dependentes`, permitido: GESTAO },
+            { rotulo: 'cadastrar dependente do colaborador', metodo: 'POST', caminho: async () => `${await colaboradorAlheio()}/dependentes`, corpo: () => ({ nome: 'Filha Ficticia', parentesco: 'Filho(a)', data_nascimento: '2018-05-01' }), permitido: GESTAO },
             { rotulo: 'redefinir a senha do colaborador', metodo: 'POST', caminho: async () => `${await colaboradorComAcesso()}/redefinir-senha`, permitido: GESTAO },
 
             { rotulo: 'consultar empresa', metodo: 'GET', caminho: () => '/api/empresa', permitido: GESTAO },
@@ -140,9 +137,6 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'lançar eventos de um colaborador na folha', metodo: 'PUT', caminho: () => `/api/folha/competencias/2026-10/lancamentos/${ids.Caio}`, corpo: () => ({ adiantamento: 100 }), permitido: GESTAO },
             { rotulo: 'baixar os holerites da competência em PDF', metodo: 'GET', caminho: () => '/api/folha/competencias/2026-10/holerites.pdf', permitido: GESTAO },
             { rotulo: 'baixar o holerite de um colaborador em PDF', metodo: 'GET', caminho: () => `/api/folha/competencias/2026-10/holerites/${ids.Caio}.pdf`, permitido: GESTAO },
-            { rotulo: 'listar os dependentes de um colaborador', metodo: 'GET', caminho: async () => `${await colaboradorAlheio()}/dependentes`, permitido: GESTAO },
-            { rotulo: 'cadastrar dependente de um colaborador', metodo: 'POST', caminho: async () => `${await colaboradorAlheio()}/dependentes`, corpo: () => ({ nome: 'Dependente Ficticio', parentesco: 'Filho(a)' }), permitido: GESTAO },
-            { rotulo: 'excluir dependente de um colaborador', metodo: 'DELETE', caminho: colaboradorComDependente, permitido: GESTAO },
             { rotulo: 'ler pontos da empresa', metodo: 'GET', caminho: () => '/api/ponto?mes=2026-03', permitido: GESTAO },
             { rotulo: 'ler justificativas', metodo: 'GET', caminho: () => '/api/ponto/justificativas?mes=2026-03', permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },
@@ -228,7 +222,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
         const edicao = (extra: Record<string, unknown> = {}) => ({ nome: 'Nome Alterado', email: emailNovo(), ...extra });
 
         it('RH alterando o próprio salário recebe 403 e o salário não muda', async () => {
-            const { status, corpo } = await chamar('PUT', `/api/funcionarios/${ids.Rita}`, tokens.Rita, edicao({ salario_base: 99000 }));
+            const { status, corpo } = await chamar('PATCH', `/api/funcionarios/${ids.Rita}`, tokens.Rita, edicao({ salario_base: 99000 }));
             assert.equal(status, 403, JSON.stringify(corpo));
             assert.equal(Number(await salarioDe(ids.Rita)), 5200);
         });
@@ -244,8 +238,8 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
         });
 
         it('RH alterando outro RH ou um Administrador com cadastro recebe 403', async () => {
-            assert.equal((await chamar('PUT', `/api/funcionarios/${ids['Outro RH']}`, tokens.Rita, edicao({ salario_base: 1 }))).status, 403);
-            assert.equal((await chamar('PUT', `/api/funcionarios/${ids['Admin com cadastro']}`, tokens.Rita, edicao())).status, 403);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${ids['Outro RH']}`, tokens.Rita, edicao({ salario_base: 1 }))).status, 403);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${ids['Admin com cadastro']}`, tokens.Rita, edicao())).status, 403);
             assert.equal((await chamar('DELETE', `/api/funcionarios/${ids['Admin com cadastro']}`, tokens.Rita)).status, 403);
         });
 
@@ -255,18 +249,18 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
         });
 
         it('RH altera o salário de um Colaborador', async () => {
-            const { status } = await chamar('PUT', `/api/funcionarios/${ids.Caio}`, tokens.Rita, edicao({ salario_base: 7000 }));
+            const { status } = await chamar('PATCH', `/api/funcionarios/${ids.Caio}`, tokens.Rita, edicao({ salario_base: 7000 }));
             assert.equal(status, 200);
             assert.equal(Number(await salarioDe(ids.Caio)), 7000);
         });
 
         it('cadastro que não existe responde 404 também para o RH', async () => {
-            assert.equal((await chamar('PUT', '/api/funcionarios/999999', tokens.Rita, edicao())).status, 404);
+            assert.equal((await chamar('PATCH', '/api/funcionarios/999999', tokens.Rita, edicao())).status, 404);
             assert.equal((await chamar('DELETE', '/api/funcionarios/999999', tokens.Rita)).status, 404);
         });
 
         it('o Administrador altera o cadastro de um RH, mas não exclui o próprio', async () => {
-            assert.equal((await chamar('PUT', `/api/funcionarios/${ids['Outro RH']}`, tokens.Administrador, edicao({ salario_base: 4100 }))).status, 200);
+            assert.equal((await chamar('PATCH', `/api/funcionarios/${ids['Outro RH']}`, tokens.Administrador, edicao({ salario_base: 4100 }))).status, 200);
             assert.equal(Number(await salarioDe(ids['Outro RH'])), 4100);
             assert.equal((await chamar('DELETE', `/api/funcionarios/${ids['Admin com cadastro']}`, tokens['Admin com cadastro'])).status, 403);
             assert.ok(await existe(ids['Admin com cadastro']));

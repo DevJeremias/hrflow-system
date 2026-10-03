@@ -76,6 +76,19 @@ describe('produção mínima segura', { skip: banco.skip }, () => {
             }
         });
 
+        it('informa a versão em execução quando a imagem a define (APP_VERSION)', async () => {
+            const sha = '0123456789abcdef0123456789abcdef01234567';
+            const expressLocal = express();
+            expressLocal.use('/api', criarSaudeRouter({ query: async () => {} }, { versao: sha }));
+            const { server, baseUrl: urlLocal } = await escutar(expressLocal);
+            try {
+                const resposta = await pedir(urlLocal, '/api/health');
+                assert.deepEqual(JSON.parse(resposta.corpo.toString()), { status: 'ok', versao: sha });
+            } finally {
+                await fechar(server);
+            }
+        });
+
         it('no app real responde 200 sem sessão', async () => {
             const resposta = await pedir(baseUrl, '/api/health');
             assert.equal(resposta.status, 200);

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { closePayroll, getMyPayslips, getPayroll, processPayroll, savePayrollEntries, type MonthlyPayroll, type PayrollEntries } from '../services/payrollService';
-import { addDependent, getDependents, removeDependent, type NewDependent } from '../services/dependentsService';
 import { chaves } from './chaves';
 
 // A folha de uma competência fica em cache: trocar de mês e voltar não refaz a chamada, e o filtro
@@ -33,27 +32,5 @@ export const useSalvarLancamentos = (competencia: string, funcionarioId: string)
   return useMutation({
     mutationFn: (lancamentos: PayrollEntries) => savePayrollEntries(competencia, funcionarioId, lancamentos),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.folhaDaCompetencia(competencia) }),
-  });
-};
-
-export const useDependentes = (funcionarioId: string) => useQuery({
-  queryKey: chaves.dependentes(funcionarioId),
-  queryFn: () => getDependents(funcionarioId),
-});
-
-// Um dependente só entra no IRRF quando a folha é processada de novo: o cache da folha não muda aqui.
-export const useAdicionarDependente = (funcionarioId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (dependente: NewDependent) => addDependent(funcionarioId, dependente),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.dependentes(funcionarioId) }),
-  });
-};
-
-export const useRemoverDependente = (funcionarioId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (dependenteId: number) => removeDependent(funcionarioId, dependenteId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: chaves.dependentes(funcionarioId) }),
   });
 };

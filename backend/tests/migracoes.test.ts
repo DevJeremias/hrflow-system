@@ -9,7 +9,7 @@ import * as migrator from '../shared/db/migrator.ts';
 import { carregarFixtures } from '../shared/db/fixtures.ts';
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
-const TABELAS = ['empresas', 'departamentos', 'cargos', 'funcionarios', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens', 'dependentes', 'schema_migrations'];
+const TABELAS = ['empresas', 'departamentos', 'cargos', 'funcionarios', 'dependentes', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens', 'schema_migrations'];
 
 describe('migrations', { skip: banco.skip }, () => {
     const principal = banco.config;
@@ -318,6 +318,98 @@ describe('migrations', { skip: banco.skip }, () => {
                 [parcial.database]
             );
             assert.deepEqual(indices.map((i) => i.coluna), ['funcionario_id', 'data_hora_oficial']);
+        });
+    });
+
+    describe('cadastro completo (0016)', () => {
+        let alvo: Connection;
+        let empresa: number, outraEmpresa: number;
+        const colaborador = (nome: string, cpf: string | null, empresaId: number) =>
+            inserir('INSERT INTO funcionarios (nome, email, cpf, empresa_id) VALUES (?, ?, ?, ?)', [nome, `${nome}@exemplo.invalid`.replace(/\s/g, ''), cpf, empresaId], alvo);
+
+        before(async () => {
+            await migrator.removerBanco(parcial);
+            await migrator.criarBanco(parcial);
+            await migrator.migrar(parcial, () => {}, { ate: '0015' });
+            alvo = await migrator.conectar(parcial);
+            empresa = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia A'], alvo);
+            outraEmpresa = await inserir('INSERT INTO empresas (nome) VALUES (?)', ['Empresa Ficticia B'], alvo);
+        });
+
+        after(async () => {
+            if (alvo) await alvo.end();
+        });
+
+        it('a auditoria lista só ids de CPF repetido na empresa, CPF sem 11 dígitos e nomes repetidos, e a 0016 recusa aplicar', async () => {
+            const pontuado = await colaborador('Pontuado', '529.982.247-25', empresa);
+            const soDigitos = await colaborador('Digitos', '52998224725', empresa);
+            const naOutraEmpresa = await colaborador('Outra', '529.982.247-25', outraEmpresa);
+            const curto = await colaborador('Curto', '123', empresa);
+            const vazioUm = await colaborador('Vazio um', '', empresa);
+            const vazioDois = await colaborador('Vazio dois', '', empresa);
+            const [[{ id: departamento }]] = await alvo.query<RowDataPacket[]>('SELECT id FROM departamentos WHERE empresa_id = ? AND sigla = ?', [empresa, 'TI']);
+            const departamentoRepetido = await inserir('INSERT INTO departamentos (nome, sigla, empresa_id) VALUES (?, ?, ?)', [' tecnologia da informação (ti) ', 'TI2', empresa], alvo);
+            const [[{ id: cargoExistente }]] = await alvo.query<RowDataPacket[]>('SELECT id FROM cargos WHERE departamento_id = ?', [departamento]);
+            const cargoRepetido = await inserir('INSERT INTO cargos (nome, departamento_id, empresa_id) VALUES (?, ?, ?)', ['DESENVOLVEDOR(A)', departamento, empresa], alvo);
+
+            const auditoria = (await migrator.auditarBanco(parcial)).find((r) => r.migracao === '0016_cadastro_completo');
+            assert.ok(auditoria?.violacoes);
+            const porTipo = (tipo: string) => auditoria.violacoes?.filter((v) => v.violacao.startsWith(tipo)).map((v) => v.registro_id).sort((a, b) => a - b);
+            assert.deepEqual(porTipo('funcionarios.cpf repetido'), [pontuado, soDigitos].sort((a, b) => a - b));
+            assert.deepEqual(porTipo('funcionarios.cpf não tem'), [curto]);
+            assert.equal(porTipo('departamentos.nome')?.length, 2);
+            assert.ok(porTipo('departamentos.nome')?.includes(departamentoRepetido));
+            assert.deepEqual(porTipo('cargos.nome'), [cargoExistente, cargoRepetido].sort((a, b) => a - b));
+            const ids = auditoria.violacoes.map((v) => v.registro_id);
+            assert.ok(![naOutraEmpresa, vazioUm, vazioDois].some((id) => ids.includes(id)), 'CPF em outra empresa e CPF vazio não são violações');
+
+            await assert.rejects(migrator.migrar(parcial), (erro: Error) => erro.name === 'ErroDeAuditoria' && /0016_cadastro_completo/.test(erro.message));
+            assert.equal((await migrator.status(parcial)).find((m) => m.versao === '0016')?.estado, 'pendente');
+
+            await alvo.query('DELETE FROM funcionarios WHERE id IN (?)', [[soDigitos, curto]]);
+            await alvo.query('DELETE FROM cargos WHERE id = ?', [cargoRepetido]);
+            await alvo.query('DELETE FROM departamentos WHERE id = ?', [departamentoRepetido]);
+            assert.deepEqual(await migrator.migrar(parcial, () => {}, { ate: '0016' }), ['0016']);
+        });
+
+        it('a migração guarda o CPF só com dígitos e esvazia o que era vazio', async () => {
+            const [linhas] = await alvo.query<RowDataPacket[]>('SELECT nome, cpf FROM funcionarios ORDER BY id');
+            assert.deepEqual(linhas.map((l) => [l.nome, l.cpf]), [
+                ['Pontuado', '52998224725'], ['Outra', '52998224725'], ['Vazio um', null], ['Vazio dois', null],
+            ]);
+        });
+
+        it('o banco recusa CPF e matrícula repetidos na empresa e aceita em outra', async () => {
+            assert.equal(await codigoDoErro(colaborador('Copia', '52998224725', empresa)), 'ER_DUP_ENTRY');
+            await colaborador('Sem cpf um', null, empresa);
+            await colaborador('Sem cpf dois', null, empresa);
+            await inserir('INSERT INTO funcionarios (nome, email, matricula, empresa_id) VALUES (?, ?, ?, ?)', ['Matricula um', 'm1@exemplo.invalid', 'M-1', empresa], alvo);
+            assert.equal(await codigoDoErro(inserir('INSERT INTO funcionarios (nome, email, matricula, empresa_id) VALUES (?, ?, ?, ?)', ['Matricula dois', 'm2@exemplo.invalid', 'M-1', empresa], alvo)), 'ER_DUP_ENTRY');
+            await inserir('INSERT INTO funcionarios (nome, email, matricula, empresa_id) VALUES (?, ?, ?, ?)', ['Matricula tres', 'm3@exemplo.invalid', 'M-1', outraEmpresa], alvo);
+        });
+
+        it('o banco recusa departamento e cargo de nome repetido, sem distinguir caixa', async () => {
+            assert.equal(await codigoDoErro(inserir('INSERT INTO departamentos (nome, sigla, empresa_id) VALUES (?, ?, ?)', ['FINANCEIRO', 'F2', empresa], alvo)), 'ER_DUP_ENTRY');
+            await inserir('INSERT INTO departamentos (nome, sigla, empresa_id) VALUES (?, ?, ?)', ['Financeiro Extra', 'FE', empresa], alvo);
+            const [[{ id: departamento }]] = await alvo.query<RowDataPacket[]>('SELECT id FROM departamentos WHERE empresa_id = ? AND sigla = ?', [empresa, 'FIN']);
+            assert.equal(await codigoDoErro(inserir('INSERT INTO cargos (nome, departamento_id, empresa_id) VALUES (?, ?, ?)', ['assistente administrativo', departamento, empresa], alvo)), 'ER_DUP_ENTRY');
+            const [[{ id: outroDepartamento }]] = await alvo.query<RowDataPacket[]>('SELECT id FROM departamentos WHERE empresa_id = ? AND sigla = ?', [empresa, 'MKT']);
+            await inserir('INSERT INTO cargos (nome, departamento_id, empresa_id) VALUES (?, ?, ?)', ['Assistente Administrativo', outroDepartamento, empresa], alvo);
+        });
+
+        it('dependente não aponta para colaborador de outra empresa e some junto com o cadastro', async () => {
+            const dono = await colaborador('Com dependente', null, empresa);
+            const novo = (funcionarioId: number, empresaId: number, cpf: string | null = null) => inserir(
+                "INSERT INTO dependentes (funcionario_id, empresa_id, nome, parentesco, data_nascimento, cpf) VALUES (?, ?, 'Filha Ficticia', 'Filho(a)', '2018-05-01', ?)",
+                [funcionarioId, empresaId, cpf], alvo
+            );
+            assert.equal(await codigoDoErro(novo(dono, outraEmpresa)), 'ER_NO_REFERENCED_ROW_2');
+            assert.equal(await codigoDoErro(novo(dono, empresa, '123')), 'ER_CHECK_CONSTRAINT_VIOLATED');
+            await novo(dono, empresa, '11144477735');
+            assert.equal(await codigoDoErro(novo(dono, empresa, '11144477735')), 'ER_DUP_ENTRY');
+            await alvo.query('DELETE FROM funcionarios WHERE id = ?', [dono]);
+            const [restantes] = await alvo.query<RowDataPacket[]>('SELECT id FROM dependentes WHERE funcionario_id = ?', [dono]);
+            assert.equal(restantes.length, 0);
         });
     });
 

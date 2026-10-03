@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
+import { novoCnpj } from './support/cnpj.ts';
 import pool from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
 import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
@@ -70,8 +71,8 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
         ({ server, baseUrl } = await subirServidor(app));
 
         const registro = await chamar('POST', '/api/auth/registrar', null, {
-            nomeEmpresa: 'Empresa Sessao Ficticia', nomeAdmin: 'Admin Sessao Ficticio',
-            email: 'admin@sessao.exemplo.invalid', senha: 'senha-admin-ficticia',
+            nomeEmpresa: 'Empresa Sessao Ficticia', cnpj: novoCnpj(), nomeAdmin: 'Admin Sessao Ficticio',
+            email: 'admin@sessao.exemplo.invalid', senha: 'senha-admin-ficticia', confirmacaoSenha: 'senha-admin-ficticia',
         });
         assert.equal(registro.status, 201);
         tokenAdmin = (await login('admin@sessao.exemplo.invalid', 'senha-admin-ficticia')).token;

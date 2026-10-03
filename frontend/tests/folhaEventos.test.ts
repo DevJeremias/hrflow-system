@@ -55,7 +55,6 @@ const originalAnchorClick = dom.window.HTMLAnchorElement.prototype.click;
 let chamadas: Chamada[] = [];
 let folha = folhaDe('aberta');
 let perfil: 'RH' | 'Colaborador' = 'RH';
-let dependentes: { id: number; nome: string; parentesco: string; data_nascimento: string | null }[] = [];
 let recusa: { status: number; corpo: unknown } | null = null;
 let baixados: string[] = [];
 let meusHolerites: unknown[] = [];
@@ -92,18 +91,6 @@ before(async () => {
       folha = { ...folha, itens: [atualizado, PAULO] };
       return json(200, atualizado);
     }
-    const dependente = /^\/funcionarios\/(\d+)\/dependentes(?:\/(\d+))?$/.exec(caminho);
-    if (dependente) {
-      if (metodo === 'GET') return json(200, dependentes);
-      if (recusa) return json(recusa.status, recusa.corpo);
-      if (metodo === 'POST') {
-        const novo = { id: 100 + dependentes.length, ...JSON.parse(String(init!.body)) };
-        dependentes = [...dependentes, novo];
-        return json(201, novo);
-      }
-      dependentes = dependentes.filter((d) => d.id !== Number(dependente[2]));
-      return new Response(null, { status: 204 });
-    }
     return json(404, { erro: `rota inesperada no teste: ${metodo} ${caminho}` });
   }) as typeof fetch;
 });
@@ -121,7 +108,6 @@ beforeEach(() => {
   chamadas = [];
   folha = folhaDe('aberta');
   perfil = 'RH';
-  dependentes = [];
   recusa = null;
   baixados = [];
   meusHolerites = [];
@@ -286,39 +272,13 @@ test('com a folha fechada os lançamentos só se leem', async () => {
   assert.equal([...modal.querySelectorAll('button')].some((b) => /Salvar lançamentos/.test(b.textContent ?? '')), false);
 });
 
-test('dependentes: lista, adiciona e remove, e explica que valem ao processar de novo', async () => {
-  dependentes = [{ id: 1, nome: 'Filha Ficticia', parentesco: 'Filho(a)', data_nascimento: '2018-05-20' }];
+test('os dependentes considerados no holerite aparecem no modal, com a indicação de onde cadastrá-los', async () => {
+  folha = { ...folhaDe('aberta'), itens: [{ ...ANA, dependents: 2 }, PAULO] };
   const host = await abrir(Payroll);
   await clicar(botaoPorTexto(host, /Lançamentos de Ana Souza Ficticia/));
-  await esperar(20);
-  const modal = dialogo();
-  assert.match(texto(modal), /Cada dependente reduz a base do IRRF em R\$ 189,59/);
-  assert.match(texto(modal), /Filha Ficticia\s*Filho\(a\) · nascido em 20\/05\/2018/);
-
-  await digitar(campo(modal, 'dependenteNome'), 'Esposo Ficticio');
-  await digitar(modal.querySelector<HTMLSelectElement>('select[name="dependenteParentesco"]')!, 'Cônjuge');
-  await enviar(modal.querySelector('form[aria-label="Novo dependente"]')!);
-  const criado = chamadas.find((c) => c.metodo === 'POST');
-  assert.equal(criado?.caminho, '/funcionarios/7/dependentes');
-  assert.deepEqual(criado?.corpo, { nome: 'Esposo Ficticio', parentesco: 'Cônjuge', data_nascimento: null });
-  assert.match(texto(modal), /Esposo Ficticio\s*Cônjuge/);
-  assert.equal(campo(modal, 'dependenteNome').value, '', 'o formulário limpa depois de cadastrar');
-
-  await clicar(botaoPorTexto(modal, /Remover dependente Filha Ficticia/));
-  await esperar(20);
-  assert.ok(chamadas.some((c) => c.metodo === 'DELETE' && c.caminho === '/funcionarios/7/dependentes/1'));
-  assert.doesNotMatch(texto(modal), /Filha Ficticia/);
-});
-
-test('dependente de um cadastro que o RH não alcança: a recusa da API aparece no modal', async () => {
-  const host = await abrir(Payroll);
-  await clicar(botaoPorTexto(host, /Lançamentos de Ana Souza Ficticia/));
-  await esperar(20);
-  recusa = { status: 403, corpo: { erro: 'Você não pode alterar o seu próprio cadastro. Peça a um Administrador.' } };
-  await digitar(campo(dialogo(), 'dependenteNome'), 'Alguem Ficticio');
-  await enviar(dialogo().querySelector('form[aria-label="Novo dependente"]')!);
-  assert.match(dialogo().querySelector('[role="alert"]')?.textContent ?? '', /Você não pode alterar o seu próprio cadastro/);
-  assert.match(campo(dialogo(), 'dependenteNome').value, /Alguem Ficticio/, 'o que foi digitado fica');
+  const modal = texto(dialogo());
+  assert.match(modal, /2 dependentes considerados neste holerite/);
+  assert.match(modal, /Cada dependente reduz a base do IRRF em R\$ 189,59\. Cadastre-os em Colaboradores, na aba Dependentes/);
 });
 
 test('o colaborador baixa o PDF do próprio holerite, na lista e dentro do holerite aberto', async () => {

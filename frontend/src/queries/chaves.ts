@@ -5,6 +5,7 @@ import type { EmployeeQuery } from '../services/employeeService';
 export const chaves = {
   funcionarios: ['funcionarios'] as const,
   paginaDeFuncionarios: (consulta: EmployeeQuery) => ['funcionarios', 'pagina', consulta] as const,
+  dependentes: (funcionarioId: string) => ['funcionarios', 'dependentes', funcionarioId] as const,
 
   estrutura: ['estrutura'] as const,
   departamentos: ['estrutura', 'departamentos'] as const,
@@ -13,7 +14,6 @@ export const chaves = {
   folha: ['folha'] as const,
   folhaDaCompetencia: (competencia: string) => ['folha', 'competencia', competencia] as const,
   meusHolerites: ['folha', 'meus-holerites'] as const,
-  dependentes: (funcionarioId: string) => ['dependentes', funcionarioId] as const,
 
   dashboard: ['dashboard'] as const,
   resumoDoDashboard: ['dashboard', 'resumo'] as const,

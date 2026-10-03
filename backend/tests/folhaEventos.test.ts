@@ -6,7 +6,7 @@
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
-import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { ResultSetHeader } from 'mysql2/promise';
 import { PDFParse } from 'pdf-parse';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
@@ -111,7 +111,7 @@ describe('IRRF, FGTS, eventos e PDF da folha', { skip: banco.skip }, () => {
             assert.deepEqual([com.inss, com.irrf, com.bases?.irrf, com.dependents], [753.51, 628.69, 5856.9, 1]);
             assert.ok(com.irrf < sem.irrf);
 
-            assert.equal((await chamar('DELETE', `/api/funcionarios/${caio}/dependentes/${criado.corpo.id}`, rh)).status, 204);
+            assert.equal((await chamar('DELETE', `/api/funcionarios/${caio}/dependentes/${criado.corpo.id}`, rh)).status, 200);
             assert.equal(itemDe((await processar(rh)).corpo, caio).irrf, 680.82);
         });
 
@@ -325,57 +325,6 @@ describe('IRRF, FGTS, eventos e PDF da folha', { skip: banco.skip }, () => {
             assert.equal((await lancar(rh, ana, { adiantamento: null, planoSaude: '' })).status, 200);
             assert.equal((await chamar('PUT', folhaApi('/lancamentos/abc'), rh, {})).status, 400);
             assert.equal((await chamar('PUT', '/api/folha/competencias/2026-13/lancamentos/1', rh, {})).status, 400);
-        });
-    });
-
-    describe('dependentes', () => {
-        it('o RH cadastra e remove dependentes de colaborador, e não os dele nem os de outro RH ou Administrador', async () => {
-            const { empresaId, rh: tokenDoRh } = await cenario();
-            const rita = await criarFuncionario(pool, empresaId, { nome: 'Rita RH Ficticia', salario: 5200 });
-            const { token: tokenDaRita } = await criarUsuario(pool, { empresaId, perfil: 'RH', funcionarioId: rita });
-            const outroRh = await criarFuncionario(pool, empresaId, { nome: 'Outro RH Ficticio', salario: 5200 });
-            await criarUsuario(pool, { empresaId, perfil: 'RH', funcionarioId: outroRh });
-            const admin = await criarUsuario(pool, { empresaId, perfil: 'Administrador' });
-            const caio = await criarFuncionario(pool, empresaId, { nome: 'Caio Ficticio', salario: 6800 });
-            assert.ok(tokenDoRh);
-
-            const novo = { nome: 'Dependente Ficticio', parentesco: 'Cônjuge' };
-            assert.equal((await chamar('POST', `/api/funcionarios/${rita}/dependentes`, tokenDaRita, novo)).status, 403, 'o RH não altera o próprio cadastro');
-            assert.equal((await chamar('POST', `/api/funcionarios/${outroRh}/dependentes`, tokenDaRita, novo)).status, 403, 'nem o de outro RH');
-            assert.equal((await chamar('POST', `/api/funcionarios/${outroRh}/dependentes`, admin.token, novo)).status, 201, 'o Administrador alcança todos');
-            assert.equal((await chamar('GET', `/api/funcionarios/${rita}/dependentes`, tokenDaRita)).status, 200, 'ler vale para qualquer cadastro');
-
-            const criado = await chamar('POST', `/api/funcionarios/${caio}/dependentes`, tokenDaRita, novo);
-            assert.deepEqual(criado.corpo, { id: criado.corpo.id, nome: 'Dependente Ficticio', parentesco: 'Cônjuge', data_nascimento: null });
-            assert.deepEqual((await chamar('GET', `/api/funcionarios/${caio}/dependentes`, tokenDaRita)).corpo, [criado.corpo]);
-            assert.equal((await chamar('DELETE', `/api/funcionarios/${caio}/dependentes/${criado.corpo.id}`, tokenDaRita)).status, 204);
-            assert.equal((await chamar('DELETE', `/api/funcionarios/${caio}/dependentes/${criado.corpo.id}`, tokenDaRita)).status, 404);
-            assert.deepEqual((await chamar('GET', `/api/funcionarios/${caio}/dependentes`, tokenDaRita)).corpo, []);
-        });
-
-        it('valida o dependente e isola por empresa', async () => {
-            const alfa = await cenario();
-            const beta = await cenario();
-            const caio = await criarFuncionario(pool, alfa.empresaId, { nome: 'Caio Ficticio', salario: 6800 });
-            for (const corpo of [{ parentesco: 'Filho(a)' }, { nome: 'Fulano', parentesco: 'Tio' }, { nome: 'Fulano', parentesco: 'Filho(a)', data_nascimento: '2999-01-01' }, { nome: 'Fulano', parentesco: 'Filho(a)', extra: 1 }]) {
-                assert.equal((await chamar('POST', `/api/funcionarios/${caio}/dependentes`, alfa.rh, corpo)).status, 400, JSON.stringify(corpo));
-            }
-            const criado = await chamar('POST', `/api/funcionarios/${caio}/dependentes`, alfa.rh, { nome: 'Filha Ficticia', parentesco: 'Filho(a)', data_nascimento: '2018-05-20' });
-            assert.equal(criado.corpo.data_nascimento, '2018-05-20');
-            assert.equal((await chamar('GET', `/api/funcionarios/${caio}/dependentes`, beta.rh)).status, 404);
-            assert.equal((await chamar('POST', `/api/funcionarios/${caio}/dependentes`, beta.rh, { nome: 'Fulano', parentesco: 'Outro' })).status, 404);
-            assert.equal((await chamar('DELETE', `/api/funcionarios/${caio}/dependentes/${criado.corpo.id}`, beta.rh)).status, 404);
-            const [[{ total }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS total FROM dependentes WHERE funcionario_id = ?', [caio]);
-            assert.equal(total, 1);
-        });
-
-        it('excluir o cadastro do colaborador leva os dependentes junto', async () => {
-            const { empresaId, rh } = await cenario();
-            const caio = await criarFuncionario(pool, empresaId, { nome: 'Caio Ficticio', salario: 6800 });
-            await chamar('POST', `/api/funcionarios/${caio}/dependentes`, rh, { nome: 'Filha Ficticia', parentesco: 'Filho(a)' });
-            assert.equal((await chamar('DELETE', `/api/funcionarios/${caio}`, rh)).status, 200);
-            const [[{ total }]] = await pool.query<RowDataPacket[]>('SELECT COUNT(*) AS total FROM dependentes WHERE funcionario_id = ?', [caio]);
-            assert.equal(total, 0);
         });
     });
 

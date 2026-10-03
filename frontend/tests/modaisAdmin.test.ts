@@ -128,7 +128,7 @@ const botao = (host: HTMLElement, texto: RegExp) => {
   return encontrado;
 };
 
-const abrirAba = (host: HTMLElement, nome: 'Pessoal' | 'Contrato' | 'Financeiro') => clicar(botao(host, new RegExp(nome, 'i')));
+const abrirAba = (host: HTMLElement, nome: 'Pessoal' | 'Documentos' | 'Contrato' | 'Financeiro' | 'Dependentes') => clicar(botao(host, new RegExp(nome, 'i')));
 
 const botaoDeEnvio = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('form button[type="submit"]')!;
 
@@ -267,7 +267,7 @@ test('o nível escolhido vai no payload', async () => {
   assert.equal(gravacoes()[0].corpo.nivel, 'Pleno');
 });
 
-test('a edição preserva cargo, setor, nível e salário já gravados e os envia por id', async () => {
+test('a edição preserva cargo, setor, nível e salário já gravados: trocar de cargo e voltar não envia nada, trocar de verdade envia o id', async () => {
   funcionarios = [{
     id: 7, nome: 'Bia Ficticia', email: 'bia@exemplo.invalid', cargo_id: 1, cargo_nome: 'Desenvolvedor(a)', departamento_id: 2,
     departamento_nome: 'RH', nivel: 'Sênior', salario_base: '5000.00', status: 'Ativo', tipo_contrato: 'CLT',
@@ -285,13 +285,18 @@ test('a edição preserva cargo, setor, nível e salário já gravados e os envi
 
   await clicar(botaoDeEnvio(host));
   await esperar();
+  assert.deepEqual(gravacoes(), [], 'o formulário voltou ao que estava gravado: não há o que enviar');
+
+  await clicar(host.querySelector('button[aria-label="Editar colaborador Bia Ficticia"]')!);
+  await esperar();
+  await abrirAba(host, 'Contrato');
+  await escolher(host, 'cargoId', '2');
+  await clicar(botaoDeEnvio(host));
+  await esperar();
   const [envio] = gravacoes();
-  assert.equal(envio.metodo, 'PUT');
+  assert.equal(envio.metodo, 'PATCH');
   assert.equal(envio.caminho, '/funcionarios/7');
-  assert.deepEqual(
-    [envio.corpo.cargo_id, envio.corpo.departamento_id, envio.corpo.nivel, envio.corpo.salario_base],
-    [1, 2, 'Sênior', '5000.00'],
-  );
+  assert.deepEqual(envio.corpo, { cargo_id: 2 }, 'só o que mudou viaja: setor, nível e salário já gravados ficam de fora');
 });
 
 // A pergunta de descarte é um diálogo de verdade: o teste responde clicando nos botões dele.
