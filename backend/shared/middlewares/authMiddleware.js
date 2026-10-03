@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
 const jwtSecret = require('../config/jwtSecret');
-const db = require('../config/db');
+const db = require('../db/pool');
 // Direto do arquivo, não do index do módulo: o index monta o router de auth, que importa este middleware.
-const { lerTokenDaSessao, csrfValido, encerrarSessao } = require('../modules/auth/auth.sessao.ts');
+const { lerTokenDaSessao, csrfValido, encerrarSessao } = require('../../modules/auth/auth.sessao.ts');
 
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
 

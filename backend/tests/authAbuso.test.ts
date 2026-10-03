@@ -94,7 +94,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         process.env.DB_NAME = dbName;
         process.env.JWT_SECRET = jwtSecret;
         // Só depois das variáveis de ambiente acima: o pool e o segredo JWT as leem ao carregar.
-        pool = (await import('../config/db.js')).default;
+        pool = (await import('../shared/db/pool.js')).default;
         ({ criarAuthRouter } = await import('../modules/auth/index.ts'));
     });
 

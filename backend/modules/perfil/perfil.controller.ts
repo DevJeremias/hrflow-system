@@ -5,7 +5,7 @@ import * as service from './perfil.service.ts';
 import { ErroDePerfil } from './perfil.erros.ts';
 import type { TipoDeErro } from './perfil.erros.ts';
 import type { CorpoDeAlterarSenha, CorpoDeAtualizarMeusDados } from './perfil.schemas.ts';
-import { responderErro } from '../../utils/erros.js';
+import { responderErro } from '../../shared/utils/erros.js';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
 

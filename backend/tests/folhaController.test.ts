@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import banco from './support/bancoDeTeste.js';
-import db from '../config/db.js';
+import db from '../shared/db/pool.js';
 import { meuHolerite } from '../modules/folha/folha.controller.ts';
 
 type Token = NonNullable<Request['usuario']>;

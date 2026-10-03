@@ -15,7 +15,7 @@ describe('pool de conexões', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        configDb = require('../config/db');
+        configDb = require('../shared/db/pool');
         pools.push(configDb);
     });
 
@@ -41,7 +41,7 @@ describe('pool de conexões', { skip: banco.skip }, () => {
     });
 
     it('interrompe a consulta que passa do tempo e a traduz em 503', async () => {
-        const { traduzirErro } = require('../utils/erros');
+        const { traduzirErro } = require('../shared/utils/erros');
         const pool = criar({ connectionLimit: 1, maxExecutionTime: 200 });
 
         // Produto cartesiano de tabelas do sistema: leva muito mais que 200 ms em qualquer máquina.
@@ -52,7 +52,7 @@ describe('pool de conexões', { skip: banco.skip }, () => {
     });
 
     it('recusa na hora quando a fila está cheia, em vez de acumular requisições', async () => {
-        const { traduzirErro } = require('../utils/erros');
+        const { traduzirErro } = require('../shared/utils/erros');
         const pool = criar({ connectionLimit: 1, queueLimit: 1 });
 
         // Uma consulta ocupa a única conexão, uma espera na fila e a terceira não cabe.

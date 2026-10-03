@@ -5,8 +5,8 @@ import * as service from './ponto.service.ts';
 import { ErroDePonto } from './ponto.erros.ts';
 import type { TipoDeErro } from './ponto.erros.ts';
 import type { ConsultaDeJustificativas, ConsultaDePontosDaEmpresa, CorpoDaJustificativa, DiaDaJustificativa } from './ponto.schemas.ts';
-import { responderErro } from '../../utils/erros.js';
-import { enviarPagina } from '../../utils/paginacao.js';
+import { responderErro } from '../../shared/utils/erros.js';
+import { enviarPagina } from '../../shared/utils/paginacao.js';
 
 type RequisicaoDoColaborador = Request<{ funcionarioId: string }>;
 

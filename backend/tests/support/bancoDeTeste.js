@@ -4,7 +4,7 @@
 // se não for 3306, HRFLOW_TEST_DB_PORT. Sem HRFLOW_TEST_DB_HOST os testes são marcados como
 // ignorados, nunca como aprovados.
 const crypto = require('node:crypto');
-const migrator = require('../../db/migrator');
+const migrator = require('../../shared/db/migrator');
 
 const host = process.env.HRFLOW_TEST_DB_HOST;
 const skip = host ? false : 'HRFLOW_TEST_DB_HOST não definido: sem MySQL, nada foi exercitado.';

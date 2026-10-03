@@ -5,8 +5,8 @@ const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const bcrypt = require('bcrypt');
 const banco = require('./support/bancoDeTeste');
-const migrator = require('../db/migrator');
-const { carregarFixtures } = require('../seeds/fixtures');
+const migrator = require('../shared/db/migrator');
+const { carregarFixtures } = require('../shared/db/fixtures');
 
 const TABELAS = ['empresas', 'departamentos', 'cargos', 'funcionarios', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'schema_migrations'];
 

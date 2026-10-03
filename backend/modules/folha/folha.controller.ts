@@ -5,8 +5,8 @@ import * as service from './folha.service.ts';
 import { ErroDeFolha } from './folha.erros.ts';
 import type { TipoDeErro } from './folha.erros.ts';
 import type { ConsultaDaFolha } from './folha.schemas.ts';
-import { responderErro } from '../../utils/erros.js';
-import { enviarPagina } from '../../utils/paginacao.js';
+import { responderErro } from '../../shared/utils/erros.js';
+import { enviarPagina } from '../../shared/utils/paginacao.js';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { inexistente: 404 };
 

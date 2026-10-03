@@ -39,11 +39,11 @@ describe('validação de entrada nas rotas', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        pool = require('../config/db');
+        pool = require('../shared/db/pool');
 
         const express = require('express');
-        const authMiddleware = require('../middlewares/authMiddleware');
-        const tratarErros = require('../middlewares/tratarErros');
+        const authMiddleware = require('../shared/middlewares/authMiddleware');
+        const tratarErros = require('../shared/middlewares/tratarErros');
         const app = express();
         // Mesmo desenho do server.js: parser global de 4mb e o tratador de erros por último.
         app.use(express.json({ limit: '4mb' }));

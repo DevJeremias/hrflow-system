@@ -7,8 +7,8 @@ const express = require('express');
 const banco = require('./support/bancoDeTeste');
 const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 
-const db = require('../config/db');
-const authMiddleware = require('../middlewares/authMiddleware');
+const db = require('../shared/db/pool');
+const authMiddleware = require('../shared/middlewares/authMiddleware');
 const { pontoRoutes } = require('../modules/ponto/index.ts');
 const { relogio } = require('../modules/ponto/ponto.service.ts');
 

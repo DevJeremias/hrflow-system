@@ -1,5 +1,5 @@
-import { z, data, corpo, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../schemas/comum.js';
-import { paginacao } from '../../schemas/paginacao.js';
+import { z, data, corpo, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../shared/schemas/comum.js';
+import { paginacao } from '../../shared/schemas/paginacao.js';
 import * as fuso from './ponto.fuso.ts';
 
 export const LIMITE_JUSTIFICATIVA = 1000;

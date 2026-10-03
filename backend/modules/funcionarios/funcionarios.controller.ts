@@ -5,8 +5,8 @@ import * as service from './funcionarios.service.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { TipoDeErro } from './funcionarios.erros.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro, IdDaRota, Paginacao } from './funcionarios.schemas.ts';
-import { responderErro } from '../../utils/erros.js';
-import { enviarPagina } from '../../utils/paginacao.js';
+import { responderErro } from '../../shared/utils/erros.js';
+import { enviarPagina } from '../../shared/utils/paginacao.js';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
 

@@ -1,7 +1,7 @@
 // Todo o SQL da autenticação. Devolve linhas como o MySQL as entrega e não conhece HTTP nem regra
 // de negócio.
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import db from '../../config/db.js';
+import db from '../../shared/db/pool.js';
 import type { UsuarioDoToken } from './auth.sessao.ts';
 
 export interface Usuario extends RowDataPacket, UsuarioDoToken {

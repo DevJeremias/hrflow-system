@@ -13,8 +13,8 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 // ao carregar.
 import banco from './support/bancoDeTeste.js';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
-import pool from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import pool from '../shared/db/pool.js';
+import authMiddleware from '../shared/middlewares/authMiddleware.js';
 import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { estruturaRoutes } from '../modules/estrutura/index.ts';
 

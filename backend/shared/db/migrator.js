@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const mysql = require('mysql2/promise');
 
-const DIRETORIO = path.join(__dirname, '..', 'migrations');
+const DIRETORIO = path.join(__dirname, '..', '..', 'migrations');
 const NOME_SEGURO = /^[A-Za-z0-9_]+$/;
 const TRAVA = 'hrflow_migracoes';
 

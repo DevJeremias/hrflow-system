@@ -1,8 +1,8 @@
 import express from 'express';
 import * as funcionariosController from './funcionarios.controller.ts';
-import verificarPerfil from '../../middlewares/roleMiddleware.js';
-import validarEntrada from '../../middlewares/validarEntrada.js';
-import { paginacao } from '../../schemas/paginacao.js';
+import verificarPerfil from '../../shared/middlewares/roleMiddleware.js';
+import validarEntrada from '../../shared/middlewares/validarEntrada.js';
+import { paginacao } from '../../shared/schemas/paginacao.js';
 import { idDaRota, criarFuncionario, atualizarFuncionario } from './funcionarios.schemas.ts';
 
 export const funcionariosRoutes = express.Router();

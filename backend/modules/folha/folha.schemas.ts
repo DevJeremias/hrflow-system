@@ -1,4 +1,4 @@
-import { paginacao } from '../../schemas/paginacao.js';
+import { paginacao } from '../../shared/schemas/paginacao.js';
 
 export const consultarFolha = paginacao;
 

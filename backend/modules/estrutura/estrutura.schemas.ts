@@ -1,4 +1,4 @@
-import { z, opcional, texto, textoLivre, inteiroPositivo, dinheiro, corpo } from '../../schemas/comum.js';
+import { z, opcional, texto, textoLivre, inteiroPositivo, dinheiro, corpo } from '../../shared/schemas/comum.js';
 
 export const idDaRota = z.object({ id: inteiroPositivo('Identificador') });
 

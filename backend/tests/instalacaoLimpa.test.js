@@ -30,10 +30,10 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
     before(async () => {
         await banco.preparar();
-        pool = require('../config/db');
+        pool = require('../shared/db/pool');
 
         const express = require('express');
-        const authMiddleware = require('../middlewares/authMiddleware');
+        const authMiddleware = require('../shared/middlewares/authMiddleware');
         const app = express();
         app.use(express.json({ limit: '10mb' }));
         app.use('/api/auth', require('../modules/auth/index.ts').authRoutes);

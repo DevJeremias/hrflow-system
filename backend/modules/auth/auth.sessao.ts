@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { parse } from 'cookie';
 import jwt from 'jsonwebtoken';
 import type { Request, Response, CookieOptions } from 'express';
-import segredoJwt from '../../config/jwtSecret.js';
+import segredoJwt from '../../shared/config/jwtSecret.js';
 
 // config/jwtSecret.js recusa a ausência do segredo ao ser carregado, mas o tipo inferido do
 // JavaScript ainda inclui undefined.

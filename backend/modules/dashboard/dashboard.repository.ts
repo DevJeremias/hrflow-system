@@ -1,7 +1,7 @@
 // Todo o SQL do dashboard: contagens por empresa. Cada subconsulta filtra por empresa_id, então o
 // resumo nunca enxerga dados de outra empresa.
 import type { RowDataPacket } from 'mysql2/promise';
-import db from '../../config/db.js';
+import db from '../../shared/db/pool.js';
 
 export interface ContagensDaEmpresa extends RowDataPacket {
     colaboradores_ativos: number;

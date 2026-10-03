@@ -31,7 +31,7 @@ describe('produção mínima segura', { skip: banco.skip }, () => {
 
     before(async () => {
         await banco.preparar();
-        configDb = require('../config/db');
+        configDb = require('../shared/db/pool');
         ({ server: servidorApp, baseUrl } = await escutar(require('../server')));
 
         const [empresa] = await configDb.query("INSERT INTO empresas (nome) VALUES ('Empresa Ficticia')");

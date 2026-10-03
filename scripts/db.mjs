@@ -2,8 +2,8 @@ import { createRequire } from "node:module";
 
 const require = createRequire(new URL("../backend/package.json", import.meta.url));
 require("dotenv").config({ path: new URL("../backend/.env", import.meta.url).pathname, quiet: true });
-const migrator = require("../backend/db/migrator.js");
-const { carregarFixtures } = require("../backend/seeds/fixtures.js");
+const migrator = require("../backend/shared/db/migrator.js");
+const { carregarFixtures } = require("../backend/shared/db/fixtures.js");
 
 const COMANDOS = {
   create: "cria o banco (DB_NAME) se ele não existir",

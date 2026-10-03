@@ -2,7 +2,7 @@
 // conhece HTTP nem regra de negócio. As consultas rodam no pool ou, dentro de emTransacao, numa
 // conexão reservada.
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import db from '../../config/db.js';
+import db from '../../shared/db/pool.js';
 import type { TipoRegistro } from './ponto.regras.ts';
 
 export interface UltimoRegistro extends RowDataPacket {

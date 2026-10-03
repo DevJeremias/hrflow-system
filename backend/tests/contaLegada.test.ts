@@ -9,7 +9,7 @@ import express from 'express';
 import type { ResultSetHeader } from 'mysql2/promise';
 import banco from './support/bancoDeTeste.js';
 import { criarUsuario, tokenDaResposta } from './support/sessao.js';
-import pool from '../config/db.js';
+import pool from '../shared/db/pool.js';
 import { criarAuthRouter } from '../modules/auth/index.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
 

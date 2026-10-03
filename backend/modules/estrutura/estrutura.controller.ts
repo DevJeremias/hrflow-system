@@ -5,8 +5,8 @@ import * as service from './estrutura.service.ts';
 import { ErroDeEstrutura } from './estrutura.erros.ts';
 import type { TipoDeErro } from './estrutura.erros.ts';
 import type { DadosDoCargo, DadosDoDepartamento, IdDaRota } from './estrutura.schemas.ts';
-import { responderErro } from '../../utils/erros.js';
-import { enviarPagina } from '../../utils/paginacao.js';
+import { responderErro } from '../../shared/utils/erros.js';
+import { enviarPagina } from '../../shared/utils/paginacao.js';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
 

@@ -10,9 +10,9 @@ import banco from './support/bancoDeTeste.js';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
 import express from 'express';
 import bcrypt from 'bcrypt';
-import db from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
-import tratarErros from '../middlewares/tratarErros.js';
+import db from '../shared/db/pool.js';
+import authMiddleware from '../shared/middlewares/authMiddleware.js';
+import tratarErros from '../shared/middlewares/tratarErros.js';
 import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 
 describe('funcionários', { skip: banco.skip }, () => {

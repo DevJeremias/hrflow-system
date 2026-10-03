@@ -5,7 +5,7 @@ import * as repositorio from './estrutura.repository.ts';
 import type { CargoListado, DepartamentoListado } from './estrutura.repository.ts';
 import { ErroDeEstrutura } from './estrutura.erros.ts';
 import type { DadosDoCargo, DadosDoDepartamento } from './estrutura.schemas.ts';
-import { limiteEDeslocamento } from '../../utils/paginacao.js';
+import { limiteEDeslocamento } from '../../shared/utils/paginacao.js';
 
 export interface Pagina<T> {
     registros: T[];

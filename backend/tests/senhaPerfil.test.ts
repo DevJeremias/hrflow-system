@@ -11,8 +11,8 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import banco from './support/bancoDeTeste.js';
 import { criarUsuario, cabecalhosDaSessao } from './support/sessao.js';
-import pool from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
+import pool from '../shared/db/pool.js';
+import authMiddleware from '../shared/middlewares/authMiddleware.js';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 
 describe('troca de senha do perfil (B-08)', { skip: banco.skip }, () => {

@@ -13,9 +13,9 @@ import banco from './support/bancoDeTeste.js';
 import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
 import { dataUrl } from './support/imagens.js';
 
-import db from '../config/db.js';
-import authMiddleware from '../middlewares/authMiddleware.js';
-import tratarErros from '../middlewares/tratarErros.js';
+import db from '../shared/db/pool.js';
+import authMiddleware from '../shared/middlewares/authMiddleware.js';
+import tratarErros from '../shared/middlewares/tratarErros.js';
 import { authRoutes } from '../modules/auth/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 

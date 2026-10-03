@@ -4,9 +4,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const estrutura = require('../modules/estrutura/estrutura.schemas.ts');
 const { atualizarMeusDados, alterarSenha } = require('../modules/perfil/perfil.schemas.ts');
-const { paginacao } = require('../schemas/paginacao');
+const { paginacao } = require('../shared/schemas/paginacao');
 const { TAMANHO_MAXIMO_BYTES } = require('../modules/funcionarios/index.ts');
-const { traduzirErro } = require('../utils/erros');
+const { traduzirErro } = require('../shared/utils/erros');
 const { dataUrl } = require('./support/imagens');
 
 const mensagens = (resultado) => resultado.error.issues.map((issue) => issue.message);

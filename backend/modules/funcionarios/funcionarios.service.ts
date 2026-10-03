@@ -6,8 +6,8 @@ import * as repositorio from './funcionarios.repository.ts';
 import type { FuncionarioListado, RepositorioDeFuncionarios } from './funcionarios.repository.ts';
 import { ErroDeFuncionario } from './funcionarios.erros.ts';
 import type { CorpoDaEdicao, CorpoDoCadastro, Paginacao } from './funcionarios.schemas.ts';
-import { EMAIL_DUPLICADO } from '../../utils/erros.js';
-import { limiteEDeslocamento } from '../../utils/paginacao.js';
+import { EMAIL_DUPLICADO } from '../../shared/utils/erros.js';
+import { limiteEDeslocamento } from '../../shared/utils/paginacao.js';
 
 const VOLTAS_DO_HASH = 10;
 

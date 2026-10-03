@@ -9,8 +9,8 @@ import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import banco from './support/bancoDeTeste.js';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.js';
-import pool from '../config/db.js';
-import { carregarFixtures } from '../seeds/fixtures.js';
+import pool from '../shared/db/pool.js';
+import { carregarFixtures } from '../shared/db/fixtures.js';
 import { authRoutes } from '../modules/auth/index.ts';
 import { pararServidor, subirServidor } from './support/servidor.ts';
 

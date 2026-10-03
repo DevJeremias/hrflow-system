@@ -1,4 +1,4 @@
-import { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../schemas/comum.js';
+import { z, opcional, texto, textoLivre, email, senhaNova, inteiroPositivo, dinheiro, data, padrao, telefone, enumerado, corpoEstrito, hoje } from '../../shared/schemas/comum.js';
 import { LIMITES } from '../auth/auth.schemas.ts';
 
 const STATUS = ['Ativo', 'Inativo', 'Férias'] as const;

@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as service from './dashboard.service.ts';
-import { responderErro } from '../../utils/erros.js';
+import { responderErro } from '../../shared/utils/erros.js';
 
 export const resumo = async (req: Request, res: Response) => {
     try {

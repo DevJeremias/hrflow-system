@@ -3,7 +3,7 @@
 // As regras de texto, e-mail e senha são as de modules/auth/auth.schemas.ts, para que cadastro,
 // login e as demais rotas recusem a mesma entrada com a mesma mensagem.
 const { z } = require('zod');
-const { validarTexto, validarEmail, validarSenhaDeRegistro } = require('../modules/auth/auth.schemas.ts');
+const { validarTexto, validarEmail, validarSenhaDeRegistro } = require('../../modules/auth/auth.schemas.ts');
 
 const ID_MAXIMO = 2147483647; // INT do MySQL
 const VALOR_MAXIMO = '99999999.99'; // DECIMAL(10, 2)

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-const modulo = path.join(import.meta.dirname, '../config/jwtSecret.js');
+const modulo = path.join(import.meta.dirname, '../shared/config/jwtSecret.js');
 
 const carregar = (secret: string | undefined) => {
     const env = { ...process.env };

@@ -1,4 +1,4 @@
-import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } from '../../schemas/comum.js';
+import { opcional, texto, email, telefone, senhaNova, corpo, campo, ausente } from '../../shared/schemas/comum.js';
 import { LIMITES } from '../auth/auth.schemas.ts';
 import { validarAvatar } from '../funcionarios/index.ts';
 

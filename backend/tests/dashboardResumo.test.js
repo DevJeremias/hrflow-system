@@ -7,9 +7,9 @@ const express = require('express');
 const banco = require('./support/bancoDeTeste');
 const { criarUsuario, cabecalhosDaSessao } = require('./support/sessao');
 
-const db = require('../config/db');
-const authMiddleware = require('../middlewares/authMiddleware');
-const { carregarFixtures } = require('../seeds/fixtures');
+const db = require('../shared/db/pool');
+const authMiddleware = require('../shared/middlewares/authMiddleware');
+const { carregarFixtures } = require('../shared/db/fixtures');
 const { dashboardRoutes } = require('../modules/dashboard/index.ts');
 const { relogio, limitesDoDia, diaLocal } = require('../modules/ponto/index.ts');
 

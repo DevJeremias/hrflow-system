@@ -1,9 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const compression = require('compression');
-const db = require('./config/db');
-const { interpretarTrustProxy } = require('./utils/trustProxy');
-const tratarErros = require('./middlewares/tratarErros');
+const db = require('./shared/db/pool');
+const { interpretarTrustProxy } = require('./shared/config/trustProxy');
+const tratarErros = require('./shared/middlewares/tratarErros');
 
 // Importação das Rotas
 const saudeRoutes = require('./routes/saudeRoutes');
@@ -16,7 +16,7 @@ const { estruturaRoutes } = require('./modules/estrutura/index.ts');
 const { folhaRoutes } = require('./modules/folha/index.ts');
 
 // Importação do Middleware de Proteção
-const authMiddleware = require('./middlewares/authMiddleware');
+const authMiddleware = require('./shared/middlewares/authMiddleware');
 
 const app = express();
 
