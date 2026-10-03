@@ -46,7 +46,7 @@ modules/ponto/
 ├── ponto.repository.ts   # todo o SQL; não conhece HTTP nem regra
 ├── ponto.schemas.ts      # schemas zod da entrada (params, body, query) e os tipos que eles entregam
 ├── ponto.erros.ts        # falhas de regra do módulo (ErroDePonto)
-├── ponto.regras.ts       # regras puras, sem banco (sequência das marcações, coordenadas)
+├── ponto.regras.ts       # regras puras, sem banco (sequência das marcações, coordenadas, apuração do dia e do mês)
 └── ponto.fuso.ts         # utilitário de data e hora do módulo
 ```
 

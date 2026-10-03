@@ -115,16 +115,16 @@ test('Administrador sem vínculo de funcionário consulta os pontos de hoje do c
 test('RH consulta o histórico do colaborador pedido, não o próprio', { skip: semBanco }, async () => {
     const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, ctx.tokenRH);
     assert.equal(status, 200);
-    assert.deepEqual(corpo.map((d: any) => d.date), [DIA]);
-    assert.notEqual(corpo[0].entry, '--:--');
-    assert.notEqual(corpo[0].exit, '--:--');
-    assert.equal(corpo[0].lunchOut, '--:--');
+    const marcados = corpo.filter((d: any) => d.entry !== '--:--');
+    assert.deepEqual(marcados.map((d: any) => d.date), [DIA]);
+    assert.notEqual(marcados[0].exit, '--:--');
+    assert.equal(marcados[0].lunchOut, '--:--');
 });
 
 test('Administrador sem vínculo consulta o histórico do colaborador', { skip: semBanco }, async () => {
     const { status, corpo } = await get(`/historico/${ctx.alvo}?mes=${MES}`, ctx.tokenAdmin);
     assert.equal(status, 200);
-    assert.deepEqual(corpo.map((d: any) => d.date), [DIA]);
+    assert.deepEqual(corpo.filter((d: any) => d.entry !== '--:--').map((d: any) => d.date), [DIA]);
 });
 
 test('o filtro por empresa continua valendo para perfis privilegiados', { skip: semBanco }, async () => {
@@ -133,8 +133,7 @@ test('o filtro por empresa continua valendo para perfis privilegiados', { skip: 
     const historico = await get(`/historico/${ctx.deOutraEmpresa}?mes=${MES}`, usuario);
     assert.equal(hoje.status, 200);
     assert.deepEqual(hoje.corpo, []);
-    assert.equal(historico.status, 200);
-    assert.deepEqual(historico.corpo, []);
+    assert.equal(historico.status, 404);
 });
 
 test('Colaborador continua restrito ao próprio vínculo', { skip: semBanco }, async () => {

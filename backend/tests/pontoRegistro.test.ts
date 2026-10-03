@@ -22,6 +22,8 @@ let contador = 0;
 
 // 01:30 UTC de 11/03 é 22:30 de 10/03 em Belém: toISOString diria 11/03.
 const NOITE_10 = Date.parse('2026-03-11T01:30:00Z');
+// O histórico traz todos os dias do mês; estes testes olham só os que têm marcação.
+const comMarcacao = (dias: any[]) => dias.filter((d) => d.entry !== '--:--');
 const hora = (iso: string) => { relogio.agora = () => Date.parse(iso); };
 
 const novaEmpresa = async (nome: string) => (await db.query<ResultSetHeader>('INSERT INTO empresas (nome) VALUES (?)', [nome]))[0].insertId;
@@ -244,7 +246,7 @@ test('data e hora da resposta e da leitura são de Belém, perto da meia-noite U
     assert.deepEqual(hoje.corpo.map(({ date, time }: any) => [date, time]), [['2026-03-10', '22:30:00']]);
 
     const historico = await chamar('GET', `/historico/${usuario.funcionario_id}?mes=2026-03`, usuario);
-    assert.deepEqual(historico.corpo.map((d: any) => [d.date, d.entry]), [['2026-03-10', '22:30']]);
+    assert.deepEqual(comMarcacao(historico.corpo).map((d: any) => [d.date, d.entry]), [['2026-03-10', '22:30']]);
 });
 
 test('a virada do dia em Belém (03:00 UTC) abre uma jornada nova e "hoje" não mistura os dias', { skip: semBanco }, async () => {
@@ -263,8 +265,8 @@ test('a virada do dia em Belém (03:00 UTC) abre uma jornada nova e "hoje" não 
     assert.deepEqual(hoje.corpo.map((p: any) => p.type), ['Entrada']);
 
     const historico = await chamar('GET', `/historico/${usuario.funcionario_id}?mes=2026-03`, usuario);
-    assert.deepEqual(historico.corpo.map((d: any) => d.date), ['2026-03-10', '2026-03-11']);
-    assert.equal(historico.corpo[0].exit, '23:59');
+    assert.deepEqual(comMarcacao(historico.corpo).map((d: any) => d.date), ['2026-03-10', '2026-03-11']);
+    assert.equal(historico.corpo.find((d: any) => d.date === '2026-03-10').exit, '23:59');
 });
 
 test('o histórico do mês respeita as bordas do mês de Belém', { skip: semBanco }, async () => {
@@ -276,8 +278,8 @@ test('o histórico do mês respeita as bordas do mês de Belém', { skip: semBan
 
     const marco = await chamar('GET', `/historico/${usuario.funcionario_id}?mes=2026-03`, usuario);
     const abril = await chamar('GET', `/historico/${usuario.funcionario_id}?mes=2026-04`, usuario);
-    assert.deepEqual(marco.corpo.map((d: any) => [d.date, d.entry, d.exit]), [['2026-03-31', '23:59', '--:--']]);
-    assert.deepEqual(abril.corpo.map((d: any) => [d.date, d.entry, d.exit]), [['2026-04-01', '00:00', '--:--']]);
+    assert.deepEqual(comMarcacao(marco.corpo).map((d: any) => [d.date, d.entry, d.exit]), [['2026-03-31', '23:59', '--:--']]);
+    assert.deepEqual(comMarcacao(abril.corpo).map((d: any) => [d.date, d.entry, d.exit]), [['2026-04-01', '00:00', '--:--']]);
 });
 
 test('mês ausente ou malformado no histórico é 400', { skip: semBanco }, async () => {

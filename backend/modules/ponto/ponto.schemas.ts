@@ -1,11 +1,12 @@
-import { z, data, corpo, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../shared/schemas/comum.ts';
+import { z, data, corpo, enumerado, inteiroPositivo, opcional, campo, ausente, textoLivre } from '../../shared/schemas/comum.ts';
 import { paginacao } from '../../shared/schemas/paginacao.ts';
 import * as fuso from './ponto.fuso.ts';
 
 export const LIMITE_JUSTIFICATIVA = 1000;
 export const LIMITE_BUSCA = 100;
+export const LIMITE_RESPOSTA = 500;
 
-const hojeEmBelem = (): string => fuso.diaLocal(Math.floor(Date.now() / 1000));
+const hojeEmBelem = (): string => fuso.diaLocal(Math.floor(fuso.relogio.agora() / 1000));
 
 // Justificativa em branco não vale: o front mostraria "enviado" sem que o RH recebesse nada.
 const textoDaJustificativa = campo((valor: unknown) => {
@@ -28,6 +29,13 @@ export const enviarJustificativa = corpo({ texto: textoDaJustificativa });
 export const consultarJustificativas = z.object({
     mes,
     funcionarioId: opcional(inteiroPositivo('Colaborador')),
+    status: opcional(enumerado('O status', ['pendente', 'aprovada', 'recusada'])),
+});
+export const idDaJustificativa = z.object({ id: inteiroPositivo('Justificativa') });
+// A recusa sem motivo é recusada pelo serviço (ponto.regras.ts), que conhece a decisão inteira.
+export const decidirJustificativa = corpo({
+    status: enumerado('A decisão', ['aprovada', 'recusada']),
+    resposta: opcional(textoLivre('A resposta', LIMITE_RESPOSTA)),
 });
 // O mês é obrigatório: sem ele a consulta varreria todo o histórico da empresa.
 export const consultarPontosDaEmpresa = z.object({
@@ -50,6 +58,16 @@ export interface CorpoDaJustificativa {
 export interface ConsultaDeJustificativas {
     mes: string;
     funcionarioId: number | null;
+    status: 'pendente' | 'aprovada' | 'recusada' | null;
+}
+
+export interface IdDaJustificativa {
+    id: number;
+}
+
+export interface DecisaoRecebida {
+    status: 'aprovada' | 'recusada';
+    resposta: string | null;
 }
 
 export interface ConsultaDePontosDaEmpresa {

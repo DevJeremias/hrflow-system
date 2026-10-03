@@ -72,7 +72,7 @@ hrflow-system/
 * [x] **Fase 1:** Autenticação e Perfis de Acesso.
 * [x] **Fase 2:** Gestão de Colaboradores e Estrutura Organizacional.
 * [x] **Fase 3:** Motor Financeiro e Folha de Pagamento Automatizada.
-* [ ] **Fase 4:** Relógio de Ponto Eletrônico (parcial: registro de entradas e saídas, justificativas e histórico já existem; falta o banco de horas).
+* [ ] **Fase 4:** Relógio de Ponto Eletrônico (parcial: registro de entradas e saídas, apuração diária e mensal contra a jornada do colaborador, e justificativas aprovadas ou recusadas pelo RH já existem; faltam banco de horas, feriados e fechamento do mês). A jornada (`carga_horaria_semanal`, `hora_entrada`, `hora_saida`, `tolerancia_min`) fica em `funcionarios`, com padrão de 40 horas, 08:00 às 17:00 e tolerância de 10 minutos; ainda não há tela para editá-la.
 * [ ] **Fase 5:** Geração de relatórios em formato PDF e Dashboard Analítico.
 
 ---
