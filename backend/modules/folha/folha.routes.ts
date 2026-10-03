@@ -1,13 +1,13 @@
 import express from 'express';
 import * as folhaController from './folha.controller.ts';
-import verificarPerfil from '../../shared/middlewares/roleMiddleware.ts';
+import { exigirPermissao } from '../../shared/middlewares/roleMiddleware.ts';
 import validarEntrada from '../../shared/middlewares/validarEntrada.ts';
 import { competenciaDaRota, consultarHolerite } from './folha.schemas.ts';
 
 export const folhaRoutes = express.Router();
 
 // Folha da empresa: apenas Administrador e RH.
-const gestao = verificarPerfil(['Administrador', 'RH']);
+const gestao = exigirPermissao('folha:processar');
 const daCompetencia = validarEntrada({ params: competenciaDaRota });
 
 folhaRoutes.get('/competencias/:competencia', gestao, daCompetencia, folhaController.consultarFolha);

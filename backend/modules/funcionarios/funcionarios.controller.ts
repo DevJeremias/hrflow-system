@@ -57,7 +57,7 @@ export const criarFuncionario = async (req: Request, res: Response) => {
 export const atualizarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        await service.atualizarFuncionario(empresaDe(req), id, entradaDe<CorpoDaEdicao>(req, 'body'));
+        await service.atualizarFuncionario(empresaDe(req), id, atorDe(req), entradaDe<CorpoDaEdicao>(req, 'body'));
         res.json({ mensagem: 'Funcionário atualizado com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao modificar o funcionário.');
@@ -67,7 +67,7 @@ export const atualizarFuncionario = async (req: Request, res: Response) => {
 export const deletarFuncionario = async (req: Request, res: Response) => {
     try {
         const { id } = entradaDe<IdDaRota>(req, 'params');
-        await service.deletarFuncionario(empresaDe(req), id);
+        await service.deletarFuncionario(empresaDe(req), id, atorDe(req));
         res.json({ mensagem: 'Funcionário removido com sucesso!' });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao remover o funcionário.');

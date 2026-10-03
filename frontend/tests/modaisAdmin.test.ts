@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { dom } from './support/jsdom.ts';
 import { createElement, act, type ComponentType } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createServer, type ViteDevServer } from 'vite';
 
 const EMAIL_DUPLICADO = 'Este e-mail já está registado no sistema.';
@@ -15,10 +17,13 @@ const DEPARTAMENTOS = [
   { id: 2, nome: 'RH', sigla: 'RH' },
 ];
 
+const SESSAO_DO_ADMIN = { id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: null, avatar: null };
+
 type Chamada = { metodo: string; caminho: string; corpo?: Record<string, unknown> };
 type Resposta = { status: number; corpo?: unknown };
 
 let server: ViteDevServer;
+let AuthProvider: ComponentType<{ children: unknown }>;
 let Employees: ComponentType;
 let OrgStructure: ComponentType;
 const originalFetch = globalThis.fetch;
@@ -36,6 +41,9 @@ const json = (status: number, corpo: unknown, cabecalhos: Record<string, string>
 
 before(async () => {
   server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true }, appType: 'custom' });
+  // A tela de colaboradores decide os botões pelo perfil de quem está logado: o Administrador alcança todos os cadastros.
+  document.cookie = 'hrflow_csrf=token-ficticio; Path=/';
+  ({ AuthProvider } = await server.ssrLoadModule('/src/contexts/AuthContext.tsx'));
   ({ default: Employees } = await server.ssrLoadModule('/src/pages/Admin/Employees.tsx'));
   ({ default: OrgStructure } = await server.ssrLoadModule('/src/pages/Admin/OrgStructure.tsx'));
   dom.window.confirm = (mensagem?: string) => { confirmacoes.push(String(mensagem)); return respostaDaConfirmacao; };
@@ -43,6 +51,7 @@ before(async () => {
     const caminho = String(entrada).replace(/^\/api/, '');
     const metodo = (init?.method ?? 'GET').toUpperCase();
     chamadas.push({ metodo, caminho, corpo: init?.body ? JSON.parse(String(init.body)) : undefined });
+    if (caminho === '/auth/sessao') return json(200, SESSAO_DO_ADMIN);
     if (metodo !== 'GET') {
       const { status, corpo } = await respostaDaGravacao();
       return json(status, corpo);
@@ -55,6 +64,8 @@ before(async () => {
 });
 
 after(async () => {
+  // O AuthProvider mantém um canal entre abas aberto: desmontar libera o processo para terminar.
+  for (const { root, host } of montados) { await act(async () => root.unmount()); host.remove(); }
   globalThis.fetch = originalFetch;
   await server.close();
   dom.window.close();
@@ -77,7 +88,10 @@ const montar = async (Tela: ComponentType) => {
   document.body.append(host);
   const root = createRoot(host);
   montados.push({ host, root });
-  await act(async () => { root.render(createElement(Tela)); });
+  await act(async () => {
+    root.render(createElement(QueryClientProvider, { client: new QueryClient() },
+      createElement(MemoryRouter, null, createElement(AuthProvider, null, createElement(Tela)))));
+  });
   await esperar();
   return host;
 };
