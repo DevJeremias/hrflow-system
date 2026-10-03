@@ -11,10 +11,10 @@ export default function CommandCenter() {
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="text-center max-w-3xl mx-auto mb-24">
           <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter mb-8">
-            O Centro de Comando do seu Capital Humano
+            Um só lugar para a rotina de RH
           </h2>
           <p className="text-xl text-slate-600 font-medium">
-            Uma visão holística que conecta recrutamento, folha, benefícios e performance em uma única linha do tempo inteligente.
+            Estrutura da empresa, colaboradores, ponto e folha de pagamento na mesma aplicação, com um portal para cada colaborador.
           </p>
         </div>
 
@@ -30,18 +30,18 @@ export default function CommandCenter() {
                 <Layers size={32} />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-slate-900">Multicamadas</h4>
-                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Tecnologia de Ponta</p>
+                <h4 className="text-2xl font-black text-slate-900">Do RH ao colaborador</h4>
+                <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">Dois lados, um sistema</p>
               </div>
             </div>
             <p className="text-xl text-slate-600 font-medium leading-relaxed mb-8">
-              Nossa interface foi construída para que você nunca se sinta perdido. Navegue entre o macro e o micro com a fluidez de um toque.
+              O RH cadastra, aprova e processa a folha. O colaborador registra o ponto, consulta os holerites e envia solicitações, cada um na sua área.
             </p>
             
             <div className="flex flex-wrap gap-4">
-              <span className="px-4 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm font-black text-orange-600">IA Preditiva</span>
-              <span className="px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-sm font-black text-purple-600">Cloud Sync</span>
-              <span className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-sm font-black text-emerald-600">LGPD Compliance</span>
+              <span className="px-4 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm font-black text-orange-600">Folha</span>
+              <span className="px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-sm font-black text-purple-600">Ponto</span>
+              <span className="px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-sm font-black text-emerald-600">Portal do colaborador</span>
             </div>
           </div>
 
