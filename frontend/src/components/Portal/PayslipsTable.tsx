@@ -1,21 +1,22 @@
 import React from 'react';
-import { FileText, Eye, Calendar } from 'lucide-react';
+import { FileText, Eye, Calendar, Download } from 'lucide-react';
 import { Payslip } from '../../services/payrollService';
 import { rotuloDaCompetencia } from '../../utils/competencia';
-import Button from '../ui/Button';
+import Button, { IconButton } from '../ui/Button';
 import Card, { CardHeader } from '../ui/Card';
 import DataTable, { type Column } from '../ui/DataTable';
 
 interface Props {
   payslips: Payslip[];
   onOpenPayslip: (payslip: Payslip) => void;
+  onDownloadPdf: (payslip: Payslip) => void;
 }
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
 interface Linha { payroll: Payslip; monthLabel: string; }
 
-const PayslipsTable: React.FC<Props> = ({ payslips, onOpenPayslip }) => {
+const PayslipsTable: React.FC<Props> = ({ payslips, onOpenPayslip, onDownloadPdf }) => {
   const linhas: Linha[] = payslips.map((payroll) => ({ payroll, monthLabel: rotuloDaCompetencia(payroll.competencia) }));
 
   const columns: Column<Linha>[] = [
@@ -38,9 +39,14 @@ const PayslipsTable: React.FC<Props> = ({ payslips, onOpenPayslip }) => {
       align: 'right',
       semRotuloNoCartao: true,
       cell: ({ payroll, monthLabel }) => (
-        <Button size="sm" aria-label={`Visualizar holerite de ${monthLabel}`} onClick={() => onOpenPayslip(payroll)} icon={<Eye size={14} aria-hidden="true" />}>
-          Visualizar
-        </Button>
+        <span className="flex flex-wrap items-center gap-2 md:justify-end">
+          <Button size="sm" aria-label={`Visualizar holerite de ${monthLabel}`} onClick={() => onOpenPayslip(payroll)} icon={<Eye size={14} aria-hidden="true" />}>
+            Visualizar
+          </Button>
+          <IconButton label={`Baixar PDF do holerite de ${monthLabel}`} variant="secondary" size="sm" onClick={() => onDownloadPdf(payroll)}>
+            <Download size={16} aria-hidden="true" />
+          </IconButton>
+        </span>
       ),
     },
   ];

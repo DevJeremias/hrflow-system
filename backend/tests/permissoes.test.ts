@@ -30,7 +30,8 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             headers: { 'Content-Type': 'application/json', ...cabecalhosDaSessao(token) },
             body: corpo === undefined ? undefined : JSON.stringify(corpo),
         });
-        const texto = await resposta.text();
+        // O PDF da folha é binário: só a resposta em JSON tem corpo para ler.
+        const texto = (resposta.headers.get('content-type') ?? '').includes('json') ? await resposta.text() : await resposta.arrayBuffer().then(() => '');
         return { status: resposta.status, corpo: texto ? JSON.parse(texto) : null, resposta };
     };
 
@@ -133,6 +134,9 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             // Processar vem antes: consultar uma competência ainda não processada responde 404.
             { rotulo: 'processar a folha da competência', metodo: 'POST', caminho: () => '/api/folha/competencias/2026-10/processar', permitido: GESTAO },
             { rotulo: 'consultar a folha da competência', metodo: 'GET', caminho: () => '/api/folha/competencias/2026-10', permitido: GESTAO },
+            { rotulo: 'lançar eventos de um colaborador na folha', metodo: 'PUT', caminho: () => `/api/folha/competencias/2026-10/lancamentos/${ids.Caio}`, corpo: () => ({ adiantamento: 100 }), permitido: GESTAO },
+            { rotulo: 'baixar os holerites da competência em PDF', metodo: 'GET', caminho: () => '/api/folha/competencias/2026-10/holerites.pdf', permitido: GESTAO },
+            { rotulo: 'baixar o holerite de um colaborador em PDF', metodo: 'GET', caminho: () => `/api/folha/competencias/2026-10/holerites/${ids.Caio}.pdf`, permitido: GESTAO },
             { rotulo: 'ler pontos da empresa', metodo: 'GET', caminho: () => '/api/ponto?mes=2026-03', permitido: GESTAO },
             { rotulo: 'ler justificativas', metodo: 'GET', caminho: () => '/api/ponto/justificativas?mes=2026-03', permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },

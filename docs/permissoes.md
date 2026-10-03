@@ -30,7 +30,9 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `GET /api/funcionarios/:id/dependentes` | 200 | 200 | 403 |
 | `PATCH /api/funcionarios/:id` (só os campos enviados), `DELETE /api/funcionarios/:id`, `POST`, `PUT` e `DELETE` em `/api/funcionarios/:id/dependentes`, `PATCH /api/funcionarios/:id/status`, `POST /api/funcionarios/:id/redefinir-senha` | 200 em qualquer cadastro (status e senha, menos no próprio) | 200 em cadastro de Colaborador; 403 no próprio, no de RH e no de Administrador | 403 |
 | `GET /api/folha/competencias/:competencia`, `POST .../processar`, `POST .../fechar` | 200 | 200 | 403 |
-| `GET /api/folha/meu-holerite`, `GET /api/folha/meus-holerites` | 200 se tem cadastro | 200 se tem cadastro | 200 |
+| `PUT /api/folha/competencias/:competencia/lancamentos/:funcionarioId` (adiantamento, VT, VR, plano de saúde) | 200 | 200 | 403 |
+| `GET /api/folha/competencias/:competencia/holerites.pdf` (lote), `GET .../holerites/:funcionarioId.pdf` | 200 | 200 | 403 |
+| `GET /api/folha/meu-holerite`, `GET /api/folha/meu-holerite.pdf`, `GET /api/folha/meus-holerites` | 200 se tem cadastro | 200 se tem cadastro | 200 |
 | `GET /api/ponto`, `GET /api/ponto/justificativas` | 200 | 200 | 403 |
 | `POST /api/ponto/registrar`, `PUT /api/ponto/justificativa/:data` | 200 se tem cadastro | 200 se tem cadastro | 200 |
 | `GET /api/ponto/hoje\|historico\|totais/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
