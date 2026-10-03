@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Perfil, rotaInicial } from './utils/sessao';
+import { Perfil, rotaInicial, temAreaPessoal } from './utils/sessao';
 import { solicitacoesAtivas } from './utils/recursos';
 import ErrorAlert from './components/ErrorAlert';
 
@@ -14,6 +14,7 @@ import Dashboard from './pages/Admin/Dashboard';
 import Employees from './pages/Admin/Employees';
 import DepartmentsRoles from './pages/Admin/OrgStructure';
 import Payroll from './pages/Admin/Payroll';
+import Users from './pages/Admin/Users';
 import TimeTracking from './pages/Admin/TimeTracking'; // IMPORTAÇÃO DA NOVA PÁGINA
 
 import EmployeeHome from './pages/Portal/EmployeeDashboard'; 
@@ -21,7 +22,9 @@ import Payslips from './pages/Portal/Payslips';
 import Requests from './pages/Portal/Requests';
 import Profile from './pages/Portal/Profile';
 
-const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: readonly Perfil[] }) => {
+// `allowedRoles` restringe por perfil; `personalArea` deixa passar quem tem cadastro de funcionário (ponto e
+// holerite próprios) em qualquer perfil.
+const ProtectedRoute = ({ children, allowedRoles, personalArea }: { children: React.ReactNode, allowedRoles?: readonly Perfil[], personalArea?: boolean }) => {
   const { isAuthenticated, user, loading, sessionError, retrySession, logout } = useAuth();
 
   if (loading) return null;
@@ -46,6 +49,10 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to={rotaInicial(user.role)} replace />;
   }
 
+  if (personalArea && !temAreaPessoal(user)) {
+    return <Navigate to={rotaInicial(user.role)} replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -67,17 +74,18 @@ function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="colaboradores" element={<Employees />} />
-        <Route path="estrutura" element={<DepartmentsRoles />} />
+        <Route path="estrutura" element={<ProtectedRoute allowedRoles={['Administrador']}><DepartmentsRoles /></ProtectedRoute>} />
         <Route path="folha" element={<Payroll />} />
         <Route path="gestao-ponto" element={<TimeTracking />} /> {/* ROTA OFICIALIZADA */}
+        <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
         <Route path="perfil" element={<Profile />} />
       </Route>
 
-      {/* ÁREA DO COLABORADOR */}
+      {/* ÁREA PESSOAL: ponto e holerite de quem tem cadastro de funcionário, em qualquer perfil */}
       <Route 
         path="/meu-painel" 
         element={
-          <ProtectedRoute allowedRoles={['Colaborador']}>
+          <ProtectedRoute personalArea>
             <Layout /> 
           </ProtectedRoute>
         }

@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Lock } from 'lucide-react';
 import { Employee, EmployeeForm, employeeService } from '../../services/employeeService';
 import EmployeeModal from '../../components/Admin/EmployeeModal';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
+import { useAuth } from '../../contexts/AuthContext';
+import { podeGerirCadastro, motivoDeNegacaoDoCadastro } from '../../utils/permissoes';
 
 const PAGE_SIZE = 50;
 
 const Employees: React.FC = () => {
+  const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [page, setPage] = useState(1);
@@ -155,22 +158,29 @@ const Employees: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}
-                          className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors"
-                          title="Editar Colaborador"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(emp.id)}
-                          className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
-                          title="Excluir Colaborador"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                      {podeGerirCadastro(user, emp) ? (
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => { setEmployeeToEdit(emp); setIsModalOpen(true); }}
+                            className="p-2 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors"
+                            title="Editar Colaborador"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(emp.id)}
+                            className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                            title="Excluir Colaborador"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400" title={motivoDeNegacaoDoCadastro(user, emp)}>
+                          <Lock size={14} />
+                          <span>Só o Administrador</span>
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))

@@ -15,6 +15,8 @@ export interface Employee {
   status: string;
   dataAdmissao: string;
   avatar?: string;
+  // Perfil da conta de acesso (RH e Administrador não são alterados pelo RH); vazio sem conta.
+  perfilAcesso?: string;
   
   dataNascimento?: string;
   enderecoCompleto?: string;
@@ -50,6 +52,7 @@ const mapEmployee = (d: any): Employee => ({
   departamento: d.departamento_nome || d.departamento_id?.toString() || 'Não definido',
   departamentoId: d.departamento_id?.toString() || '',
   status: d.status || 'Ativo',
+  perfilAcesso: d.perfil_acesso || '',
   dataAdmissao: d.data_admissao ? d.data_admissao.split('T')[0] : '',
   dataNascimento: d.data_nascimento ? d.data_nascimento.split('T')[0] : '',
   enderecoCompleto: d.endereco || '',
