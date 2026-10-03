@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Building2, Briefcase, Clock, TrendingUp, ArrowRight, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Users, Building2, Briefcase, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardService, DashboardData } from '../../services/dashboardService';
 import StatCard from '../../components/Admin/DashboardStatCard';
@@ -58,20 +57,7 @@ const Dashboard: React.FC = () => {
         }
       </div>
 
-      {/* Seção Inferior */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Placeholder do Gráfico */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-xl p-8">
-          <h2 className="text-xl font-black text-slate-900 mb-8">Crescimento da Equipe</h2>
-          <div className="h-64 w-full bg-slate-50 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
-            {isLoading ? <Loader2 size={32} className="animate-spin text-primary" /> : <TrendingUp size={32} />}
-            <span className="mt-4 text-sm font-semibold">Os gráficos em tempo real serão conectados na próxima fase.</span>
-          </div>
-        </div>
-
-        {/* Componente de Atividades */}
-        <RecentActivities activities={data?.recentActivities} isLoading={isLoading} />
-      </div>
+      <RecentActivities activities={data?.recentActivities} isLoading={isLoading} />
     </div>
   );
 };

@@ -21,8 +21,6 @@ export interface Role {
   level: string;
   salary: number;
   occupants: number;
-  earnings?: any[];
-  deductions?: any[];
 }
 
 const API_URL = '/estrutura';
@@ -109,21 +107,4 @@ export const deleteRole = async (id: string): Promise<void> => {
     auth: true,
     errorMessage: (err) => err?.erro || 'Erro ao deletar cargo'
   });
-};
-
-// Mantemos este dicionário fixo para já. Na Fase 3 (Folha), 
-// se quisermos, podemos ligar isto a uma tabela real.
-export const getStandardItems = async (): Promise<any> => {
-  return {
-    earnings: [
-      { id: '1', name: 'Auxílio Home Office' },
-      { id: '2', name: 'Vale Alimentação' },
-      { id: '3', name: 'Bônus de Desempenho' }
-    ],
-    deductions: [
-      { id: '1', name: 'Plano de Saúde' },
-      { id: '2', name: 'Vale Transporte' },
-      { id: '3', name: 'Coparticipação' }
-    ]
-  };
 };

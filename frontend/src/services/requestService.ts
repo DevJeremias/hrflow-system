@@ -23,15 +23,18 @@ export interface EmployeeRequest {
   status: RequestStatus;
 }
 
+const naoImplementado = (): never => {
+  throw new Error('Solicitações ainda não estão disponíveis: a API correspondente não foi implementada.');
+};
+
 const getMyRequests = async (): Promise<EmployeeRequest[]> => {
   // Confirme se a URL abaixo bate com a rota de solicitações do seu backend
   return await httpClient('/solicitacoes/minhas', { auth: true, errorMessage: 'Erro ao buscar minhas solicitações' });
 };
 
 export const requestService = {
-  getAllRequests: async (): Promise<EmployeeRequest[]> => [],
-  createRequest: async (_data: Omit<EmployeeRequest, 'id' | 'requestDate' | 'status'>) => {},
+  getAllRequests: async (): Promise<EmployeeRequest[]> => naoImplementado(),
+  createRequest: async (_data: Omit<EmployeeRequest, 'id' | 'requestDate' | 'status'>): Promise<void> => naoImplementado(),
   getMyRequests,
-  // Adicione qualquer outra função que a tela pedir aqui dentro
 };
 
