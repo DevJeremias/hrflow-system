@@ -1,4 +1,4 @@
-import { after, before, test } from 'node:test';
+import { after, afterEach, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -79,6 +79,7 @@ const instalarApi = (perfil: 'Administrador' | 'Colaborador') => {
     switch (caminho) {
       case '/api/auth/sessao': return json({ id: 1, nome: 'Rita Teste', perfil, empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: perfil === 'Colaborador' ? 7 : null });
       case '/api/folha/meus-holerites': return json([{ ...holerite, competencia: '2026-09', empresa }]);
+      case '/api/notificacoes': return json({ naoLidas: 1, itens: [{ id: 1, tipo: 'justificativa', titulo: 'Justificativa aprovada', mensagem: 'Aprovada.', link: '/meu-painel', lida: false, criadaEm: '2026-10-02T15:00:00.000Z' }] });
       case '/api/empresa': return json({ nome: 'Empresa Ficticia Alfa', razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181', regime_tributario: null });
       case '/api/funcionarios': return json([{ id: 7, nome: 'Ana Souza', email: 'ana@exemplo.invalid', cargo_nome: 'Dev', departamento_nome: 'Eng', status: 'Ativo' }], { 'X-Total-Count': '1' });
       case '/api/estrutura/departamentos': return json([{ id: 1, nome: 'Eng', sigla: 'ENG', descricao: '', gestor: '' }]);
@@ -96,10 +97,22 @@ const Localizacao = () => {
   return createElement('output', { 'data-rota': pathname });
 };
 
+// Árvore que sobra de um teste que falhou fica viva (o sino confere as notificações de minuto em minuto) e o
+// processo do teste não termina: o afterEach desmonta o que o teste não chegou a fechar.
+const abertos: { host: HTMLElement; root: { unmount: () => void } }[] = [];
+
+afterEach(async () => {
+  for (const { host, root } of abertos.splice(0)) {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
 const abrirApp = async (modulos: Awaited<ReturnType<typeof abrirServidor>>, rota: string) => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
+  abertos.push({ host, root });
   const cliente = novoQueryClient();
   const arvore: ReactElement = createElement(QueryClientProvider, { client: cliente },
     createElement(MemoryRouter, { initialEntries: [rota] },
@@ -110,6 +123,7 @@ const abrirApp = async (modulos: Awaited<ReturnType<typeof abrirServidor>>, rota
 };
 
 const fechar = async ({ host, root }: { host: HTMLElement; root: { unmount: () => void } }) => {
+  abertos.splice(0, abertos.length, ...abertos.filter((aberto) => aberto.root !== root));
   await act(async () => root.unmount());
   host.remove();
 };
@@ -171,11 +185,14 @@ test('o serviço de solicitações falha de forma explícita em vez de fingir su
   await assert.rejects(() => requestService.getAllRequests(), /não estão disponíveis/);
 });
 
-test('o cabeçalho não tem busca nem sino decorativos', async () => {
+test('o cabeçalho não tem busca decorativa, e o sino é o das notificações de verdade', async () => {
   instalarApi('Administrador');
   const app = await abrirApp(desligada, '/admin');
   assert.ok(!app.host.querySelector('header input'), 'o cabeçalho não deve ter campo de busca');
-  assert.ok(!app.host.querySelector('header svg.lucide-bell'), 'o cabeçalho não deve ter sino');
+  const sinos = [...app.host.querySelectorAll('header button')].filter((b) => b.querySelector('svg.lucide-bell'));
+  assert.equal(sinos.length, 1, 'um único sino');
+  assert.equal(sinos[0].getAttribute('aria-label'), 'Notificações: 1 não lida', 'o sino carrega as notificações da API');
+  assert.ok(chamadas.some((c) => c === '/api/notificacoes'));
   assert.deepEqual(botoesMudos(app.host), []);
   await fechar(app);
 });
@@ -188,6 +205,7 @@ const telasAdmin: Array<{ rota: string; titulo: RegExp; abrir?: RegExp[] }> = [
   { rota: '/admin/folha', titulo: /Ana Souza/ },
   { rota: '/admin/empresa', titulo: /Razão social/ },
   { rota: '/admin/gestao-ponto', titulo: /Ponto/ },
+  { rota: '/admin/relatorios', titulo: /Headcount e turnover/ },
   { rota: '/admin/perfil', titulo: /Rita Teste/ },
 ];
 
@@ -241,7 +259,7 @@ test('o holerite do colaborador lista as folhas fechadas, cada uma com a sua com
 });
 
 test('nenhuma rota do app consulta endpoint inexistente', async () => {
-  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/perfil']],
+  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/relatorios', '/admin/perfil']],
     ['Colaborador', ['/meu-painel', '/meu-painel/holerites', '/meu-painel/solicitacoes', '/meu-painel/perfil']]] as const;
   for (const [perfil, lista] of rotas) {
     for (const rota of lista) {

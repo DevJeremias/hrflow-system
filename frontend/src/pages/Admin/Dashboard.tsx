@@ -5,7 +5,7 @@ import { useResumoDoDashboard } from '../../queries/dashboard';
 import StatCard from '../../components/ui/StatCard';
 import PageHeader from '../../components/ui/PageHeader';
 import Skeleton from '../../components/ui/Skeleton';
-import RecentActivities from '../../components/Admin/DashboardActivities';
+import DashboardAnalitico from '../../components/Admin/DashboardAnalitico';
 import ErrorAlert from '../../components/ErrorAlert';
 import { mensagemDeErro } from '../../utils/erros';
 import { ehAdministrador } from '../../utils/sessao';
@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      <RecentActivities isLoading={isLoading} />
+      <DashboardAnalitico />
     </div>
   );
 };

@@ -25,6 +25,14 @@ export const chaves = {
 
   empresa: ['empresa'] as const,
 
+  relatorios: ['relatorios'] as const,
+  headcount: (de: string, ate: string) => ['relatorios', 'headcount', de, ate] as const,
+  aniversariantes: (mes: string) => ['relatorios', 'aniversariantes', mes] as const,
+  custoPorDepartamento: (competencia: string) => ['relatorios', 'custo', competencia] as const,
+  absenteismo: (mes: string) => ['relatorios', 'absenteismo', mes] as const,
+
+  notificacoes: ['notificacoes'] as const,
+
   usuarios: ['usuarios'] as const,
   paginaDeUsuarios: (pagina: number, limite: number) => ['usuarios', 'pagina', pagina, limite] as const,
 

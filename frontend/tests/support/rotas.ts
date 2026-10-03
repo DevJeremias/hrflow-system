@@ -5,7 +5,7 @@ import type { ViteDevServer } from 'vite';
 
 const TELAS = [
   'layouts/Layout', 'pages/Landing/Home', 'pages/Auth/Login', 'pages/Auth/TrocarSenha', 'pages/Auth/EsqueciSenha', 'pages/Auth/RedefinirSenha', 'pages/Legal/Termos', 'pages/Legal/Privacidade',
-  'pages/Admin/Dashboard', 'pages/Admin/Employees', 'pages/Admin/OrgStructure', 'pages/Admin/Payroll', 'pages/Admin/Users', 'pages/Admin/Company', 'pages/Admin/TimeTracking',
+  'pages/Admin/Dashboard', 'pages/Admin/Employees', 'pages/Admin/OrgStructure', 'pages/Admin/Payroll', 'pages/Admin/Users', 'pages/Admin/Company', 'pages/Admin/TimeTracking', 'pages/Admin/Reports',
   'pages/Portal/EmployeeDashboard', 'pages/Portal/Payslips', 'pages/Portal/Requests', 'pages/Portal/Profile',
 ];
 

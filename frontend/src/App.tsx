@@ -27,6 +27,7 @@ const Payroll = lazy(() => import('./pages/Admin/Payroll'));
 const Users = lazy(() => import('./pages/Admin/Users'));
 const Company = lazy(() => import('./pages/Admin/Company'));
 const TimeTracking = lazy(() => import('./pages/Admin/TimeTracking'));
+const Reports = lazy(() => import('./pages/Admin/Reports'));
 const EmployeeHome = lazy(() => import('./pages/Portal/EmployeeDashboard'));
 const Payslips = lazy(() => import('./pages/Portal/Payslips'));
 const Requests = lazy(() => import('./pages/Portal/Requests'));
@@ -120,6 +121,7 @@ function App() {
             <Route path="folha" element={<Payroll />} />
             <Route path="empresa" element={<Company />} />
             <Route path="gestao-ponto" element={<TimeTracking />} />
+            <Route path="relatorios" element={<Reports />} />
             <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
             <Route path="perfil" element={<Profile />} />
             <Route path="*" element={<NotFound />} />

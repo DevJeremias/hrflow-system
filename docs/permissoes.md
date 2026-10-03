@@ -54,7 +54,7 @@ Decisões que a tabela esconde:
 
 | Item | Administrador | RH | Colaborador |
 | --- | --- | --- | --- |
-| Dashboard, Colaboradores, Folha de Pagamento, Empresa, Gestão de Ponto | sim | sim | não |
+| Dashboard, Colaboradores, Folha de Pagamento, Empresa, Gestão de Ponto, Relatórios | sim | sim | não |
 | Depto & Cargos, Usuários | sim | não | não |
 | Meu ponto, Meu holerite | se tem cadastro | se tem cadastro | sim |
 | Meu Perfil | sim | sim | sim |

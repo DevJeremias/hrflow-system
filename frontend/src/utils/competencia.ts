@@ -23,3 +23,17 @@ export const formatarMomento = (iso: string, fuso: string = FUSO_PADRAO): string
   }).formatToParts(new Date(iso)).map((parte) => [parte.type, parte.value]));
   return `${partes.day}/${partes.month}/${partes.year} às ${partes.hour}:${partes.minute}`;
 };
+
+// O mês 'AAAA-MM' de `n` meses antes de `mes` (n negativo avança).
+export const mesesAntes = (mes: string, n: number): string => {
+  const [ano, m] = mes.split('-').map(Number);
+  const indice = ano * 12 + (m - 1) - n;
+  return `${Math.floor(indice / 12)}-${String((indice % 12) + 1).padStart(2, '0')}`;
+};
+
+// 'AAAA-MM' como "mar/26", para o eixo de um gráfico.
+export const rotuloCurtoDoMes = (mes: string): string => {
+  const [ano, m] = mes.split('-').map(Number);
+  const nome = new Intl.DateTimeFormat('pt-BR', { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(ano, m - 1, 1))).replace('.', '');
+  return `${nome}/${String(ano).slice(2)}`;
+};

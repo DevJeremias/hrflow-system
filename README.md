@@ -39,6 +39,9 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 *   **Core RH (Colaboradores):** cadastro de funcionários com gestão segmentada de dados (Informações Pessoais, Contratuais e Financeiras) e ciclo de vida completo: Férias, inativação ou desligamento com data e motivo (sem perder o histórico de ponto), reativação, redefinição de senha pelo RH e exclusão apenas de cadastro sem movimento.
 *   **Folha de Pagamento por competência:** o RH escolhe o mês, processa a folha (INSS pela tabela vigente, em centavos, e encargos patronais estimados), confere as pendências e fecha o mês. Folha fechada não muda mais: alterar salário, cargo ou dados da empresa depois não reescreve os holerites já emitidos. PJ e estágio não pagam INSS nem geram encargo CLT; quem está de férias entra na folha; quem foi desligado continua na folha do mês do desligamento e sai a partir do seguinte; quem está sem salário aparece em "pendências".
 *   **Dados da empresa:** razão social, CNPJ e regime tributário, mantidos pelo Administrador na tela Empresa. Aparecem no cabeçalho do holerite, e a folha só fecha com razão social e CNPJ preenchidos.
+*   **Fuso por empresa:** o Administrador escolhe o fuso da empresa na tela Empresa (padrão Belém). O "dia" do ponto, o "hoje" das justificativas, o mês da folha e o relógio do portal seguem esse fuso, não o do servidor nem o do navegador: uma empresa em Manaus vira o dia uma hora depois da de Belém.
+*   **Dashboard e relatórios:** o painel mostra os colaboradores ativos dos últimos 12 meses, admitidos, desligados e turnover do mês, e os aniversariantes; a tela Relatórios (`/admin/relatorios`) traz headcount e turnover por período, custo da folha por departamento (a mesma folha, somada por setor), absenteísmo por departamento e aniversariantes, e exporta cada um em CSV (UTF-8 com BOM, pronto para o Excel brasileiro) e em PDF. Os mesmos relatórios saem em JSON em `GET /api/relatorios/{headcount,aniversariantes,custo-departamento,absenteismo}`.
+*   **Notificações:** o sino do cabeçalho avisa o colaborador do holerite disponível (ao fechar a folha) e da decisão de cada justificativa. Com o e-mail configurado (`EMAIL_TRANSPORT`, ver `backend/.env.example`), o mesmo aviso sai por e-mail em pt-BR.
 *   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem os seus holerites, um por mês fechado, com a empresa e o CNPJ da época.
 
 ## 📂 Estrutura de Diretórios
@@ -74,7 +77,7 @@ hrflow-system/
 * [x] **Fase 2:** Gestão de Colaboradores e Estrutura Organizacional.
 * [x] **Fase 3:** Motor Financeiro e Folha de Pagamento Automatizada.
 * [ ] **Fase 4:** Relógio de Ponto Eletrônico (parcial: registro de entradas e saídas, apuração diária e mensal contra a jornada do colaborador, e justificativas aprovadas ou recusadas pelo RH já existem; faltam banco de horas, feriados e fechamento do mês). A jornada (`carga_horaria_semanal`, `hora_entrada`, `hora_saida`, `tolerancia_min`) fica em `funcionarios`, com padrão de 40 horas, 08:00 às 17:00 e tolerância de 10 minutos; ainda não há tela para editá-la.
-* [ ] **Fase 5:** Geração de relatórios em formato PDF e Dashboard Analítico.
+* [x] **Fase 5:** Relatórios em CSV e PDF, Dashboard Analítico, notificações e fuso por empresa. Falta o aviso de férias e afastamentos, que depende do módulo de ausências.
 
 ---
 
