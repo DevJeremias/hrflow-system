@@ -10,10 +10,9 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import type http from 'node:http';
 import bcrypt from 'bcrypt';
-import express from 'express';
 import mysql from 'mysql2/promise';
 import type { Connection, Pool, RowDataPacket } from 'mysql2/promise';
-import { pararServidor, subirServidor } from './support/servidor.ts';
+import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
 
 const host = process.env.HRFLOW_TEST_DB_HOST;
 const port = process.env.HRFLOW_TEST_DB_PORT ? Number(process.env.HRFLOW_TEST_DB_PORT) : undefined;
@@ -27,13 +26,6 @@ const SCHEMA = [
         funcionario_id INT NULL, sessao_versao INT NOT NULL DEFAULT 0)`,
 ];
 
-// Limites folgados, para que cada teste aperte só o que quer exercitar.
-const FOLGADOS = {
-    loginPorIp: { windowMs: 60_000, limit: 1000 },
-    loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
-    registroPorIp: { windowMs: 60_000, limit: 1000 },
-    registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
-};
 
 describe('autenticação e cadastro contra abuso', { skip }, () => {
     const dbName = `hrflow_test_${process.pid}`;
@@ -41,15 +33,11 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     const senhaFicticia = 'senha-ficticia-1';
     let admin: Connection | undefined;
     let pool: Pool;
-    let criarAuthRouter: typeof import('../modules/auth/index.ts').criarAuthRouter;
+    let criarApp: typeof import('../app.ts').criarApp;
     const servidores: http.Server[] = [];
 
-    // Monta o mesmo desenho do app.ts: auth antes do parser global de 10mb.
     const subir = async (limites = {}, trustProxy: boolean | number = false) => {
-        const app = express();
-        app.set('trust proxy', trustProxy);
-        app.use('/api/auth', criarAuthRouter({ ...FOLGADOS, ...limites }));
-        app.use(express.json({ limit: '10mb' }));
+        const app = criarApp({ limitesAuth: { ...LIMITES_AUTH_FOLGADOS, ...limites }, trustProxy: String(trustProxy) });
         const { server, baseUrl } = await subirServidor(app);
         servidores.push(server);
         return (caminho: string, corpo: unknown, cabecalhos: Record<string, string> = {}) => fetch(`${baseUrl}/api/auth${caminho}`, {
@@ -95,7 +83,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
         process.env.JWT_SECRET = jwtSecret;
         // Só depois das variáveis de ambiente acima: o pool e o segredo JWT as leem ao carregar.
         pool = (await import('../shared/db/pool.ts')).default;
-        ({ criarAuthRouter } = await import('../modules/auth/index.ts'));
+        ({ criarApp } = await import('../app.ts'));
     });
 
     after(async () => {

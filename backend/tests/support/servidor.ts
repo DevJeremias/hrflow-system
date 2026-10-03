@@ -11,3 +11,11 @@ export const subirServidor = async (app: Express): Promise<{ server: http.Server
 
 export const pararServidor = (server: http.Server): Promise<void> =>
     new Promise((resolve) => server.close(() => resolve()));
+
+// Limites de tentativas do login e do cadastro folgados: cada teste aperta só o que quer exercitar.
+export const LIMITES_AUTH_FOLGADOS = {
+    loginPorIp: { windowMs: 60_000, limit: 1000 },
+    loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
+    registroPorIp: { windowMs: 60_000, limit: 1000 },
+    registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
+};

@@ -12,9 +12,9 @@ import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
 import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { criarAuthRouter } from '../modules/auth/index.ts';
+import { criarApp } from '../app.ts';
 import { cookieSeguro, tokenCsrf, COOKIE_SESSAO, COOKIE_CSRF } from '../modules/auth/auth.sessao.ts';
-import { pararServidor, subirServidor } from './support/servidor.ts';
+import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
 
 const SENHA = 'senha-ficticia-1';
 
@@ -70,20 +70,19 @@ describe('sessão em cookie HttpOnly e proteção CSRF', { skip: banco.skip }, (
         });
         email = usuario.email;
 
+        // As rotas de teste vêm antes do app real: servem para contar quantas requisições passaram do authMiddleware.
         const app = express();
         app.set('trust proxy', 1);
-        app.use('/api/auth', criarAuthRouter({
-            loginPorIp: { windowMs: 60_000, limit: 1000 },
-            loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
-            registroPorIp: { windowMs: 60_000, limit: 1000 },
-            registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
-        }));
         for (const metodo of ['get', 'post', 'put', 'patch', 'delete'] as const) {
             app[metodo]('/api/protegida', authMiddleware, (req, res) => {
                 chamadasProtegidas += 1;
                 res.json({ id: req.usuario?.id });
             });
         }
+        app.use(criarApp({
+            trustProxy: '1',
+            limitesAuth: LIMITES_AUTH_FOLGADOS,
+        }));
         ({ server, baseUrl } = await subirServidor(app));
     });
 

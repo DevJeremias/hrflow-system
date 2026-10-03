@@ -5,17 +5,13 @@
 import { before, after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type http from 'node:http';
-import express from 'express';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
 import pool from '../shared/db/pool.ts';
-import authMiddleware from '../shared/middlewares/authMiddleware.ts';
-import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
-import { perfilRoutes } from '../modules/perfil/index.ts';
-import { criarAuthRouter } from '../modules/auth/index.ts';
-import { pararServidor, subirServidor } from './support/servidor.ts';
+import { criarApp } from '../app.ts';
+import { LIMITES_AUTH_FOLGADOS, pararServidor, subirServidor } from './support/servidor.ts';
 
 // O que os testes leem das claims do token que o login emitiu.
 interface Claims extends jwt.JwtPayload {
@@ -69,16 +65,7 @@ describe('sessão revogável (SEC-06)', { skip: banco.skip }, () => {
     before(async () => {
         await banco.preparar();
 
-        const app = express();
-        app.use(express.json());
-        app.use('/api/auth', criarAuthRouter({
-            loginPorIp: { windowMs: 60_000, limit: 1000 },
-            loginPorIdentidade: { windowMs: 60_000, limit: 1000 },
-            registroPorIp: { windowMs: 60_000, limit: 1000 },
-            registroPorIdentidade: { windowMs: 60_000, limit: 1000 },
-        }));
-        app.use('/api/funcionarios', authMiddleware, funcionariosRoutes);
-        app.use('/api/perfil', authMiddleware, perfilRoutes);
+        const app = criarApp({ limitesAuth: LIMITES_AUTH_FOLGADOS });
         ({ server, baseUrl } = await subirServidor(app));
 
         const registro = await chamar('POST', '/api/auth/registrar', null, {
