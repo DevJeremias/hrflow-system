@@ -6,6 +6,7 @@ import { ErroDePerfil } from './perfil.erros.ts';
 import type { TipoDeErro } from './perfil.erros.ts';
 import type { CorpoDeAlterarSenha, CorpoDeAtualizarMeusDados } from './perfil.schemas.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
+import { TIPO_DA_MINIATURA } from './perfil.miniatura.ts';
 
 const STATUS_POR_TIPO: Record<TipoDeErro, number> = { invalido: 400, inexistente: 404 };
 
@@ -35,6 +36,19 @@ export const obterMeuPerfil = async (req: Request, res: Response) => {
         res.json(await service.obterMeuPerfil(id, empresa_id));
     } catch (erro) {
         responderFalha(res, erro, 'Erro interno ao buscar perfil.');
+    }
+};
+
+// A URL leva ?v= (muda a cada upload), então a resposta pode ser reaproveitada; o no-cache obriga a
+// revalidar com If-None-Match, e o ETag que o Express calcula devolve 304 quando nada mudou.
+export const obterMeuAvatar = async (req: Request, res: Response) => {
+    try {
+        const { id, empresa_id } = usuarioDe(req);
+        const miniatura = await service.obterMeuAvatar(id, empresa_id);
+        res.set({ 'Content-Type': TIPO_DA_MINIATURA, 'Cache-Control': 'private, no-cache' });
+        res.send(miniatura);
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro interno ao buscar o avatar.');
     }
 };
 

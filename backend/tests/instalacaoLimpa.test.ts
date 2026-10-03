@@ -10,7 +10,7 @@ import express from 'express';
 import type { RowDataPacket } from 'mysql2/promise';
 import * as banco from './support/bancoDeTeste.ts';
 import { cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
-import { dataUrl } from './support/imagens.ts';
+import { imagemReal } from './support/imagens.ts';
 import pool from '../shared/db/pool.ts';
 import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import { authRoutes } from '../modules/auth/index.ts';
@@ -139,12 +139,15 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
         assert.equal(perfil.status, 200);
         assert.equal(perfil.corpo.cargo, 'Analista de Operações');
 
-        const avatar = dataUrl('png', 2048);
+        const avatar = await imagemReal('png');
         assert.equal((await chamar('PUT', '/api/perfil/meus-dados', estado.colaborador, {
             nome: 'Colaborador Ficticio', email: 'colaborador@limpa.exemplo.invalid', telefone: '(00) 11111-1111', avatar,
         })).status, 200);
         const depois = await chamar('GET', '/api/perfil/meus-dados', estado.colaborador);
-        assert.equal(depois.corpo.avatar, avatar);
+        assert.match(depois.corpo.avatar, /^\/api\/perfil\/avatar\?v=\d+$/);
+        const miniatura = await fetch(`${baseUrl}${depois.corpo.avatar}`, { headers: cabecalhosDaSessao(estado.colaborador) });
+        assert.equal(miniatura.status, 200);
+        assert.equal(miniatura.headers.get('content-type'), 'image/webp');
         assert.equal(depois.corpo.telefone, '(00) 11111-1111');
 
         assert.equal(depois.corpo.banco, 'Banco Ficticio');

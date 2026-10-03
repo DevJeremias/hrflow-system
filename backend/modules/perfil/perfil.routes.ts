@@ -12,6 +12,7 @@ export const perfilRoutes = express.Router();
 perfilRoutes.use(verificarPerfil(['Administrador', 'RH', 'Colaborador']));
 
 perfilRoutes.get('/meus-dados', perfilController.obterMeuPerfil);
+perfilRoutes.get('/avatar', perfilController.obterMeuAvatar);
 perfilRoutes.put('/meus-dados', validarEntrada({ body: atualizarMeusDados }), perfilController.atualizarMeusDados);
 perfilRoutes.put('/alterar-senha',
     validarEntrada({ body: alterarSenha }), limitadores.alterarSenhaPorUsuario,

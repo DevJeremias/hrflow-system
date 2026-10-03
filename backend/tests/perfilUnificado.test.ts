@@ -11,7 +11,7 @@ import bcrypt from 'bcrypt';
 import express from 'express';
 import * as banco from './support/bancoDeTeste.ts';
 import { criarUsuario, cabecalhosDaSessao, tokenDaResposta } from './support/sessao.ts';
-import { dataUrl } from './support/imagens.ts';
+import { imagemReal } from './support/imagens.ts';
 
 import db from '../shared/db/pool.ts';
 import authMiddleware from '../shared/middlewares/authMiddleware.ts';
@@ -119,17 +119,18 @@ test('o administrador, que não tem funcionário, recebe a mesma forma de respos
     }
 });
 
-test('o avatar gravado volta no perfil e na sessão, para o administrador e para o colaborador', { skip: semBanco }, async () => {
+test('o avatar gravado volta como URL da miniatura no perfil e na sessão, para o administrador e para o colaborador', { skip: semBanco }, async () => {
     for (const quem of [ctx.admin, ctx.colaborador]) {
-        const avatar = dataUrl('png', 1024);
+        const avatar = await imagemReal('png');
         const { usuario } = quem;
         const salvo = await chamar('PUT', '/perfil/meus-dados', quem.token, {
             nome: usuario.nome, email: usuario.email, telefone: '', avatar,
         });
         assert.equal(salvo.status, 200, usuario.perfil);
 
-        assert.equal((await chamar('GET', '/perfil/meus-dados', quem.token)).corpo.avatar, avatar, usuario.perfil);
-        assert.equal((await chamar('GET', '/auth/sessao', quem.token)).corpo.avatar, avatar, usuario.perfil);
+        const url = (await chamar('GET', '/perfil/meus-dados', quem.token)).corpo.avatar;
+        assert.match(url, /^\/api\/perfil\/avatar\?v=\d+$/, usuario.perfil);
+        assert.equal((await chamar('GET', '/auth/sessao', quem.token)).corpo.avatar, url, usuario.perfil);
     }
 });
 

@@ -2,6 +2,7 @@
 // de negócio.
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import db from '../../shared/db/pool.ts';
+import { urlDoAvatarSql } from '../../shared/utils/avatar.ts';
 import type { UsuarioDoToken } from './auth.sessao.ts';
 
 export interface Usuario extends RowDataPacket, UsuarioDoToken {
@@ -21,6 +22,7 @@ export interface IdentidadeDaSessao extends RowDataPacket {
     empresa_id: number;
     empresa_nome: string;
     funcionario_id: number | null;
+    // Endereço da miniatura (GET /api/perfil/avatar), nunca a imagem.
     avatar: string | null;
     nome: string;
     senha_provisoria: number;
@@ -59,7 +61,11 @@ export const criarEmpresaComAdministrador = async ({ nomeEmpresa, nomeAdmin, ema
 };
 
 export const usuarioPorEmail = async (email: string): Promise<Usuario | undefined> => {
-    const [usuarios] = await db.query<Usuario[]>('SELECT * FROM usuarios WHERE email = ?', [email]);
+    const [usuarios] = await db.query<Usuario[]>(
+        // Colunas explícitas: o login não precisa do avatar, que pesa megabytes.
+        'SELECT id, nome, senha, perfil, empresa_id, funcionario_id, sessao_versao, senha_provisoria FROM usuarios WHERE email = ?',
+        [email]
+    );
     return usuarios[0];
 };
 
@@ -73,7 +79,7 @@ export const funcionarioDoUsuario = async (funcionarioId: number, empresaId: num
 
 export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDaSessao | undefined> => {
     const [linhas] = await db.query<IdentidadeDaSessao[]>(
-        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, u.avatar, u.senha_provisoria,
+        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, ${urlDoAvatarSql('u')} AS avatar, u.senha_provisoria,
                 COALESCE(f.nome, u.nome) AS nome
          FROM usuarios u
          JOIN empresas e ON e.id = u.empresa_id
