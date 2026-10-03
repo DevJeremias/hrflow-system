@@ -33,9 +33,9 @@ export const sessaoDaApi = async (baseURL: string, email: string, senha = SENHA)
 // pessoa de volta ao login, com a senha nova.
 export const trocarSenhaProvisoria = async (page: Page, email: string, senhaProvisoria: string, senhaNova: string) => {
   await entrar(page, email, senhaProvisoria, /\/trocar-senha$/);
-  await page.getByLabel('SENHA PROVISÓRIA').fill(senhaProvisoria);
-  await page.getByLabel('NOVA SENHA', { exact: true }).fill(senhaNova);
-  await page.getByLabel('CONFIRMAR NOVA SENHA').fill(senhaNova);
-  await page.getByRole('button', { name: 'DEFINIR SENHA' }).click();
+  await page.getByLabel('Senha provisória').fill(senhaProvisoria);
+  await page.getByLabel(/^Nova senha/).fill(senhaNova);
+  await page.getByLabel('Confirmar nova senha').fill(senhaNova);
+  await page.getByRole('button', { name: 'Definir senha' }).click();
   await expect(page).toHaveURL(/\/login$/);
 };
