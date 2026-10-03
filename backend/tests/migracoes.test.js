@@ -3,7 +3,7 @@
 // Banco e variáveis em tests/support/bancoDeTeste.js; sem HRFLOW_TEST_DB_HOST o teste é pulado.
 const { before, after, describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const banco = require('./support/bancoDeTeste');
 const migrator = require('../db/migrator');
 const { carregarFixtures } = require('../seeds/fixtures');

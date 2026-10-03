@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { emitirToken, iniciarSessao, encerrarSessao } = require('../utils/sessao');
 
 // Cria a Empresa e o Usuário Admin ao mesmo tempo. A entrada já chegou validada pela rota.

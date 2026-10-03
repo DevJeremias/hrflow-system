@@ -4,7 +4,7 @@
 // O perfil tem uma única API (/api/perfil): a mesma resposta para Administrador, RH e Colaborador.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const express = require('express');
 const banco = require('./support/bancoDeTeste');
 const { criarUsuario, cabecalhosDaSessao, tokenDaResposta } = require('./support/sessao');

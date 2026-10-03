@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { responderErro } = require('../utils/erros');
 
 // Sem funcionário vinculado não há cargo nem departamento reais: o Administrador de conta

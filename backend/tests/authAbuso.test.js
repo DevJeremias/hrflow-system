@@ -232,7 +232,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
     describe('login de contas legadas', () => {
         it('aceita e-mail fora do formato do cadastro e senha curta', async () => {
             const chamar = await subir();
-            const hash = await require('bcryptjs').hash('abc', 4);
+            const hash = await require('bcrypt').hash('abc', 4);
             await pool.query(
                 'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
                 ['Legado Ficticio', 'legado@localhost', hash, 'Colaborador', 1]
@@ -243,7 +243,7 @@ describe('autenticação e cadastro contra abuso', { skip }, () => {
 
         it('recusa o hash armazenado quando submetido como senha', async () => {
             const chamar = await subir();
-            const senhaHash = await require('bcryptjs').hash('abc', 4);
+            const senhaHash = await require('bcrypt').hash('abc', 4);
             await pool.query(
                 'INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)',
                 ['Hash Sintetico', 'hash@localhost', senhaHash, 'Colaborador', 1]

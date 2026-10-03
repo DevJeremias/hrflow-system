@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { cargoDaEmpresa, departamentoDaEmpresa } = require('../utils/referenciasEmpresa');
 const { responderErro } = require('../utils/erros');
 const { limiteEDeslocamento, enviarPagina } = require('../utils/paginacao');
