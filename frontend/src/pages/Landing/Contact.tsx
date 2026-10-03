@@ -60,10 +60,10 @@ export default function Contact() {
             
             <div className="text-left text-white">
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-indigo-100 text-xs font-black tracking-widest uppercase mb-6">
-                <Sparkles size={14} /> Junte-se a +2.000 empresas
+                <Sparkles size={14} /> Cadastro da empresa
               </div>
               <h2 className="text-4xl md:text-5xl font-black leading-tight mb-8">
-                Pronto para transformar sua gestão?
+                Crie a conta da sua empresa.
               </h2>
               
               <div className="space-y-6">
@@ -71,13 +71,13 @@ export default function Contact() {
                   <div className="bg-white/10 p-3 rounded-2xl text-white">
                     <Zap size={24} />
                   </div>
-                  <p className="font-bold text-lg opacity-90 text-indigo-50">Automação total de holerites e impostos.</p>
+                  <p className="font-bold text-lg opacity-90 text-indigo-50">Folha em lote com desconto de INSS e holerite por colaborador.</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="bg-white/10 p-3 rounded-2xl text-white">
                     <ShieldCheck size={24} />
                   </div>
-                  <p className="font-bold text-lg opacity-90 text-indigo-50">Segurança de dados padrão bancário.</p>
+                  <p className="font-bold text-lg opacity-90 text-indigo-50">Acesso separado por perfil e sessão protegida.</p>
                 </div>
               </div>
             </div>
@@ -151,6 +151,10 @@ export default function Contact() {
                       <>Criar Minha Conta <SendHorizontal size={18} /></>
                     )}
                   </button>
+
+                  <p className="text-center text-xs font-medium text-slate-400">
+                    Ao criar a conta você declara ter lido os <Link to="/termos" className="text-indigo-600 hover:underline">Termos de Uso</Link> e a <Link to="/privacidade" className="text-indigo-600 hover:underline">Política de Privacidade</Link>.
+                  </p>
 
                   <p className="text-center text-sm font-bold text-slate-400">
                     Já possui conta? <Link to="/login" className="text-indigo-600 hover:underline">Faça login aqui</Link>

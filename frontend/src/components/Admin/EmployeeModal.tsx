@@ -115,8 +115,8 @@ const EmployeeModal: React.FC<Props> = ({ isOpen, onClose, onSave, employeeToEdi
       if (cargoSelecionado) {
         const sugestoes: EmployeeForm = {
           departamentoId: cargoSelecionado.departmentId,
-          nivel: cargoSelecionado.level,
-          salarioBase: cargoSelecionado.salary > 0 ? cargoSelecionado.salary.toString() : ''
+          nivel: cargoSelecionado.level ?? '',
+          salarioBase: cargoSelecionado.salary?.toString() ?? ''
         };
         for (const [field, suggested] of Object.entries(sugestoes)) {
           if (updatedData[field] && !filledByRole.current.has(field)) continue;

@@ -4,16 +4,16 @@ import { CheckCircle2, TrendingUp, Clock } from 'lucide-react';
 export default function Benefits() {
   const benefits = [
     {
-      title: "Redução de 70% no operacional",
-      desc: "Libere sua equipe de tarefas repetitivas e foque no desenvolvimento de talentos reais.",
+      title: "Menos planilhas soltas",
+      desc: "Colaboradores, cargos, ponto e folha ficam no mesmo cadastro, em vez de espalhados em arquivos diferentes.",
       icon: <Clock size={32} />,
       color: "text-orange-500 group-hover:text-white",
       bg: "bg-orange-50 group-hover:bg-orange-500",
       border: "border-orange-200 group-hover:border-orange-500"
     },
     {
-      title: "Decisões baseadas em dados",
-      desc: "Transforme números brutos em dashboards estratégicos que guiam o futuro da empresa.",
+      title: "Visão geral para o RH",
+      desc: "Um painel mostra quantos colaboradores, departamentos e cargos existem e quais solicitações aguardam aprovação.",
       icon: <TrendingUp size={32} />,
       color: "text-green-600 group-hover:text-white",
       bg: "bg-green-50 group-hover:bg-green-600",
@@ -48,14 +48,14 @@ export default function Benefits() {
               </span>
             </h2>
             <p className="text-xl text-slate-600 font-medium leading-relaxed">
-              Desenhamos uma experiência onde a complexidade é invisível. Tudo o que você vê é clareza, velocidade e precisão.
+              Uma interface direta para as rotinas de RH do dia a dia, sem módulos que você não vai usar.
             </p>
             
             <div className="space-y-4 pt-4">
               {[
-                "Integração bancária nativa para pagamentos",
-                "Self-service para colaboradores (Portal do Funcionário)",
-                "Histórico completo de evolução salarial e cargos"
+                "Cadastro com dados pessoais, contratuais e bancários",
+                "Registro de ponto pelo próprio colaborador",
+                "Portal do colaborador com holerites e solicitações"
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-4 text-lg font-bold text-slate-700">
                   <CheckCircle2 className="text-purple-600" size={24} />

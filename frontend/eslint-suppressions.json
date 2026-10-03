@@ -68,11 +68,6 @@
       "count": 1
     }
   },
-  "src/services/dashboardService.ts": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/services/departmentsRolesService.ts": {
     "@typescript-eslint/no-explicit-any": {
       "count": 11

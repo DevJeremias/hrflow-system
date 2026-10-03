@@ -6,6 +6,7 @@ import {
   getDepartments, 
   getRoles, 
   deleteRole,
+  deleteDepartment,
   Department, 
   Role 
 } from '../../services/departmentsRolesService';
@@ -56,7 +57,7 @@ const DepartmentsRoles: React.FC = () => {
 
   const filteredRoles = roleFilter === 'Todos' 
     ? roles 
-    : roles.filter(r => r.deptSigla === roleFilter);
+    : roles.filter(r => r.departmentId === roleFilter);
 
   const handleOpenModal = (type: 'department' | 'role', item: any = null) => {
     setModalConfig({ isOpen: true, type, item });
@@ -72,6 +73,17 @@ const DepartmentsRoles: React.FC = () => {
 
     await loadData();
     setModalConfig({ ...modalConfig, isOpen: false });
+  };
+
+  const handleDeleteDepartment = async (dept: Department) => {
+    if (window.confirm(`Tem a certeza que deseja excluir o departamento "${dept.name}"?`)) {
+      try {
+        await deleteDepartment(dept.id);
+        await loadData();
+      } catch (error) {
+        alert(mensagemDeErro(error, "Erro ao excluir departamento."));
+      }
+    }
   };
 
   const handleDeleteRole = async (role: Role) => {
@@ -136,6 +148,7 @@ const DepartmentsRoles: React.FC = () => {
                 key={dept.id} 
                 department={dept} 
                 onEdit={() => handleOpenModal('department', dept)} 
+                onDelete={() => handleDeleteDepartment(dept)}
               />
             ))}
           </div>
@@ -152,10 +165,10 @@ const DepartmentsRoles: React.FC = () => {
               {departments.map(dept => (
                 <button 
                   key={dept.id}
-                  onClick={() => setRoleFilter(dept.sigla)}
-                  className={`px-5 py-2 rounded-full text-xs font-black border transition-all ${roleFilter === dept.sigla ? 'bg-primary border-primary text-white shadow-lg shadow-indigo-100' : 'bg-white border-slate-200 text-slate-500 hover:border-primary'}`}
+                  onClick={() => setRoleFilter(dept.id)}
+                  className={`px-5 py-2 rounded-full text-xs font-black border transition-all ${roleFilter === dept.id ? 'bg-primary border-primary text-white shadow-lg shadow-indigo-100' : 'bg-white border-slate-200 text-slate-500 hover:border-primary'}`}
                 >
-                  {dept.sigla} ({roles.filter(r => r.deptSigla === dept.sigla).length})
+                  {dept.sigla} ({roles.filter(r => r.departmentId === dept.id).length})
                 </button>
               ))}
             </div>

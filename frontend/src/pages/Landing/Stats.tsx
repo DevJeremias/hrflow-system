@@ -2,9 +2,9 @@ import React from 'react';
 
 export default function Stats() {
   const stats = [
-    { value: "R$ 2B+", label: "Em folhas processadas", desc: "Precisão matemática impecável" },
-    { value: "10.000+", label: "Colaboradores geridos", desc: "Em mais de 500 empresas" },
-    { value: "14h", label: "Economizadas por mês", desc: "Tempo devolvido ao RH" },
+    { value: "Folha", label: "Processada em lote", desc: "Desconto de INSS calculado pelo servidor" },
+    { value: "Ponto", label: "Registrado pelo colaborador", desc: "Entrada, almoço e saída, com consulta pelo RH" },
+    { value: "3 perfis", label: "Com acesso separado", desc: "Administrador, RH e Colaborador" },
   ];
 
   return (
