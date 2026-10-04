@@ -16,6 +16,7 @@ import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, 
 import { diferencas } from '../../shared/utils/auditar.ts';
 import type { Autoria } from '../../shared/utils/auditar.ts';
 import { EMAIL_DUPLICADO, traduzirErro } from '../../shared/utils/erros.ts';
+import { hojeDaEmpresa } from '../ausencias/index.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 import logger from '../../shared/observabilidade/logger.ts';
 import { registrarNoSentry } from '../../shared/observabilidade/sentry.ts';
@@ -82,9 +83,10 @@ export interface PaginaDeFuncionarios {
 export const listarFuncionarios = async (empresaId: number, { busca, status, departamento_id, ...paginacao }: ConsultaDeFuncionarios): Promise<PaginaDeFuncionarios> => {
     const [limite, deslocamento] = limiteEDeslocamento(paginacao);
     const filtros = { busca, status, departamento_id };
-    const linhas = await repositorio.listarDaEmpresa(empresaId, filtros, limite, deslocamento);
+    const hoje = await hojeDaEmpresa(empresaId);
+    const linhas = await repositorio.listarDaEmpresa(empresaId, filtros, hoje, limite, deslocamento);
     const funcionarios = linhas.map((linha) => ({ ...linha, tem_movimento: Boolean(linha.tem_movimento), anonimizado: Boolean(linha.anonimizado) }));
-    const total = await repositorio.contarDaEmpresa(empresaId, filtros);
+    const total = await repositorio.contarDaEmpresa(empresaId, filtros, hoje);
     return { funcionarios, total };
 };
 
@@ -405,7 +407,7 @@ export const redefinirSenha = async (empresaId: number, id: number, ator: Ator, 
 };
 
 // Só o cadastro sem movimento pode ser apagado (o engano de digitação, por exemplo). Quem já
-// marcou ponto ou justificou um dia é inativado: a exclusão levaria o histórico junto. Ninguém
+// marcou ponto, justificou um dia ou pediu férias ou afastamento é inativado: a exclusão levaria o histórico junto. Ninguém
 // exclui o próprio cadastro: a conta cairia junto.
 export const deletarFuncionario = async (empresaId: number, id: number, ator: Ator, autoria: Autoria): Promise<void> => {
     await repositorio.emTransacao(async (repo) => {
@@ -413,7 +415,7 @@ export const deletarFuncionario = async (empresaId: number, id: number, ator: At
         if (ator.funcionarioId === id) throw new ErroDeFuncionario('proibido', 'Você não pode excluir o seu próprio cadastro.');
 
         if (await repo.temMovimento(id)) {
-            throw new ErroDeFuncionario('conflito', 'Este colaborador tem registros de ponto e não pode ser excluído. Inative-o para preservar o histórico.');
+            throw new ErroDeFuncionario('conflito', 'Este colaborador tem registros de ponto, justificativas ou solicitações e não pode ser excluído. Inative-o para preservar o histórico.');
         }
 
         const atual = (await repo.cadastroAtual(id, empresaId))!;

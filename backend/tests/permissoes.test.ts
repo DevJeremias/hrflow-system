@@ -94,6 +94,14 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             await criarUsuario(db, { empresaId: empresa, perfil: 'Colaborador', funcionarioId });
             return `/api/funcionarios/${funcionarioId}`;
         };
+        // Um pedido em análise de um colaborador sem acesso: quem decide nunca é o próprio autor.
+        const solicitacaoAlheia = async () => {
+            const autor = await funcionario(`Autor ${++sequencia}`, emailNovo());
+            return inserir(
+                "INSERT INTO ausencias (empresa_id, funcionario_id, tipo, data_inicio, data_fim, observacao) VALUES (?, ?, 'Outros', '2026-10-05', '2026-10-05', 'Abono.')",
+                [empresa, autor]
+            );
+        };
         const estruturaNova = async (tabela: 'departamentos' | 'cargos') => {
             const nome = `Alvo ${++sequencia}`;
             const id = tabela === 'departamentos'
@@ -153,6 +161,8 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'baixar o holerite de um colaborador em PDF', metodo: 'GET', caminho: () => `/api/folha/competencias/2026-10/holerites/${ids.Caio}.pdf`, permitido: GESTAO },
             { rotulo: 'ler pontos da empresa', metodo: 'GET', caminho: () => '/api/ponto?mes=2026-03', permitido: GESTAO },
             { rotulo: 'ler justificativas', metodo: 'GET', caminho: () => '/api/ponto/justificativas?mes=2026-03', permitido: GESTAO },
+            { rotulo: 'ler a fila de férias e afastamentos', metodo: 'GET', caminho: () => '/api/ausencias', permitido: GESTAO },
+            { rotulo: 'decidir uma solicitação de férias ou afastamento', metodo: 'PATCH', caminho: async () => `/api/ausencias/${await solicitacaoAlheia()}/decisao`, corpo: () => ({ status: 'Aprovada' }), permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },
             { rotulo: 'relatório de headcount', metodo: 'GET', caminho: () => '/api/relatorios/headcount?de=2026-01&ate=2026-03', permitido: GESTAO },
             { rotulo: 'relatório de aniversariantes', metodo: 'GET', caminho: () => '/api/relatorios/aniversariantes', permitido: GESTAO },
@@ -214,6 +224,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             assert.deepEqual(PERMISSOES['solicitacoes:decidir'], GESTAO);
             assert.deepEqual(PERMISSOES['folha:processar'], GESTAO);
             assert.deepEqual(PERMISSOES['ponto:consultar-empresa'], GESTAO);
+            assert.deepEqual(PERMISSOES['ausencias:gerir'], GESTAO);
             assert.deepEqual(PERMISSOES['dashboard:consultar'], GESTAO);
             assert.deepEqual(PERMISSOES['relatorios:consultar'], GESTAO);
         });

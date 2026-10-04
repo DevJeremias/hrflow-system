@@ -2,7 +2,6 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { Perfil, ROTA_TROCA_DE_SENHA, destinoDoLogin, rotaInicial, temAreaPessoal } from './utils/sessao';
-import { solicitacoesAtivas } from './utils/recursos';
 import ErrorAlert from './components/ErrorAlert';
 import Spinner from './components/ui/Spinner';
 import Button from './components/ui/Button';
@@ -30,6 +29,7 @@ const Approvals = lazy(() => import('./pages/Admin/Approvals'));
 const Audit = lazy(() => import('./pages/Admin/Audit'));
 const TimeTracking = lazy(() => import('./pages/Admin/TimeTracking'));
 const Reports = lazy(() => import('./pages/Admin/Reports'));
+const AdminRequests = lazy(() => import('./pages/Admin/Requests'));
 const EmployeeHome = lazy(() => import('./pages/Portal/EmployeeDashboard'));
 const Payslips = lazy(() => import('./pages/Portal/Payslips'));
 const Requests = lazy(() => import('./pages/Portal/Requests'));
@@ -126,6 +126,7 @@ function App() {
             <Route path="empresa" element={<Company />} />
             <Route path="gestao-ponto" element={<TimeTracking />} />
             <Route path="relatorios" element={<Reports />} />
+            <Route path="solicitacoes" element={<AdminRequests />} />
             <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
             <Route path="perfil" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
@@ -142,7 +143,7 @@ function App() {
           >
             <Route index element={<EmployeeHome />} />
             <Route path="holerites" element={<Payslips />} />
-            <Route path="solicitacoes" element={solicitacoesAtivas() ? <Requests /> : <Navigate to="/meu-painel" replace />} />
+            <Route path="solicitacoes" element={<Requests />} />
             <Route path="perfil" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Route>

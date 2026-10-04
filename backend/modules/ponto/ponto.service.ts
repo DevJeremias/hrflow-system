@@ -178,6 +178,9 @@ export const apurarDiasDoMes = (
     registro: JornadaParaApurar,
     pontos: readonly Pick<repositorio.RegistroDoColaborador, 'tipo_registro' | 'instante'>[],
     justificativas: readonly Pick<repositorio.JustificativaDoDia, 'dia' | 'status'>[],
+    // Férias e afastamentos aprovados (modules/ausencias): os dias úteis deles são abonados como uma
+    // justificativa aprovada, não são falta.
+    ausencias: readonly { inicio: string; fim: string }[] = [],
 ) => {
     const cargaSemanalHoras = Number(registro.carga_semanal);
     const jornada: JornadaDoMes = {
@@ -194,13 +197,14 @@ export const apurarDiasDoMes = (
         const dia = fuso.diaLocal(p.instante);
         marcacoesDoDia.set(dia, [...(marcacoesDoDia.get(dia) ?? []), { tipo: p.tipo_registro, minuto: minutoDoDia(fuso, p.instante) }]);
     }
-    const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j.status]));
+    const justificativaDoDia = new Map(justificativas.map((j) => [j.dia, j]));
+    const emAusencia = (data: string): boolean => !regras.ehFimDeSemana(data) && ausencias.some((a) => a.inicio <= data && data <= a.fim);
 
     const dias = regras.apurarMes(
         diasDoMes(mes).map((data) => ({
             data,
             marcacoes: marcacoesDoDia.get(data) ?? [],
-            justificativa: justificativaDoDia.get(data) ?? null,
+            justificativa: justificativaDoDia.get(data)?.status ?? (emAusencia(data) ? 'aprovada' : null),
         })),
         jornada,
         { hoje: fuso.diaLocal(agoraEmSegundos()), admissao: registro.admissao }
@@ -217,14 +221,15 @@ const apurarOMes = async ({ empresaId, funcionarioId, mes }: ConsultaDoColaborad
     const { inicio, fim } = fuso.limitesDoMes(mes);
     const { de, ate } = datasDoMes(mes);
 
-    const [registro, pontos, justificativas] = await Promise.all([
+    const [registro, pontos, justificativas, ausencias] = await Promise.all([
         repositorio.jornadaDoColaborador(funcionarioId, empresaId),
         repositorio.registrosDoPeriodo(funcionarioId, empresaId, inicio, fim),
         repositorio.justificativasDoColaborador(funcionarioId, empresaId, de, ate),
+        repositorio.ausenciasAprovadasDoColaborador(funcionarioId, empresaId, de, ate),
     ]);
     if (!registro) throw new ErroDePonto('inexistente', 'Colaborador não encontrado nesta empresa.');
 
-    return { ...apurarDiasDoMes(fuso, mes, registro, pontos, justificativas), justificativaDoDia: new Map(justificativas.map((j) => [j.dia, j])) };
+    return { ...apurarDiasDoMes(fuso, mes, registro, pontos, justificativas, ausencias), justificativaDoDia: new Map(justificativas.map((j) => [j.dia, j])) };
 };
 
 export interface ColaboradorApurado {
@@ -242,10 +247,11 @@ export const apurarMesDaEmpresa = async ({ empresaId, mes }: { empresaId: number
     const { inicio, fim } = fuso.limitesDoMes(mes);
     const { de, ate } = datasDoMes(mes);
 
-    const [colaboradores, pontos, justificativas] = await Promise.all([
+    const [colaboradores, pontos, justificativas, ausencias] = await Promise.all([
         repositorio.colaboradoresParaApurar(empresaId, de, `${mes}-${String(diasDoMes(mes).length).padStart(2, '0')}`),
         repositorio.registrosDoMesDaEmpresa(empresaId, inicio, fim),
         repositorio.justificativasDoMesDaEmpresa(empresaId, de, ate),
+        repositorio.ausenciasAprovadasDaEmpresa(empresaId, de, ate),
     ]);
 
     const agrupar = <T extends { funcionario_id: number }>(linhas: T[]): Map<number, T[]> => {
@@ -255,18 +261,23 @@ export const apurarMesDaEmpresa = async ({ empresaId, mes }: { empresaId: number
     };
     const pontosDe = agrupar(pontos);
     const justificativasDe = agrupar(justificativas);
+    const ausenciasDe = agrupar(ausencias);
 
     return colaboradores.map((colaborador) => {
         const { dias } = apurarDiasDoMes(
             fuso, mes, colaborador,
             pontosDe.get(colaborador.funcionario_id) ?? [],
             justificativasDe.get(colaborador.funcionario_id) ?? [],
+            ausenciasDe.get(colaborador.funcionario_id) ?? [],
         );
+        // Férias não são ausência a medir: os dias delas saem da apuração (afastamentos seguem como ausência justificada).
+        const ferias = (ausenciasDe.get(colaborador.funcionario_id) ?? []).filter((a) => a.tipo === 'Férias');
+        const emFerias = (data: string) => ferias.some((a) => a.inicio <= data && data <= a.fim);
         return {
             funcionarioId: colaborador.funcionario_id,
             nome: colaborador.nome,
             departamento: colaborador.departamento,
-            dias: colaborador.desligamento === null ? dias : dias.filter((dia) => dia.data <= colaborador.desligamento!),
+            dias: dias.filter((dia) => !emFerias(dia.data) && (colaborador.desligamento === null || dia.data <= colaborador.desligamento)),
         };
     });
 };

@@ -29,6 +29,7 @@ const TOM_DO_STATUS: Record<string, BadgeTone> = {
   Ativo: 'success',
   Inativo: 'neutral',
   Férias: 'warning',
+  Afastado: 'info',
 };
 
 // 'AAAA-MM-DD' -> 'DD/MM/AAAA', sem passar por Date (o fuso moveria o dia).

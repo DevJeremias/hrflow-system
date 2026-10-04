@@ -6,7 +6,8 @@ import db from '../../shared/db/pool.ts';
 import { gravarAuditoria } from '../../shared/utils/auditar.ts';
 import type { Autoria, EventoDeAuditoria } from '../../shared/utils/auditar.ts';
 import { cargoDaEmpresa, departamentoDaEmpresa, referenciasDaEmpresa } from '../estrutura/index.ts';
-import type { CorpoDoDependente, DadosDoFuncionario, FiltrosDeFuncionarios, Status } from './funcionarios.schemas.ts';
+import { situacaoEfetivaSql } from '../ausencias/index.ts';
+import type { CorpoDoDependente, DadosDoFuncionario, FiltrosDeFuncionarios, Situacao, Status } from './funcionarios.schemas.ts';
 
 // Colunas que a tela de colaboradores usa, com os nomes do cargo e do departamento da mesma
 // empresa, o perfil do acesso vinculado (null se não há) e se há ponto ou justificativa
@@ -45,7 +46,8 @@ export interface FuncionarioListado extends RowDataPacket {
     salario_base: string | null;
     cargo_id: number | null;
     departamento_id: number | null;
-    status: Status;
+    // A situação de hoje: o status gravado, trocado por Férias ou Afastado enquanto uma ausência aprovada cobre o dia.
+    status: Situacao;
     cargo_nome: string | null;
     departamento_nome: string | null;
     data_desligamento: string | null;
@@ -128,8 +130,9 @@ const CAMPOS_DA_BUSCA = ['f.nome', 'f.email', 'c.nome', 'd.nome'];
 // O CPF é gravado só com dígitos: quem busca com pontuação (111.222.333) procura pelos dígitos.
 const PARECE_CPF = /^[\d.\-\s]+$/;
 
-// A empresa vem sempre primeiro; a busca olha nome, e-mail, CPF, cargo e departamento.
-const filtrarDaEmpresa = (empresaId: number, { busca, status, departamento_id: departamentoId }: FiltrosDeFuncionarios) => {
+// A empresa vem sempre primeiro; a busca olha nome, e-mail, CPF, cargo e departamento. O filtro de
+// status vale para a situação de `hoje` (ver modules/ausencias/ausencias.situacao.ts).
+const filtrarDaEmpresa = (empresaId: number, { busca, status, departamento_id: departamentoId }: FiltrosDeFuncionarios, hoje: string) => {
     const condicoes = ['f.empresa_id = ?'];
     const valores: (string | number)[] = [empresaId];
     if (busca) {
@@ -143,8 +146,8 @@ const filtrarDaEmpresa = (empresaId: number, { busca, status, departamento_id: d
         condicoes.push(`(${alternativas.join(' OR ')})`);
     }
     if (status) {
-        condicoes.push('f.status = ?');
-        valores.push(status);
+        condicoes.push(`${situacaoEfetivaSql('f')} = ?`);
+        valores.push(hoje, status);
     }
     if (departamentoId) {
         condicoes.push('f.departamento_id = ?');
@@ -196,32 +199,33 @@ export interface DependenteGravado extends RowDataPacket {
 export const criarRepositorio = (executor: Connection) => ({
     // `limite` e `deslocamento` recortam a página, em ordem alfabética (o desempate por id mantém a
     // paginação estável).
-    async listarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios, limite: number, deslocamento: number): Promise<FuncionarioListado[]> {
-        const { onde, valores } = filtrarDaEmpresa(empresaId, filtros);
+    async listarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios, hoje: string, limite: number, deslocamento: number): Promise<FuncionarioListado[]> {
+        const { onde, valores } = filtrarDaEmpresa(empresaId, filtros, hoje);
         const [linhas] = await executor.query<FuncionarioListado[]>(
             // data_desligamento volta como AAAA-MM-DD (a coluna crua chegaria como Date, sujeita a fuso).
             `SELECT f.id, f.empresa_id, f.nome, f.email, f.cpf, f.telefone, f.data_nascimento, f.data_admissao,
                     f.endereco, f.matricula, f.rg, f.pis, f.ctps, f.cep, f.logradouro, f.numero, f.complemento,
                     f.bairro, f.cidade, f.uf, f.contato_emergencia_nome, f.contato_emergencia_telefone,
                     f.contato_emergencia_parentesco, f.banco, f.agencia, f.conta, f.tipo_conta, f.nivel, f.tipo_contrato,
-                    f.salario_base, f.cargo_id, f.departamento_id, f.status,
+                    f.salario_base, f.cargo_id, f.departamento_id, ${situacaoEfetivaSql('f')} AS status,
                     DATE_FORMAT(f.data_desligamento, '%Y-%m-%d') AS data_desligamento, f.motivo_desligamento,
                     c.nome AS cargo_nome, d.nome AS departamento_nome,
                     (SELECT u.perfil FROM usuarios u WHERE u.funcionario_id = f.id AND u.empresa_id = f.empresa_id LIMIT 1) AS usuario_perfil,
                     (EXISTS (SELECT 1 FROM registro_pontos r WHERE r.funcionario_id = f.id)
-                     OR EXISTS (SELECT 1 FROM justificativas_ponto j WHERE j.funcionario_id = f.id)) AS tem_movimento,
+                     OR EXISTS (SELECT 1 FROM justificativas_ponto j WHERE j.funcionario_id = f.id)
+                     OR EXISTS (SELECT 1 FROM ausencias x WHERE x.funcionario_id = f.id)) AS tem_movimento,
                     (f.anonimizado_em IS NOT NULL) AS anonimizado
              ${JUNCOES}
              WHERE ${onde}
              ORDER BY f.nome, f.id
              LIMIT ? OFFSET ?`,
-            [...valores, limite, deslocamento]
+            [hoje, ...valores, limite, deslocamento]
         );
         return linhas;
     },
 
-    async contarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios): Promise<number> {
-        const { onde, valores } = filtrarDaEmpresa(empresaId, filtros);
+    async contarDaEmpresa(empresaId: number, filtros: FiltrosDeFuncionarios, hoje: string): Promise<number> {
+        const { onde, valores } = filtrarDaEmpresa(empresaId, filtros, hoje);
         const [[{ total }]] = await executor.query<(RowDataPacket & { total: number })[]>(
             `SELECT COUNT(*) AS total ${JUNCOES} WHERE ${onde}`, valores
         );
@@ -395,8 +399,9 @@ export const criarRepositorio = (executor: Connection) => ({
     async temMovimento(funcionarioId: number): Promise<boolean> {
         const [[{ total }]] = await executor.query<(RowDataPacket & { total: number })[]>(
             `SELECT (SELECT COUNT(*) FROM registro_pontos WHERE funcionario_id = ?)
-                  + (SELECT COUNT(*) FROM justificativas_ponto WHERE funcionario_id = ?) AS total`,
-            [funcionarioId, funcionarioId]
+                  + (SELECT COUNT(*) FROM justificativas_ponto WHERE funcionario_id = ?)
+                  + (SELECT COUNT(*) FROM ausencias WHERE funcionario_id = ?) AS total`,
+            [funcionarioId, funcionarioId, funcionarioId]
         );
         return total > 0;
     },

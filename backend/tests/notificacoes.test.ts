@@ -166,6 +166,22 @@ describe('notificações', { skip: banco.skip }, () => {
         assert.equal((await chamar('GET', '/api/notificacoes', caio.token)).corpo.naoLidas, 1, 'fechar de novo não duplica');
     });
 
+    it('decidir férias avisa o colaborador, com o motivo da recusa', async () => {
+        const { rh, caio } = await cenario();
+        const pedido = await chamar('POST', '/api/ausencias', caio.token, { tipo: 'Férias', inicio: '2027-03-15', fim: '2027-03-24', observacao: 'Descanso.' });
+        assert.equal(pedido.status, 201, JSON.stringify(pedido.corpo));
+        assert.equal((await chamar('GET', '/api/notificacoes', caio.token)).corpo.naoLidas, 0, 'o pedido ainda não é uma decisão');
+
+        const aprovada = await chamar('PATCH', `/api/ausencias/${pedido.corpo.id}/decisao`, rh, { status: 'Aprovada' });
+        assert.equal(aprovada.status, 200, JSON.stringify(aprovada.corpo));
+        const { corpo } = await chamar('GET', '/api/notificacoes', caio.token);
+        assert.equal(corpo.naoLidas, 1);
+        assert.deepEqual(
+            { tipo: corpo.itens[0].tipo, titulo: corpo.itens[0].titulo, mensagem: corpo.itens[0].mensagem, link: corpo.itens[0].link },
+            { tipo: 'ausencia', titulo: 'Férias aprovada', mensagem: 'A sua solicitação de férias de 15/03/2027 a 24/03/2027 foi aprovada.', link: '/meu-painel/solicitacoes' },
+        );
+    });
+
     it('sem sessão a API responde 401', async () => {
         assert.equal((await chamar('GET', '/api/notificacoes', undefined)).status, 401);
         assert.equal((await chamar('POST', '/api/notificacoes/lidas', undefined)).status, 401);

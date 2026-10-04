@@ -47,7 +47,8 @@ interface ModalProps {
   // Substitui o espaçamento padrão do corpo.
   bodyClassName?: string;
   // Com `form`, corpo e rodapé ficam dentro do <form>: os botões de envio do rodapé continuam dentro dele.
-  form?: { onSubmit: React.FormEventHandler<HTMLFormElement> };
+  // `noValidate` entrega a validação ao formulário: os erros saem junto de cada campo, não no balão do navegador.
+  form?: { onSubmit: React.FormEventHandler<HTMLFormElement>; noValidate?: boolean };
   children?: React.ReactNode;
 }
 
@@ -103,7 +104,7 @@ const Modal: React.FC<ModalProps> = ({ title, description, onClose, size = 'md',
           </div>
         </div>
         {form ? (
-          <form onSubmit={form.onSubmit} className="flex min-h-0 flex-1 flex-col">{conteudo}</form>
+          <form onSubmit={form.onSubmit} noValidate={form.noValidate} className="flex min-h-0 flex-1 flex-col">{conteudo}</form>
         ) : conteudo}
       </div>
     </div>,

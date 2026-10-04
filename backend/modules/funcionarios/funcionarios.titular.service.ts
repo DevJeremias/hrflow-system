@@ -18,6 +18,7 @@ export interface ExportacaoDoTitular {
     tem_avatar: boolean;
     historico_contratual: unknown[];
     ponto: { marcacoes: unknown[]; justificativas: unknown[] };
+    ferias_e_afastamentos: unknown[];
     holerites: unknown[];
     solicitacoes_de_alteracao: unknown[];
     trilha_de_auditoria: unknown[];
@@ -29,13 +30,14 @@ export const exportarDados = async (empresaId: number, id: number, autoria: Auto
     const titular = await repositorio.cadastroDoTitular(id, empresaId);
     if (!titular) throw new ErroDeFuncionario('inexistente', 'Funcionário não encontrado.');
 
-    const [contas, dependentes, temAvatar, historico, marcacoes, justificativas, holerites, solicitacoes, trilha] = await Promise.all([
+    const [contas, dependentes, temAvatar, historico, marcacoes, justificativas, ausencias, holerites, solicitacoes, trilha] = await Promise.all([
         repositorio.contas(id, empresaId),
         repositorio.dependentes(id, empresaId),
         repositorio.temAvatar(id, empresaId),
         repositorio.historicoContratual(id, empresaId),
         repositorio.marcacoes(id, empresaId),
         repositorio.justificativas(id, empresaId),
+        repositorio.ausencias(id, empresaId),
         repositorio.holerites(id, empresaId),
         repositorio.solicitacoes(id, empresaId),
         repositorio.trilha(id, empresaId),
@@ -51,6 +53,7 @@ export const exportarDados = async (empresaId: number, id: number, autoria: Auto
         tem_avatar: temAvatar,
         historico_contratual: historico,
         ponto: { marcacoes, justificativas },
+        ferias_e_afastamentos: ausencias,
         holerites,
         solicitacoes_de_alteracao: solicitacoes,
         trilha_de_auditoria: trilha,
@@ -61,7 +64,7 @@ export const nomeAnonimo = (id: number): string => `Colaborador anonimizado ${id
 export const emailAnonimo = (id: number): string => `anonimizado-${id}@anonimizado.invalid`;
 
 // Apaga o que identifica o colaborador (CPF, RG, PIS, CTPS, nome, e-mail, telefone, endereço, contato de emergência, dependentes, dados bancários, foto,
-// localização das marcações e o texto livre das justificativas) e mantém o que a lei manda guardar:
+// localização das marcações, o texto livre das justificativas e o motivo e o atestado dos pedidos de férias e afastamento) e mantém o que a lei manda guardar:
 // o cadastro com o id, as marcações, as decisões, os valores da folha e a trilha (sem o conteúdo pessoal).
 // Só vale para quem já foi desligado, nunca para a própria conta de quem pede, e não tem volta.
 export const anonimizar = async (empresaId: number, id: number, funcionarioIdDoOperador: number | null, autoria: Autoria): Promise<void> => {
@@ -86,6 +89,7 @@ export const anonimizar = async (empresaId: number, id: number, funcionarioIdDoO
         await repo.anonimizarHolerites(id, empresaId, nome);
         await repo.anonimizarMarcacoes(id, empresaId);
         await repo.anonimizarJustificativas(id, empresaId);
+        await repo.anonimizarAusencias(id, empresaId);
         await repo.anonimizarSolicitacoes(id, empresaId);
         await repo.anonimizarTrilha(id, empresaId, contas, nome);
         // A anonimização é registrada depois de a trilha ser limpa, e sem o que foi apagado.

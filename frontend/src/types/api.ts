@@ -36,7 +36,8 @@ export interface SessaoApi {
 
 // --- Funcionários ----------------------------------------------------------------------------
 
-export type StatusDeFuncionarioApi = 'Ativo' | 'Inativo' | 'Férias' | (string & {});
+// Afastado é a situação de quem tem uma licença aprovada cobrindo hoje: a API a calcula, não a grava.
+export type StatusDeFuncionarioApi = 'Ativo' | 'Inativo' | 'Férias' | 'Afastado' | (string & {});
 
 // Cada item de GET /api/funcionarios (o total vem em X-Total-Count).
 export interface FuncionarioApi {
@@ -548,7 +549,7 @@ export interface PeriodoContratualApi {
   vigencia_fim: string | null;
 }
 
-// --- Solicitações (sem backend ainda) --------------------------------------------------------
+// --- Solicitações: férias e afastamentos (/api/ausencias) -------------------------------------
 
 export type TipoDeSolicitacaoApi =
   | 'Férias'
@@ -560,14 +561,51 @@ export type TipoDeSolicitacaoApi =
 
 export type StatusDeSolicitacaoApi = 'Pendente' | 'Aprovada' | 'Recusada';
 
-// GET /api/solicitacoes/minhas
+// Cada item de GET /api/ausencias/minhas e, com `canDecide`, de GET /api/ausencias (o total vem em
+// X-Total-Count). Os dias são 'AAAA-MM-DD'.
 export interface SolicitacaoApi {
-  id: string | number;
+  id: number;
+  employeeId: number;
+  employeeName: string;
   type: TipoDeSolicitacaoApi;
   requestDate: string;
   startDate: string;
   endDate: string;
+  days: number;
   observation: string;
   hasAttachment: boolean;
+  attachmentName: string | null;
   status: StatusDeSolicitacaoApi;
+  reply: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  // Só na fila do RH: o ator pode decidir este pedido agora.
+  canDecide?: boolean;
+}
+
+// Corpo de POST /api/ausencias. O anexo vai em base64, sem o prefixo data:.
+export interface CorpoDeAusenciaApi {
+  tipo: TipoDeSolicitacaoApi;
+  inicio: string;
+  fim: string;
+  observacao: string;
+  anexo?: { nome: string; tipo: string; conteudo: string };
+}
+
+// Corpo de PATCH /api/ausencias/:id/decisao. A recusa leva o motivo.
+export type CorpoDeDecisaoDaAusenciaApi =
+  | { status: 'Aprovada' }
+  | { status: 'Recusada'; resposta: string };
+
+// GET /api/ausencias/saldo/:funcionarioId
+export interface SaldoDeFeriasApi {
+  admissao: string | null;
+  periodoAquisitivo: { inicio: string; fim: string } | null;
+  periodosCompletos: number;
+  diasAdquiridos: number;
+  diasAprovados: number;
+  diasEmAnalise: number;
+  saldo: number;
+  prazoParaGozo: string | null;
+  vencido: boolean;
 }

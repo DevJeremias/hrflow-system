@@ -10,6 +10,8 @@ Object.defineProperties(globalThis, {
   localStorage: { configurable: true, value: dom.window.localStorage },
   // O FormData do Node não aceita um <form> do jsdom.
   FormData: { configurable: true, value: dom.window.FormData },
+  // O anexo de uma solicitação é lido como base64 pelo FileReader do navegador.
+  FileReader: { configurable: true, value: dom.window.FileReader },
   IS_REACT_ACT_ENVIRONMENT: { configurable: true, writable: true, value: true },
 });
 // Sem `oninput` no document o React acha que o navegador não tem o evento input e cai no

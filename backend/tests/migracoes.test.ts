@@ -10,7 +10,7 @@ import { carregarFixtures } from '../shared/db/fixtures.ts';
 import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 const TABELAS = [
-    'empresas', 'departamentos', 'cargos', 'funcionarios', 'dependentes', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens',
+    'ausencia_anexos', 'ausencias', 'empresas', 'departamentos', 'cargos', 'funcionarios', 'dependentes', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens',
     'auditoria', 'historico_contratual', 'solicitacoes_alteracao', 'avatares', 'notificacoes', 'redefinicoes_de_senha', 'schema_migrations',
 ];
 

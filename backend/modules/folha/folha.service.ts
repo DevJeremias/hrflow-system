@@ -5,6 +5,7 @@ import { relogio, agoraEmSegundos } from '../../shared/utils/fuso.ts';
 import { fusoDaEmpresa } from '../empresa/index.ts';
 import { notificarColaboradores } from '../notificacoes/index.ts';
 import { apurarDiasDoMes } from '../ponto/index.ts';
+import { ausenciasAprovadasNoPeriodo, diasDeFeriasNoPeriodo } from '../ausencias/index.ts';
 import { competenciaDoDia, primeiroDia, proximoMes, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
 import { CODIGO_SALARIO, SEM_LANCAMENTOS, calcularHolerite, emCentavos, emReais, haTabelaDeIrrfVigente, haTabelaVigente } from './folha.regras.ts';
 import type { Lancamentos, RegimeTributario, Rubrica } from './folha.regras.ts';
@@ -168,11 +169,13 @@ const carregarPonto = async (repo: repositorio.RepositorioDaFolha, empresaId: nu
     // O dia do ponto, e portanto o mês da apuração, é o do fuso da empresa.
     const fuso = await fusoDaEmpresa(empresaId);
     const { inicio, fim } = fuso.limitesDoMes(competencia);
-    const [marcacoes, justificativas] = await Promise.all([
+    const [marcacoes, justificativas, ausencias] = await Promise.all([
         repo.marcacoesDoMes(empresaId, inicio, fim, funcionarioId),
         repo.justificativasDoMes(empresaId, primeiroDia(competencia), proximoMes(competencia), funcionarioId),
+        // Férias e afastamentos aprovados: abonam os dias no ponto e as férias geram o terço (modules/ausencias).
+        ausenciasAprovadasNoPeriodo(empresaId, primeiroDia(competencia), ultimoDia(competencia)),
     ]);
-    return { fuso, marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas) };
+    return { fuso, marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas), ausencias };
 };
 
 type PontoDoMes = Awaited<ReturnType<typeof carregarPonto>>;
@@ -195,7 +198,7 @@ const apurar = (
             pendencias.push({ funcionarioId: colaborador.id, nome: colaborador.nome, motivo: MOTIVO_SEM_SALARIO });
             continue;
         }
-        const { dias } = apurarDiasDoMes(ponto.fuso, competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? []);
+        const { dias } = apurarDiasDoMes(ponto.fuso, competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? [], ponto.ausencias.get(colaborador.id) ?? []);
         const lancamentos = lancamentosDe.get(colaborador.id) ?? SEM_LANCAMENTOS;
         const holerite = calcularHolerite({
             salario,
@@ -205,6 +208,7 @@ const apurar = (
             dependentes: colaborador.dependentes,
             cargaSemanalHoras: Number(colaborador.carga_semanal),
             ponto: eventosDoPonto(dias, colaborador.desligamento).eventos,
+            diasDeFerias: diasDeFeriasNoPeriodo(ponto.ausencias, colaborador.id, primeiroDia(competencia), ultimoDia(competencia)),
             lancamentos,
         });
         if (holerite.netSalary < 0) {

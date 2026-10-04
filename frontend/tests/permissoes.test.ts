@@ -5,30 +5,33 @@ import { menuDoUsuario } from '../src/utils/menu.ts';
 import { podeGerirCadastro } from '../src/utils/permissoes.ts';
 import { temAreaPessoal } from '../src/utils/sessao.ts';
 
-const rotulos = (user: Parameters<typeof menuDoUsuario>[0], opcoes?: Parameters<typeof menuDoUsuario>[1]) =>
-  menuDoUsuario(user, opcoes).flatMap((secao) => secao.itens.map((item) => item.label));
+const rotulos = (user: Parameters<typeof menuDoUsuario>[0]) =>
+  menuDoUsuario(user).flatMap((secao) => secao.itens.map((item) => item.label));
 
 test('o Administrador vê toda a gestão e os acessos; sem cadastro não vê ponto nem holerite', () => {
   assert.deepEqual(rotulos({ role: 'Administrador', funcionarioId: null }), [
-    'Dashboard', 'Colaboradores', 'Aprovações', 'Depto & Cargos', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Relatórios', 'Usuários', 'Auditoria', 'Meu Perfil',
+    'Dashboard', 'Colaboradores', 'Aprovações', 'Depto & Cargos', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Relatórios', 'Solicitações', 'Usuários', 'Auditoria', 'Meu Perfil',
   ]);
 });
 
 test('o RH não vê estrutura nem usuários, e com cadastro ganha Meu ponto e Meu holerite', () => {
   assert.deepEqual(rotulos({ role: 'RH', funcionarioId: 1 }), [
-    'Dashboard', 'Colaboradores', 'Aprovações', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Relatórios', 'Auditoria', 'Meu ponto', 'Meu holerite', 'Meu Perfil',
+    'Dashboard', 'Colaboradores', 'Aprovações', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Relatórios', 'Solicitações', 'Auditoria', 'Meu ponto', 'Meu holerite', 'Minhas Solicitações', 'Meu Perfil',
   ]);
-  assert.deepEqual(rotulos({ role: 'RH', funcionarioId: null }), ['Dashboard', 'Colaboradores', 'Aprovações', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Relatórios', 'Auditoria', 'Meu Perfil']);
+  assert.deepEqual(rotulos({ role: 'RH', funcionarioId: null }), ['Dashboard', 'Colaboradores', 'Aprovações', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Relatórios', 'Solicitações', 'Auditoria', 'Meu Perfil']);
 });
 
 test('o Administrador com cadastro também tem Meu ponto e Meu holerite', () => {
   const itens = rotulos({ role: 'Administrador', funcionarioId: 7 });
-  assert.ok(itens.includes('Meu ponto') && itens.includes('Meu holerite') && itens.includes('Usuários'));
+  assert.ok(itens.includes('Meu ponto') && itens.includes('Meu holerite') && itens.includes('Minhas Solicitações') && itens.includes('Usuários'));
 });
 
-test('o Colaborador só vê a própria área, e Solicitações fica fora até haver backend', () => {
-  assert.deepEqual(rotulos({ role: 'Colaborador', funcionarioId: 2 }), ['Meu ponto', 'Meu holerite', 'Meus Dados']);
-  assert.deepEqual(rotulos({ role: 'Colaborador', funcionarioId: 2 }, { solicitacoes: true }), ['Meu ponto', 'Meu holerite', 'Minhas Solicitações', 'Meus Dados']);
+test('o Colaborador só vê a própria área, com as solicitações de férias e afastamentos', () => {
+  assert.deepEqual(rotulos({ role: 'Colaborador', funcionarioId: 2 }), ['Meu ponto', 'Meu holerite', 'Minhas Solicitações', 'Meus Dados']);
+});
+
+test('quem não tem cadastro de funcionário não vê Minhas Solicitações', () => {
+  assert.ok(!rotulos({ role: 'Administrador', funcionarioId: null }).includes('Minhas Solicitações'));
 });
 
 test('as rotas do menu de cada perfil apontam para áreas que ele alcança', () => {

@@ -9,6 +9,12 @@ const TIPOS_CONTA = ['Corrente', 'Poupanca', 'Salario'] as const;
 
 export type Status = typeof STATUS[number];
 
+// A situação que a listagem mostra e aceita como filtro: o status gravado ou Afastado, que vem
+// de uma licença aprovada e nunca é gravado (modules/ausencias).
+const SITUACOES = [...STATUS, 'Afastado'] as const;
+
+export type Situacao = typeof SITUACOES[number];
+
 const TIPOS_DE_PARENTESCO = ['Filho(a)', 'Cônjuge', 'Enteado(a)', 'Pai ou mãe', 'Outro'] as const;
 
 // Documento que a API guarda só com os dígitos: aceita a pontuação de quem digita e recusa o que
@@ -102,7 +108,7 @@ const busca = campo((valor: unknown) => {
 // Página, busca livre (nome, e-mail, CPF, cargo e departamento) e filtros da listagem.
 export const consultaDeFuncionarios = paginacao.extend({
     busca,
-    status: opcional(enumerado('Status', STATUS)),
+    status: opcional(enumerado('Status', SITUACOES)),
     departamento_id: opcional(inteiroPositivo('Departamento')),
 });
 
@@ -218,7 +224,7 @@ export interface Paginacao {
 
 export interface FiltrosDeFuncionarios {
     busca: string | null;
-    status: Status | null;
+    status: Situacao | null;
     departamento_id: number | null;
 }
 

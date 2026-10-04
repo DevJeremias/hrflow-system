@@ -36,6 +36,10 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `GET /api/ponto`, `GET /api/ponto/justificativas` | 200 | 200 | 403 |
 | `POST /api/ponto/registrar`, `PUT /api/ponto/justificativa/:data` | 200 se tem cadastro | 200 se tem cadastro | 200 |
 | `GET /api/ponto/hoje\|historico\|totais/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
+| `GET /api/ausencias`, `PATCH /api/ausencias/:id/decisao` | 200 | 200 (não decide o próprio pedido nem o de RH ou Administrador) | 403 |
+| `POST /api/ausencias`, `GET /api/ausencias/minhas` | 200 se tem cadastro | 200 se tem cadastro | 200 |
+| `GET /api/ausencias/saldo/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
+| `GET /api/ausencias/:id/anexo` | 200 de qualquer pedido da empresa | 200 de qualquer pedido da empresa | 200 só do próprio (404 nos demais) |
 | `GET /api/dashboard/resumo` | 200 | 200 | 403 |
 | `GET /api/relatorios/headcount`, `.../aniversariantes`, `.../custo-departamento`, `.../absenteismo` (JSON, e `?formato=csv` ou `?formato=pdf` para exportar) | 200 | 200 | 403 |
 | `GET /api/funcionarios/:id/historico-contratual`, `GET /api/funcionarios/:id/exportar` | 200 | 200 | 403 |
@@ -55,6 +59,7 @@ Decisões que a tabela esconde:
 * **O colaborador grava sozinho só o telefone e a foto.** Nome, e-mail de login, endereço e dados bancários passam por aprovação: `PUT /api/perfil/meus-dados` com um desses campos diferente do atual responde 403, cria a solicitação e não grava mais nada (nem o telefone enviado junto). O RH decide o pedido de Colaboradores; o de RH é do Administrador, e ninguém decide o próprio. Trocar o e-mail exige a senha atual e derruba as sessões abertas.
 * **Anonimizar é irreversível e só do Administrador**, e só vale para o cadastro de quem já foi desligado (`docs/lgpd.md`). Exportar os dados de um colaborador é da gestão.
 * **A trilha de auditoria é da gestão**: Administrador e RH leem a trilha da própria empresa; nenhuma rota a edita.
+* **Férias e afastamentos** (`backend/modules/ausencias`): o colaborador pede e acompanha os pedidos dele; o RH vê a fila da empresa, o saldo e o período aquisitivo de quem pede, e aprova ou recusa (a recusa leva o motivo). Ninguém decide o próprio pedido, e o pedido de quem tem acesso de RH ou Administrador só o Administrador decide. Só um pedido em análise é decidido: uma decisão não é refeita.
 * **Senha provisória**: a conta criada ou redefinida entra com a senha provisória, e a sessão dela só alcança a troca de senha (`PUT /api/perfil/alterar-senha`) até a pessoa definir a própria.
 * **Ninguém exclui o próprio cadastro**, nem o Administrador: a conta cairia junto e a empresa poderia ficar sem quem a administre.
 * **RH e Administrador nascem em `POST /api/usuarios`**, só pelo Administrador, com senha provisória gerada pelo servidor e devolvida uma única vez. Para dar acesso de RH a quem já é colaborador (a Rita), o Administrador muda o perfil dessa conta em `PATCH /api/usuarios/:id`; o cadastro de funcionário continua o mesmo, então a pessoa mantém ponto e holerite.
@@ -69,4 +74,5 @@ Decisões que a tabela esconde:
 | Depto & Cargos, Usuários | sim | não | não |
 | Meu ponto, Meu holerite | se tem cadastro | se tem cadastro | sim |
 | Meu Perfil | sim | sim | sim |
-| Solicitações | fora do menu até haver backend | | |
+| Minhas Solicitações | se tem cadastro | se tem cadastro | sim |
+| Solicitações (fila de férias e afastamentos) | sim | sim | não |

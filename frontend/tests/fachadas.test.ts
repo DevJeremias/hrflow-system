@@ -23,37 +23,31 @@ Object.defineProperties(globalThis, {
 type Modulos = {
   App: typeof import('../src/App.tsx').default;
   AuthProvider: typeof import('../src/contexts/AuthContext.tsx').AuthProvider;
-  solicitacoesAtivas: typeof import('../src/utils/recursos.ts').solicitacoesAtivas;
   UiProviders: typeof import('../src/components/ui/UiProviders.tsx').default;
 };
 
-const abrirServidor = async (flag: string | undefined) => {
-  if (flag === undefined) delete process.env.VITE_FEATURE_SOLICITACOES;
-  else process.env.VITE_FEATURE_SOLICITACOES = flag;
+const abrirServidor = async () => {
   const server = await createServer({ configFile: './vite.config.js', server: { middlewareMode: true, hmr: false }, appType: 'custom' });
   await precarregarTelas(server);
   const modulos: Modulos = {
     App: (await server.ssrLoadModule('/src/App.tsx')).default,
     AuthProvider: (await server.ssrLoadModule('/src/contexts/AuthContext.tsx')).AuthProvider,
-    solicitacoesAtivas: (await server.ssrLoadModule('/src/utils/recursos.ts')).solicitacoesAtivas,
     UiProviders: (await server.ssrLoadModule('/src/components/ui/UiProviders.tsx')).default,
   };
   return { server, ...modulos };
 };
 
-let desligada: Awaited<ReturnType<typeof abrirServidor>>;
-let ligada: Awaited<ReturnType<typeof abrirServidor>>;
+let ambiente: Awaited<ReturnType<typeof abrirServidor>>;
 const originalFetch = globalThis.fetch;
 let chamadas: string[] = [];
 
 before(async () => {
-  desligada = await abrirServidor(undefined);
-  ligada = await abrirServidor('true');
+  ambiente = await abrirServidor();
 });
 
 after(async () => {
   globalThis.fetch = originalFetch;
-  await Promise.all([desligada.server.close(), ligada.server.close()]);
+  await ambiente.server.close();
   dom.window.close();
 });
 
@@ -86,6 +80,7 @@ const instalarApi = (perfil: 'Administrador' | 'Colaborador') => {
     const caminho = new URL(String(entrada), 'http://localhost').pathname;
     chamadas.push(caminho);
     switch (caminho) {
+      case '/api/ausencias/saldo/7': return json({ admissao: '2024-01-15', periodoAquisitivo: { inicio: '2026-01-15', fim: '2027-01-14' }, periodosCompletos: 2, diasAdquiridos: 60, diasAprovados: 0, diasEmAnalise: 0, saldo: 60, prazoParaGozo: '2027-01-14', vencido: false });
       case '/api/auth/sessao': return json({ id: 1, nome: 'Rita Teste', perfil, empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: perfil === 'Colaborador' ? 7 : null });
       case '/api/folha/meus-holerites': return json([{ ...holerite, competencia: '2026-09', empresa }]);
       case '/api/notificacoes': return json({ naoLidas: 1, itens: [{ id: 1, tipo: 'justificativa', titulo: 'Justificativa aprovada', mensagem: 'Aprovada.', link: '/meu-painel', lida: false, criadaEm: '2026-10-02T15:00:00.000Z' }] });
@@ -166,39 +161,35 @@ test('a interface não promete o que ainda não existe', () => {
   assert.deepEqual(achados, []);
 });
 
-test('a flag de solicitações só liga com o texto "true"', async () => {
-  assert.equal(desligada.solicitacoesAtivas(), false);
-  assert.equal(ligada.solicitacoesAtivas(), true);
-  const { recursoLigado } = await desligada.server.ssrLoadModule('/src/utils/recursos.ts');
-  for (const valor of [undefined, '', 'false', '1', 'TRUE']) assert.equal(recursoLigado(valor), false);
-});
-
-test('com a flag desligada /meu-painel/solicitacoes volta ao painel, sem menu nem chamada à API', async () => {
+test('Minhas Solicitações é rota e item de menu do Colaborador, sem flag de build', async () => {
   instalarApi('Colaborador');
-  const app = await abrirApp(desligada, '/meu-painel/solicitacoes');
-  assert.equal(app.rota(), '/meu-painel');
-  assert.doesNotMatch(app.host.textContent ?? '', /Solicitações/);
-  assert.deepEqual(chamadas.filter((c) => c.startsWith('/api/solicitacoes/')), []);
-  await fechar(app);
-});
-
-test('com a flag ligada a rota e o menu de solicitações existem', async () => {
-  instalarApi('Colaborador');
-  const app = await abrirApp(ligada, '/meu-painel/solicitacoes');
+  const app = await abrirApp(ambiente, '/meu-painel/solicitacoes');
   assert.equal(app.rota(), '/meu-painel/solicitacoes');
   assert.match(app.host.textContent ?? '', /Minhas Solicitações/);
+  assert.deepEqual(chamadas.filter((c) => c.includes('solicitacoes')), [], 'o endpoint é /api/ausencias');
+  assert.ok(chamadas.includes('/api/ausencias/minhas'));
   await fechar(app);
 });
 
-test('o serviço de solicitações falha de forma explícita em vez de fingir sucesso', async () => {
-  const { requestService } = await desligada.server.ssrLoadModule('/src/services/requestService.ts');
-  await assert.rejects(() => requestService.createRequest({}), /não estão disponíveis/);
-  await assert.rejects(() => requestService.getAllRequests(), /não estão disponíveis/);
+test('a fila de solicitações é rota e item de menu do RH e do Administrador', async () => {
+  instalarApi('Administrador');
+  const app = await abrirApp(ambiente, '/admin/solicitacoes');
+  assert.equal(app.rota(), '/admin/solicitacoes');
+  assert.match(app.host.textContent ?? '', /Férias, licenças e abonos pedidos pelos colaboradores/);
+  assert.ok(chamadas.includes('/api/ausencias'));
+  await fechar(app);
+});
+
+test('o serviço de solicitações fala com a API de ausências', async () => {
+  const { requestService } = await ambiente.server.ssrLoadModule('/src/services/requestService.ts');
+  const lista = await (async () => { instalarApi('Colaborador'); return requestService.getMyRequests(); })();
+  assert.deepEqual(lista, []);
+  assert.deepEqual(chamadas, ['/api/ausencias/minhas']);
 });
 
 test('o cabeçalho não tem busca decorativa, e o sino é o das notificações de verdade', async () => {
   instalarApi('Administrador');
-  const app = await abrirApp(desligada, '/admin');
+  const app = await abrirApp(ambiente, '/admin');
   assert.ok(!app.host.querySelector('header input'), 'o cabeçalho não deve ter campo de busca');
   const sinos = [...app.host.querySelectorAll('header button')].filter((b) => b.querySelector('svg.lucide-bell'));
   assert.equal(sinos.length, 1, 'um único sino');
@@ -225,7 +216,7 @@ const telasAdmin: Array<{ rota: string; titulo: RegExp; abrir?: RegExp[] }> = [
 for (const tela of telasAdmin) {
   test(`${tela.rota}${tela.abrir ? ` (abrindo ${tela.abrir.join(' > ')})` : ''}: todo botão visível faz algo`, async () => {
     instalarApi('Administrador');
-    const app = await abrirApp(desligada, tela.rota);
+    const app = await abrirApp(ambiente, tela.rota);
     assert.equal(app.rota(), tela.rota);
     assert.match(app.host.textContent ?? '', tela.titulo);
     assert.deepEqual(botoesMudos(app.host), []);
@@ -240,7 +231,7 @@ for (const tela of telasAdmin) {
 
 test('a folha oferece escolher a competência, processar de novo e fechar o mês', async () => {
   instalarApi('Administrador');
-  const app = await abrirApp(desligada, '/admin/folha');
+  const app = await abrirApp(ambiente, '/admin/folha');
   const texto = app.host.textContent ?? '';
   assert.match(texto, /Fechar mês/);
   assert.match(texto, /Processar novamente/);
@@ -252,7 +243,7 @@ test('a folha oferece escolher a competência, processar de novo e fechar o mês
 
 test('o modal de cargo não oferece proventos e descontos padrão', async () => {
   instalarApi('Administrador');
-  const app = await abrirApp(desligada, '/admin/estrutura');
+  const app = await abrirApp(ambiente, '/admin/estrutura');
   await clicarTexto(app.host, /Cargos e Funções/);
   await clicarTexto(app.host, /Criar Cargo/);
   const texto = document.body.textContent ?? '';
@@ -263,7 +254,7 @@ test('o modal de cargo não oferece proventos e descontos padrão', async () => 
 
 test('o holerite do colaborador lista as folhas fechadas, cada uma com a sua competência', async () => {
   instalarApi('Colaborador');
-  const app = await abrirApp(desligada, '/meu-painel/holerites');
+  const app = await abrirApp(ambiente, '/meu-painel/holerites');
   const texto = app.host.textContent ?? '';
   assert.match(texto, /Holerites das folhas fechadas/);
   assert.match(texto, /setembro de 2026/);
@@ -272,13 +263,12 @@ test('o holerite do colaborador lista as folhas fechadas, cada uma com a sua com
 });
 
 test('nenhuma rota do app consulta endpoint inexistente', async () => {
-  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/aprovacoes', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/relatorios', '/admin/auditoria', '/admin/perfil']],
+  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/aprovacoes', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/relatorios', '/admin/solicitacoes', '/admin/auditoria', '/admin/perfil']],
     ['Colaborador', ['/meu-painel', '/meu-painel/holerites', '/meu-painel/solicitacoes', '/meu-painel/perfil']]] as const;
   for (const [perfil, lista] of rotas) {
     for (const rota of lista) {
       instalarApi(perfil);
-      const app = await abrirApp(desligada, rota);
-      // /api/solicitacoes-alteracao existe (pedidos de alteração cadastral); /api/solicitacoes/... (férias e licenças) ainda não.
+      const app = await abrirApp(ambiente, rota);
       assert.deepEqual(chamadas.filter((c) => c.startsWith('/api/solicitacoes/')), [], rota);
       await fechar(app);
     }
