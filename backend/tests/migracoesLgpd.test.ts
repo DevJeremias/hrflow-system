@@ -55,7 +55,7 @@ describe('migrations de auditoria, histórico, avatares e LGPD (0018 a 0021)', {
         );
         ids.semFoto = await inserir('INSERT INTO usuarios (nome, email, senha, perfil, empresa_id) VALUES (?, ?, ?, ?, ?)', ['Sem Foto', 'semfoto.migracao@exemplo.invalid', 'hash-ficticio', 'RH', empresa]);
 
-        assert.deepEqual(await migrator.migrar(parcial), ['0018', '0019', '0020', '0021']);
+        assert.deepEqual(await migrator.migrar(parcial, () => {}, { ate: '0021' }), ['0018', '0019', '0020', '0021']);
     });
 
     after(async () => {
