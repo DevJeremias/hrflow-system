@@ -43,6 +43,11 @@ export interface JustificativaDoDia extends RowDataPacket {
     resposta: string | null;
 }
 
+export interface AusenciaAprovada extends RowDataPacket {
+    inicio: string;
+    fim: string;
+}
+
 export interface JustificativaDaEmpresa extends RowDataPacket {
     id: number;
     funcionario_id: number;
@@ -218,6 +223,18 @@ const criarRepositorio = (executor: Connection) => ({
         return justificativas;
     },
 
+    // Férias e afastamentos aprovados (modules/ausencias) que tocam o mês [de, ate): os dias deles não
+    // são falta.
+    async ausenciasAprovadasDoColaborador(funcionarioId: number | string, empresaId: number, de: string, ate: string): Promise<AusenciaAprovada[]> {
+        const [ausencias] = await executor.query<AusenciaAprovada[]>(
+            `SELECT DATE_FORMAT(data_inicio, '%Y-%m-%d') AS inicio, DATE_FORMAT(data_fim, '%Y-%m-%d') AS fim
+             FROM ausencias
+             WHERE funcionario_id = ? AND empresa_id = ? AND status = 'Aprovada' AND data_inicio < ? AND data_fim >= ?`,
+            [funcionarioId, empresaId, ate, de]
+        );
+        return ausencias;
+    },
+
     // Estado atual da justificativa do dia (undefined se não houver), com `travar` até o fim da transação.
     async statusDaJustificativa(funcionarioId: number, data: string, { travar = false } = {}): Promise<DecisaoDaJustificativa | undefined> {
         const [linhas] = await executor.query<(RowDataPacket & { status: DecisaoDaJustificativa })[]>(
@@ -329,6 +346,7 @@ export const {
     registrosDoPeriodo,
     registrosDaEmpresa,
     justificativasDoColaborador,
+    ausenciasAprovadasDoColaborador,
     salvarJustificativa,
     instanteDaJustificativa,
     justificativasDaEmpresa,

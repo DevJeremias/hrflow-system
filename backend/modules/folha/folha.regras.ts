@@ -141,6 +141,18 @@ export const formatarHoras = (minutos: number): string => (
 
 const aliquotaEmTexto = (milesimos: number): string => `${String(milesimos / 10).replace('.', ',')}%`;
 
+export const CODIGO_TERCO_DE_FERIAS = 'FERIAS_TERCO';
+
+// O terço constitucional de férias (CF, art. 7º, XVII): um terço do salário dos dias de férias que
+// caem na competência, a 1/30 do salário por dia. Só quem tem vínculo CLT o recebe. O pagamento
+// antecipado, até dois dias antes de as férias começarem, não é modelado: o terço entra na folha do
+// mês em que os dias de férias caem.
+export const tercoDeFeriasEmCentavos = (salarioCentavos: number, diasDeFerias: number, tipoContrato: string | null): number => {
+    if (!temVinculoClt(tipoContrato) || !(salarioCentavos > 0) || !(diasDeFerias > 0)) return 0;
+    const dias = Math.min(diasDeFerias, DIAS_DO_MES_COMERCIAL);
+    return centavosDe(salarioCentavos * dias * 1000 / (DIAS_DO_MES_COMERCIAL * 3));
+};
+
 export interface Holerite {
     baseSalary: number;
     inss: number;
@@ -163,6 +175,8 @@ export interface EntradaDoHolerite {
     dependentes?: number;
     cargaSemanalHoras?: number;
     ponto?: EventosDoPonto;
+    // Dias de férias aprovadas que caem na competência (modules/ausencias): geram o terço de férias.
+    diasDeFerias?: number;
     lancamentos?: Lancamentos;
     tabelasInss?: readonly TabelaInss[];
     tabelasIrrf?: readonly TabelaIrrf[];
@@ -176,6 +190,7 @@ export const calcularHolerite = ({
     dependentes = 0,
     cargaSemanalHoras = 40,
     ponto = SEM_EVENTOS_DO_PONTO,
+    diasDeFerias = 0,
     lancamentos = SEM_LANCAMENTOS,
     tabelasInss = TABELAS_INSS,
     tabelasIrrf = TABELAS_IRRF,
@@ -186,7 +201,9 @@ export const calcularHolerite = ({
     const horasExtras50 = clt ? valorDasHorasExtras(bruto, cargaSemanalHoras, ponto.horasExtras50Min, 150) : 0;
     const horasExtras100 = clt ? valorDasHorasExtras(bruto, cargaSemanalHoras, ponto.horasExtras100Min, 200) : 0;
     const faltas = Math.min(bruto, dividir(bruto * ponto.faltas, DIAS_DO_MES_COMERCIAL));
-    const remuneracao = bruto + horasExtras50 + horasExtras100 - faltas;
+    // O terço de férias integra a base do INSS, do IRRF e do FGTS, como o salário.
+    const tercoDeFerias = tercoDeFeriasEmCentavos(bruto, diasDeFerias, tipoContrato);
+    const remuneracao = bruto + horasExtras50 + horasExtras100 + tercoDeFerias - faltas;
 
     const tabelaDoInss = clt ? tabelaVigente(dia, tabelasInss) : null;
     const inss = tabelaDoInss ? calcularInssEmCentavos(remuneracao, tabelaDoInss) : 0;
@@ -203,6 +220,7 @@ export const calcularHolerite = ({
 
     const proventos: Rubrica[] = [
         { codigo: CODIGO_SALARIO, descricao: 'Salário Base', tipo: 'provento', valor: emReais(bruto), referencia: '30 dias' },
+        ...(tercoDeFerias > 0 ? [{ codigo: CODIGO_TERCO_DE_FERIAS, descricao: 'Terço Constitucional de Férias', tipo: 'provento' as const, valor: emReais(tercoDeFerias), referencia: `${diasDeFerias} ${diasDeFerias === 1 ? 'dia' : 'dias'}` }] : []),
         ...(horasExtras50 > 0 ? [{ codigo: 'HORA_EXTRA_50', descricao: 'Horas extras 50%', tipo: 'provento' as const, valor: emReais(horasExtras50), referencia: formatarHoras(ponto.horasExtras50Min) }] : []),
         ...(horasExtras100 > 0 ? [{ codigo: 'HORA_EXTRA_100', descricao: 'Horas extras 100%', tipo: 'provento' as const, valor: emReais(horasExtras100), referencia: formatarHoras(ponto.horasExtras100Min) }] : []),
     ];
@@ -220,7 +238,7 @@ export const calcularHolerite = ({
         ...patronais.map(({ encargo, valor }): Rubrica => ({ codigo: encargo.codigo, descricao: encargo.descricao, tipo: 'encargo', valor: emReais(valor), referencia: aliquotaEmTexto(encargo.aliquota) })),
     ];
 
-    const totalDeProventos = bruto + horasExtras50 + horasExtras100;
+    const totalDeProventos = bruto + horasExtras50 + horasExtras100 + tercoDeFerias;
     const totalDeDescontos = faltas + inss + (irrf?.irrf ?? 0) + adiantamento + valeTransporte + valeRefeicao + planoSaude;
     return {
         baseSalary: emReais(bruto),

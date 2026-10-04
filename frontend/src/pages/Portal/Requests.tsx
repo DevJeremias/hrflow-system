@@ -1,35 +1,36 @@
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Calendar, Plus } from 'lucide-react';
 import RequestsModal from '../../components/Portal/RequestsModal';
 import RequestsTable from '../../components/Portal/RequestsTable';
-import { requestService, RequestType } from '../../services/requestService';
-import { useMinhasSolicitacoes } from '../../queries/solicitacoes';
-import { chaves } from '../../queries/chaves';
+import SaldoDeFerias from '../../components/SaldoDeFerias';
+import { NewRequest } from '../../services/requestService';
+import { useCriarSolicitacao, useMinhasSolicitacoes, useSaldoDeFerias } from '../../queries/solicitacoes';
 import ErrorAlert from '../../components/ErrorAlert';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
 import PageHeader from '../../components/ui/PageHeader';
 import Spinner from '../../components/ui/Spinner';
 import { useToast } from '../../components/ui/toastContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { mensagemDeErro } from '../../utils/erros';
 
 const Requests: React.FC = () => {
   usePageTitle('Minhas solicitações');
   const toast = useToast();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const queryClient = useQueryClient();
   const { data, error, isPending, refetch } = useMinhasSolicitacoes();
+  const { data: saldo } = useSaldoDeFerias(user?.funcionarioId ?? null);
+  const criarSolicitacao = useCriarSolicitacao();
   const requests = data ?? [];
   const loading = isPending;
   const loadError = error ? mensagemDeErro(error, 'Erro ao buscar minhas solicitações') : null;
 
-  const handleSubmitRequest = async (data: { type: RequestType; startDate: string; endDate: string; observation: string; hasAttachment: boolean }) => {
+  const handleSubmitRequest = async (pedido: NewRequest) => {
     try {
-      await requestService.createRequest(data);
-      // Em vez de injetar o objeto, o cache é invalidado e a lista volta do servidor
-      await queryClient.invalidateQueries({ queryKey: chaves.solicitacoes });
+      // A lista e o saldo voltam do servidor: nada é injetado no cache à mão.
+      await criarSolicitacao.mutateAsync(pedido);
       setIsModalOpen(false);
       toast.success('Solicitação enviada ao RH.');
     } catch (error) {
@@ -41,9 +42,11 @@ const Requests: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <PageHeader
         title="Minhas Solicitações"
-        description="Envie atestados, solicite férias ou abonos diretamente ao RH."
+        description="Peça férias, envie atestados ou solicite abonos ao RH e acompanhe a resposta."
         actions={<Button onClick={() => setIsModalOpen(true)} icon={<Plus size={20} aria-hidden="true" />}>Nova Solicitação</Button>}
       />
+
+      {saldo && <SaldoDeFerias saldo={saldo} />}
 
       {loading ? (
         <div className="flex justify-center py-24 text-ink-muted"><Spinner size="lg" rotulo="Carregando solicitações..." /></div>
@@ -64,6 +67,7 @@ const Requests: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleSubmitRequest}
+        balance={saldo}
       />
     </div>
   );

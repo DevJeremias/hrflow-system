@@ -2,6 +2,7 @@
 // processamento que pode se repetir enquanto a folha está aberta e o fechamento que a trava. Não
 // conhece HTTP (falhas de regra saem como ErroDeFolha) e só chega ao banco pelo repositório.
 import { apurarDiasDoMes, relogio, diaLocal, limitesDoMes } from '../ponto/index.ts';
+import { ausenciasAprovadasNoPeriodo, diasDeFeriasNoPeriodo } from '../ausencias/index.ts';
 import { competenciaDoDia, primeiroDia, proximoMes, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
 import { CODIGO_SALARIO, SEM_LANCAMENTOS, calcularHolerite, emCentavos, emReais, haTabelaDeIrrfVigente, haTabelaVigente } from './folha.regras.ts';
 import type { Lancamentos, RegimeTributario, Rubrica } from './folha.regras.ts';
@@ -163,11 +164,13 @@ const agruparPorColaborador = <T extends { funcionario_id: number }>(linhas: rea
 // (ou para um colaborador): a apuração é a de modules/ponto, a mesma que a tela de ponto mostra.
 const carregarPonto = async (repo: repositorio.RepositorioDaFolha, empresaId: number, competencia: string, funcionarioId: number | null) => {
     const { inicio, fim } = limitesDoMes(competencia);
-    const [marcacoes, justificativas] = await Promise.all([
+    const [marcacoes, justificativas, ausencias] = await Promise.all([
         repo.marcacoesDoMes(empresaId, inicio, fim, funcionarioId),
         repo.justificativasDoMes(empresaId, primeiroDia(competencia), proximoMes(competencia), funcionarioId),
+        // Férias e afastamentos aprovados: abonam os dias no ponto e as férias geram o terço (modules/ausencias).
+        ausenciasAprovadasNoPeriodo(empresaId, primeiroDia(competencia), ultimoDia(competencia)),
     ]);
-    return { marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas) };
+    return { marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas), ausencias };
 };
 
 type PontoDoMes = Awaited<ReturnType<typeof carregarPonto>>;
@@ -190,7 +193,7 @@ const apurar = (
             pendencias.push({ funcionarioId: colaborador.id, nome: colaborador.nome, motivo: MOTIVO_SEM_SALARIO });
             continue;
         }
-        const { dias } = apurarDiasDoMes(competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? []);
+        const { dias } = apurarDiasDoMes(competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? [], ponto.ausencias.get(colaborador.id) ?? []);
         const lancamentos = lancamentosDe.get(colaborador.id) ?? SEM_LANCAMENTOS;
         const holerite = calcularHolerite({
             salario,
@@ -200,6 +203,7 @@ const apurar = (
             dependentes: colaborador.dependentes,
             cargaSemanalHoras: Number(colaborador.carga_semanal),
             ponto: eventosDoPonto(dias, colaborador.desligamento).eventos,
+            diasDeFerias: diasDeFeriasNoPeriodo(ponto.ausencias, colaborador.id, primeiroDia(competencia), ultimoDia(competencia)),
             lancamentos,
         });
         if (holerite.netSalary < 0) {

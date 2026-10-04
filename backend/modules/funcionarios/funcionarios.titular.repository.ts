@@ -82,6 +82,17 @@ const criarRepositorio = (executor: Connection) => ({
         return linhas;
     },
 
+    // Férias e afastamentos pedidos, com o nome e o tamanho do anexo (o arquivo, um atestado, não vai no JSON).
+    async ausencias(funcionarioId: number, empresaId: number): Promise<RowDataPacket[]> {
+        const [linhas] = await executor.query<RowDataPacket[]>(
+            `SELECT a.tipo, a.data_inicio, a.data_fim, a.observacao, a.status, a.resposta, a.decidido_em, a.criado_em,
+                    x.nome AS anexo_nome, x.tipo_mime AS anexo_tipo, x.tamanho AS anexo_tamanho
+             FROM ausencias a LEFT JOIN ausencia_anexos x ON x.ausencia_id = a.id AND x.empresa_id = a.empresa_id
+             WHERE a.funcionario_id = ? AND a.empresa_id = ? ORDER BY a.data_inicio, a.id`, [funcionarioId, empresaId]
+        );
+        return linhas;
+    },
+
     async holerites(funcionarioId: number, empresaId: number): Promise<RowDataPacket[]> {
         const [linhas] = await executor.query<RowDataPacket[]>(
             `SELECT p.competencia, p.status AS situacao_da_folha, i.nome, i.cargo, i.departamento, i.tipo_contrato,
@@ -161,6 +172,20 @@ const criarRepositorio = (executor: Connection) => ({
         );
     },
 
+    // Os períodos e as decisões ficam; o motivo, que pode contar doença ou família, e o atestado anexado não.
+    async anonimizarAusencias(funcionarioId: number, empresaId: number): Promise<void> {
+        await executor.query(
+            `UPDATE ausencias SET observacao = ?, resposta = IF(resposta IS NULL, NULL, ?)
+             WHERE funcionario_id = ? AND empresa_id = ?`,
+            [TEXTO_REMOVIDO, TEXTO_REMOVIDO, funcionarioId, empresaId]
+        );
+        await executor.query(
+            `DELETE x FROM ausencia_anexos x JOIN ausencias a ON a.id = x.ausencia_id AND a.empresa_id = x.empresa_id
+             WHERE a.funcionario_id = ? AND a.empresa_id = ?`,
+            [funcionarioId, empresaId]
+        );
+    },
+
     // O pedido pendente não será mais decidido; os valores pedidos e os anteriores eram os dados pessoais.
     async anonimizarSolicitacoes(funcionarioId: number, empresaId: number): Promise<void> {
         await executor.query(
@@ -209,4 +234,4 @@ export const emTransacao = async <T>(trabalho: (repositorio: RepositorioDoTitula
     }
 };
 
-export const { cadastro: cadastroDoTitular, dependentes, contas, temAvatar, historicoContratual, marcacoes, justificativas, holerites, solicitacoes, trilha } = criarRepositorio(db);
+export const { cadastro: cadastroDoTitular, dependentes, contas, temAvatar, historicoContratual, marcacoes, justificativas, ausencias, holerites, solicitacoes, trilha } = criarRepositorio(db);

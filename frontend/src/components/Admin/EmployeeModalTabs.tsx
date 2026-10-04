@@ -137,6 +137,8 @@ export const WorkTab: React.FC<WorkTabProps> = ({ formData, handleChange, cargos
             <option value="Ativo">Ativo</option>
             <option value="Férias">Férias</option>
             <option value="Inativo">Inativo (desligado)</option>
+            {/* Vem de uma licença aprovada que cobre hoje: a API a calcula e não a aceita como escolha. */}
+            {formData.status === 'Afastado' && <option value="Afastado" disabled>Afastado (licença aprovada)</option>}
           </Select>
         </Field>
         {formData.status === 'Inativo' && (

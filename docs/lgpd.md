@@ -19,6 +19,7 @@ O que o sistema faz com dados pessoais, quem responde por quê, quanto tempo cad
 | Foto (original e miniatura de 128 px), em binário | `avatares` | Identificação visual. Nunca trafega em listas: as respostas trazem só o endereço da miniatura |
 | Marcações de ponto, com latitude e longitude quando o colaborador autoriza | `registro_pontos` | Controle de jornada |
 | Justificativas de ponto (texto livre) | `justificativas_ponto` | Abono ou recusa de faltas e atrasos |
+| Férias e afastamentos: período, motivo em texto livre e o anexo (atestado, boletim), que é dado de saúde | `ausencias` e `ausencia_anexos` | Saldo de férias, folha (terço de férias), situação do colaborador e abono no ponto |
 | Holerites fechados (valores e rubricas) | `folha_itens` | Comprovante de pagamento |
 | Pedidos de alteração de nome, e-mail, endereço e banco | `solicitacoes_alteracao` | Aprovação pelo RH |
 | Trilha de auditoria (quem, o quê, quando, IP, antes e depois) | `auditoria` | Rastro de quem mexeu em dados e acessos |
@@ -44,7 +45,7 @@ Registrado: entrada e falha de entrada no sistema, criação, edição, alteraç
 
 | Direito | Como a empresa atende |
 | --- | --- |
-| Acesso e portabilidade | `GET /api/funcionarios/:id/exportar` (Administrador e RH) devolve um JSON com cadastro, dependentes, contas de acesso (sem senha), histórico contratual, marcações e justificativas, holerites, pedidos de alteração e a trilha daquele colaborador. A foto não vai (só `tem_avatar`). A exportação fica registrada na trilha |
+| Acesso e portabilidade | `GET /api/funcionarios/:id/exportar` (Administrador e RH) devolve um JSON com cadastro, dependentes, contas de acesso (sem senha), histórico contratual, marcações e justificativas, férias e afastamentos (com o nome e o tamanho do anexo, sem o arquivo), holerites, pedidos de alteração e a trilha daquele colaborador. A foto não vai (só `tem_avatar`). A exportação fica registrada na trilha |
 | Correção | O colaborador altera telefone e foto na hora. Nome, e-mail, endereço e dados bancários viram um pedido (`POST /api/solicitacoes-alteracao`, ou `PUT /api/perfil/meus-dados`, que responde 403 e cria o pedido) que o RH aprova em **Aprovações**. O pedido de um RH vai ao Administrador. O Administrador altera os próprios dados direto |
 | Eliminação | `POST /api/funcionarios/:id/anonimizar` (só o Administrador) |
 
@@ -54,8 +55,8 @@ Trocar o e-mail de login exige a senha atual e incrementa `sessao_versao`, que d
 
 Só vale para cadastro **já desligado** (status Inativo), nunca para o do próprio operador, e não tem volta. Numa transação:
 
-* **Apagado ou trocado por valor neutro:** nome (`Colaborador anonimizado <id>`), e-mail (`anonimizado-<id>@anonimizado.invalid`), CPF, RG, PIS, CTPS, matrícula, telefone, data de nascimento, endereço (texto e colunas), contato de emergência, banco, agência, conta e tipo de conta; os dependentes; nome e e-mail da conta de acesso, cuja senha vira o hash de um valor aleatório que ninguém conhece e cujas sessões caem; a foto; o nome impresso nos holerites; a latitude e a longitude das marcações; o texto livre das justificativas (que pode contar motivos de saúde ou família); o conteúdo dos pedidos de alteração (os pendentes viram cancelados); `antes`, `depois` e o IP da trilha do colaborador, e o nome de quem agiu quando era ele.
-* **Mantido:** o cadastro com o mesmo `id`, o salário, o cargo, o departamento e a situação; as marcações de ponto, com o `id` do colaborador e sem localização; as decisões sobre justificativas; os valores dos holerites e as rubricas; o histórico contratual; na trilha, quem agiu, quando e qual ação, e os valores de salário (`funcionario.salario_alterado`), que são registro da folha.
+* **Apagado ou trocado por valor neutro:** nome (`Colaborador anonimizado <id>`), e-mail (`anonimizado-<id>@anonimizado.invalid`), CPF, RG, PIS, CTPS, matrícula, telefone, data de nascimento, endereço (texto e colunas), contato de emergência, banco, agência, conta e tipo de conta; os dependentes; nome e e-mail da conta de acesso, cuja senha vira o hash de um valor aleatório que ninguém conhece e cujas sessões caem; a foto; o nome impresso nos holerites; a latitude e a longitude das marcações; o texto livre das justificativas (que pode contar motivos de saúde ou família); o motivo dos pedidos de férias e afastamento e o atestado anexado, que é apagado; o conteúdo dos pedidos de alteração (os pendentes viram cancelados); `antes`, `depois` e o IP da trilha do colaborador, e o nome de quem agiu quando era ele.
+* **Mantido:** o cadastro com o mesmo `id`, o salário, o cargo, o departamento e a situação; as marcações de ponto, com o `id` do colaborador e sem localização; as decisões sobre justificativas; os períodos e as decisões de férias e afastamento; os valores dos holerites e as rubricas; o histórico contratual; na trilha, quem agiu, quando e qual ação, e os valores de salário (`funcionario.salario_alterado`), que são registro da folha.
 * O cadastro anonimizado aparece na lista como **Anonimizado** e não pode mais ser editado, reativado nem ganhar senha. `funcionarios.anonimizado_em` marca o momento. A própria anonimização fica na trilha, sem o que foi apagado.
 
 ## Política de retenção (proposta)
