@@ -1,4 +1,4 @@
-import { after, before, beforeEach, test } from 'node:test';
+import { after, afterEach, before, beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { createElement, act, type ComponentType } from 'react';
@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { novoQueryClient } from './support/consulta.ts';
+import { mesAtualNoFuso, mesesAntes } from '../src/utils/competencia.ts';
 import { createServer, type ViteDevServer } from 'vite';
 
 const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost/' });
@@ -27,6 +28,13 @@ const resumoDaAlfa = { colaboradoresAtivos: 3, colaboradoresInativos: 1, departa
 const sessaoDoAdmin = { id: 1, nome: 'Admin Ficticio', perfil: 'Administrador', empresa_nome: 'Empresa Ficticia Alfa Ltda', funcionario_id: null, avatar: null };
 
 const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), { status });
+
+// Doze meses de headcount terminando no mês corrente: o quadro cresce, com um desligamento e duas admissões no último mês.
+const MES = mesAtualNoFuso();
+const headcountDaAlfa = Array.from({ length: 12 }, (_, i) => ({
+  mes: mesesAntes(MES, 11 - i), admitidos: i === 11 ? 2 : 0, desligados: i === 11 ? 1 : 0, ativos: 20 + i, turnover: i === 11 ? 4.4 : 0,
+}));
+const aniversariantesDaAlfa = Array.from({ length: 8 }, (_, i) => ({ funcionarioId: i + 1, nome: `Aniversariante ${i + 1}`, departamento: 'Tecnologia', cargo: null, dia: i + 1 }));
 
 before(async () => {
   // O cookie de CSRF é o que diz ao AuthProvider que há uma sessão a confirmar.
@@ -53,20 +61,42 @@ after(async () => {
   dom.window.close();
 });
 
-beforeEach(() => { globalThis.fetch = originalFetch; cliente = novoQueryClient(); });
+// Toda árvore montada é desmontada ao fim do teste, passe ele ou falhe: uma árvore que sobra, com o fetch já
+// restaurado, fica tentando a rede de verdade e o processo do teste não termina.
+const montados: { host: HTMLElement; root: ReturnType<typeof createRoot> }[] = [];
+
+beforeEach(() => { globalThis.fetch = originalFetch; cliente = novoQueryClient(); chamadas = []; });
+
+const desmontarTudo = async () => {
+  for (const { host, root } of montados.splice(0)) {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+};
+
+afterEach(desmontarTudo);
 
 const renderDashboard = async () => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
+  montados.push({ host, root });
   await act(async () => { root.render(createElement(Harness, { initialPath: '/admin' })); });
-  return { host, root };
+  return { host };
 };
 
-const apiFalsa = (resumo: () => Response | Promise<Response>) => (async (input: RequestInfo | URL) => {
+let chamadas: string[] = [];
+
+const apiFalsa = (
+  resumo: () => Response | Promise<Response>,
+  relatorios: { headcount?: () => Response; aniversariantes?: () => Response } = {},
+) => (async (input: RequestInfo | URL) => {
   const url = String(input);
+  chamadas.push(url);
   if (url.endsWith('/api/auth/sessao')) return json(sessaoDoAdmin);
   if (url.endsWith('/api/dashboard/resumo')) return resumo();
+  if (url.includes('/api/relatorios/headcount')) return (relatorios.headcount ?? (() => json(headcountDaAlfa)))();
+  if (url.includes('/api/relatorios/aniversariantes')) return (relatorios.aniversariantes ?? (() => json(aniversariantesDaAlfa)))();
   throw new Error(`chamada inesperada: ${url}`);
 }) as typeof fetch;
 
@@ -75,14 +105,12 @@ const cartao = (host: HTMLElement, rotulo: string) =>
 
 test('mostra as contagens reais da API, sem espera artificial', async () => {
   globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
-  const { host, root } = await renderDashboard();
+  const { host } = await renderDashboard();
   assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores31 inativo$/);
   assert.match(cartao(host, 'Departamentos')?.textContent ?? '', /^Departamentos4$/);
   assert.match(cartao(host, 'Cargos')?.textContent ?? '', /^Cargos Cadastrados4$/);
   assert.match(cartao(host, 'Marcações Hoje')?.textContent ?? '', /^Marcações Hoje2$/);
   assert.doesNotMatch(host.textContent ?? '', /Aprovações Pendentes/);
-  await act(async () => root.unmount());
-  host.remove();
 });
 
 test('cada cartão leva à tela correspondente', async () => {
@@ -94,19 +122,18 @@ test('cada cartão leva à tela correspondente', async () => {
   ];
   for (const [rotulo, tela] of destinos) {
     globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
-    const { host, root } = await renderDashboard();
+    const { host } = await renderDashboard();
     const link = cartao(host, rotulo);
     assert.ok(link, `o cartão ${rotulo} deve ser um link`);
     await act(async () => { link.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })); });
     assert.match(host.textContent ?? '', new RegExp(tela));
-    await act(async () => root.unmount());
-    host.remove();
+    await desmontarTudo();
   }
 });
 
 test('erro de rede mostra o alerta com "Tentar novamente" em vez de zeros, e tentar de novo carrega os dados', async () => {
   globalThis.fetch = apiFalsa(() => { throw new TypeError('Failed to fetch'); });
-  const { host, root } = await renderDashboard();
+  const { host } = await renderDashboard();
   assert.match(host.querySelector('[role="alert"]')?.textContent ?? '', /Não foi possível conectar ao servidor/);
   assert.equal(cartao(host, 'Colaboradores'), undefined);
   const retry = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Tentar novamente');
@@ -116,15 +143,40 @@ test('erro de rede mostra o alerta com "Tentar novamente" em vez de zeros, e ten
   await act(async () => { retry.click(); });
   assert.equal(host.querySelector('[role="alert"]'), null);
   assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores3/);
-  await act(async () => root.unmount());
-  host.remove();
 });
 
-test('Atividades Recentes mostra texto de estado vazio, nunca uma lista em branco', async () => {
+test('o painel traz o headcount dos últimos 12 meses, com admitidos, desligados e turnover do mês', async () => {
   globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
-  const { host, root } = await renderDashboard();
-  assert.match(host.textContent ?? '', /Atividades Recentes/);
-  assert.match(host.textContent ?? '', /O histórico de atividades da empresa ainda não está disponível/);
-  await act(async () => root.unmount());
-  host.remove();
+  const { host } = await renderDashboard();
+  assert.deepEqual(
+    chamadas.filter((url) => url.includes('/relatorios/headcount')).map((url) => new URL(url, 'http://localhost').searchParams.get('de')),
+    [mesesAntes(MES, 11)],
+  );
+  assert.match(host.textContent ?? '', /Colaboradores ativos por mês/);
+  const linhas = [...host.querySelectorAll('figure table tbody tr')];
+  assert.equal(linhas.length, 12, 'uma linha por mês, para o leitor de tela');
+  assert.deepEqual([...linhas.at(-1)!.querySelectorAll('td')].map((c) => c.textContent), ['31', '2', '1']);
+  assert.match(host.textContent ?? '', /2 admitidos/);
+  assert.match(host.textContent ?? '', /1 desligado/);
+  assert.match(host.textContent ?? '', /Turnover 4,4%/);
+  assert.equal([...host.querySelectorAll('a')].some((a) => a.getAttribute('href') === '/admin/relatorios'), true);
+  assert.doesNotMatch(host.textContent ?? '', /Atividades Recentes/);
+});
+
+test('os aniversariantes do mês aparecem em lista curta, com o resto no relatório', async () => {
+  globalThis.fetch = apiFalsa(() => json(resumoDaAlfa));
+  const { host } = await renderDashboard();
+  assert.match(host.textContent ?? '', /Aniversariantes de /);
+  assert.match(host.textContent ?? '', /Aniversariante 1dia 1/);
+  assert.match(host.textContent ?? '', /Aniversariante 6dia 6/);
+  assert.doesNotMatch(host.textContent ?? '', /Aniversariante 7/);
+  assert.match(host.textContent ?? '', /e mais 2/);
+});
+
+test('sem aniversariantes ou com falha no relatório, o resto do painel continua de pé', async () => {
+  globalThis.fetch = apiFalsa(() => json(resumoDaAlfa), { aniversariantes: () => json([]), headcount: () => json({ erro: 'Falha.' }, 500) });
+  const { host } = await renderDashboard();
+  assert.match(host.textContent ?? '', /Ninguém faz aniversário neste mês/);
+  assert.match(host.querySelector('[role="alert"]')?.textContent ?? '', /Erro ao carregar o headcount/);
+  assert.match(cartao(host, 'Colaboradores')?.textContent ?? '', /^Colaboradores3/, 'os cartões não dependem do relatório');
 });

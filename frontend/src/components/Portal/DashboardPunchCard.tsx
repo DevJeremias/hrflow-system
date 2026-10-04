@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle2, AlertCircle } from 'lucide-react';
-import { formatarHoraDeBelem, type TipoPonto } from '../../utils/ponto';
+import { formatarHoraNoFuso, type TipoPonto } from '../../utils/ponto';
+import { cidadeDoFuso } from '../../utils/fuso';
+import { useFusoDaEmpresa } from '../../hooks/useFusoDaEmpresa';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 
@@ -13,6 +15,7 @@ interface Props {
 }
 
 const DashboardPunchCard: React.FC<Props> = ({ isRegistering, disabled, proximosTipos, onPunchClock }) => {
+  const fuso = useFusoDaEmpresa();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -20,7 +23,7 @@ const DashboardPunchCard: React.FC<Props> = ({ isRegistering, disabled, proximos
     return () => clearInterval(timer);
   }, []);
 
-  const formattedTime = formatarHoraDeBelem(currentTime);
+  const formattedTime = formatarHoraNoFuso(currentTime, fuso);
 
   return (
     <Card as="section" aria-label="Registro de ponto" padding="lg" className="flex flex-col items-center justify-center lg:col-span-2">
@@ -30,7 +33,7 @@ const DashboardPunchCard: React.FC<Props> = ({ isRegistering, disabled, proximos
           {formattedTime}
         </time>
         <p className="mt-4 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-widest text-ink-muted">
-          <Clock size={16} aria-hidden="true" /> Horário de Belém
+          <Clock size={16} aria-hidden="true" /> Horário de {cidadeDoFuso(fuso)}
         </p>
       </div>
 

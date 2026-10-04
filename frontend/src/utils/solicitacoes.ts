@@ -1,5 +1,5 @@
 import type { SaldoDeFeriasApi, StatusDeSolicitacaoApi, TipoDeSolicitacaoApi } from '../types/api';
-import { hojeDeBelem } from './ponto.ts';
+import { hojeNoFuso } from './ponto.ts';
 
 export const TIPOS_DE_SOLICITACAO: readonly TipoDeSolicitacaoApi[] = ['Férias', 'Licença Médica', 'Licença Maternidade', 'Licença Paternidade', 'Acidente de Trabalho', 'Outros'];
 
@@ -42,7 +42,7 @@ export interface ErrosDoPeriodo {
 
 // As regras de data que a API aplica (término depois do início; férias de 5 a 30 dias que não começam
 // no passado), para o formulário mostrar o erro no campo antes de enviar.
-export const validarPeriodo = (tipo: TipoDeSolicitacaoApi, inicio: string, fim: string, hoje: string = hojeDeBelem()): ErrosDoPeriodo => {
+export const validarPeriodo = (tipo: TipoDeSolicitacaoApi, inicio: string, fim: string, hoje: string = hojeNoFuso()): ErrosDoPeriodo => {
   const erros: ErrosDoPeriodo = {};
   if (!inicio) erros.inicio = 'Informe a data de início.';
   if (!fim) erros.fim = 'Informe a data de término.';

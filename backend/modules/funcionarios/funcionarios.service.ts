@@ -16,7 +16,7 @@ import type { CorpoDaEdicao, CorpoDoCadastro, CorpoDoDependente, CorpoDoStatus, 
 import { diferencas } from '../../shared/utils/auditar.ts';
 import type { Autoria } from '../../shared/utils/auditar.ts';
 import { EMAIL_DUPLICADO, traduzirErro } from '../../shared/utils/erros.ts';
-import { hojeEmBelem } from '../ausencias/index.ts';
+import { hojeDaEmpresa } from '../ausencias/index.ts';
 import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 import logger from '../../shared/observabilidade/logger.ts';
 import { registrarNoSentry } from '../../shared/observabilidade/sentry.ts';
@@ -83,7 +83,7 @@ export interface PaginaDeFuncionarios {
 export const listarFuncionarios = async (empresaId: number, { busca, status, departamento_id, ...paginacao }: ConsultaDeFuncionarios): Promise<PaginaDeFuncionarios> => {
     const [limite, deslocamento] = limiteEDeslocamento(paginacao);
     const filtros = { busca, status, departamento_id };
-    const hoje = hojeEmBelem();
+    const hoje = await hojeDaEmpresa(empresaId);
     const linhas = await repositorio.listarDaEmpresa(empresaId, filtros, hoje, limite, deslocamento);
     const funcionarios = linhas.map((linha) => ({ ...linha, tem_movimento: Boolean(linha.tem_movimento), anonimizado: Boolean(linha.anonimizado) }));
     const total = await repositorio.contarDaEmpresa(empresaId, filtros, hoje);

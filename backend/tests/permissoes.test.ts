@@ -164,7 +164,13 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             { rotulo: 'ler a fila de férias e afastamentos', metodo: 'GET', caminho: () => '/api/ausencias', permitido: GESTAO },
             { rotulo: 'decidir uma solicitação de férias ou afastamento', metodo: 'PATCH', caminho: async () => `/api/ausencias/${await solicitacaoAlheia()}/decisao`, corpo: () => ({ status: 'Aprovada' }), permitido: GESTAO },
             { rotulo: 'resumo do dashboard', metodo: 'GET', caminho: () => '/api/dashboard/resumo', permitido: GESTAO },
+            { rotulo: 'relatório de headcount', metodo: 'GET', caminho: () => '/api/relatorios/headcount?de=2026-01&ate=2026-03', permitido: GESTAO },
+            { rotulo: 'relatório de aniversariantes', metodo: 'GET', caminho: () => '/api/relatorios/aniversariantes', permitido: GESTAO },
+            { rotulo: 'relatório de absenteísmo', metodo: 'GET', caminho: () => '/api/relatorios/absenteismo?mes=2026-03', permitido: GESTAO },
+            { rotulo: 'relatório de custo por departamento', metodo: 'GET', caminho: () => '/api/relatorios/custo-departamento?competencia=2026-10', permitido: GESTAO },
             { rotulo: 'ver o próprio perfil', metodo: 'GET', caminho: () => '/api/perfil/meus-dados', permitido: IDENTIDADES },
+            { rotulo: 'ver as próprias notificações', metodo: 'GET', caminho: () => '/api/notificacoes', permitido: IDENTIDADES },
+            { rotulo: 'marcar as próprias notificações como lidas', metodo: 'POST', caminho: () => '/api/notificacoes/lidas', permitido: IDENTIDADES },
         ];
 
         before(async () => {
@@ -220,6 +226,7 @@ describe('matriz de permissões', { skip: banco.skip }, () => {
             assert.deepEqual(PERMISSOES['ponto:consultar-empresa'], GESTAO);
             assert.deepEqual(PERMISSOES['ausencias:gerir'], GESTAO);
             assert.deepEqual(PERMISSOES['dashboard:consultar'], GESTAO);
+            assert.deepEqual(PERMISSOES['relatorios:consultar'], GESTAO);
         });
     });
 

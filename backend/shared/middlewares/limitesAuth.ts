@@ -15,6 +15,9 @@ export const LIMITES_PADRAO = {
     registroPorIp: { windowMs: 60 * MINUTO, limit: 5 },
     registroPorIdentidade: { windowMs: 60 * MINUTO, limit: 3 },
     alterarSenhaPorUsuario: { windowMs: 15 * MINUTO, limit: 5 },
+    esqueciSenhaPorIp: { windowMs: 60 * MINUTO, limit: 10 },
+    esqueciSenhaPorIdentidade: { windowMs: 60 * MINUTO, limit: 3 },
+    redefinirSenhaPorIp: { windowMs: 15 * MINUTO, limit: 20 },
     confirmarSenhaPorUsuario: { windowMs: 15 * MINUTO, limit: 10 },
 };
 
@@ -55,6 +58,12 @@ export const criarLimitadores = (limites: Partial<typeof LIMITES_PADRAO> = {}) =
         }),
         registroPorIp: criarLimitador(config.registroPorIp),
         registroPorIdentidade: criarLimitador(config.registroPorIdentidade, { keyGenerator: emailDoCorpo }),
+        // Cada pedido manda um e-mail: sem teto, a rota serviria para encher a caixa de alguém. Conta todos
+        // os pedidos, não só as falhas, e por e-mail para o teto valer mesmo vindo de IPs diferentes.
+        esqueciSenhaPorIp: criarLimitador(config.esqueciSenhaPorIp),
+        esqueciSenhaPorIdentidade: criarLimitador(config.esqueciSenhaPorIdentidade, { keyGenerator: emailDoCorpo }),
+        // O token tem 256 bits e não se adivinha; o teto só barra quem martela a rota.
+        redefinirSenhaPorIp: criarLimitador(config.redefinirSenhaPorIp),
         // A troca de senha confere a senha atual: sem teto, quem tem uma sessão (ou um computador
         // deixado aberto) a descobriria por tentativa. Conta por usuário, só as falhas.
         alterarSenhaPorUsuario: criarLimitador(config.alterarSenhaPorUsuario, {

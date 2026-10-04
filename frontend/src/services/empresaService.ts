@@ -8,6 +8,8 @@ export interface Company {
   // Só os 14 dígitos.
   cnpj: string | null;
   regime_tributario: typeof REGIMES_TRIBUTARIOS[number] | null;
+  // Fuso IANA ('America/Manaus'): o dia do ponto e o mês da folha da empresa seguem ele.
+  fuso: string;
   // O encarregado pelo tratamento de dados pessoais (LGPD), que os colaboradores veem no perfil.
   encarregado_nome: string | null;
   encarregado_email: string | null;
@@ -17,6 +19,7 @@ export interface CompanyData {
   razao_social: string;
   cnpj: string;
   regime_tributario: Company['regime_tributario'];
+  fuso: string;
   // Os dois vão juntos; vazios apagam o encarregado.
   encarregado_nome: string;
   encarregado_email: string;

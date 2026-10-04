@@ -1,5 +1,6 @@
-// Monta o resumo da primeira tela do painel administrativo. "Hoje" é o dia de Belém, como no ponto.
-import { relogio, diaLocal, limitesDoDia } from '../ponto/index.ts';
+// Monta o resumo da primeira tela do painel administrativo. "Hoje" é o dia da empresa, como no ponto.
+import { agoraEmSegundos } from '../../shared/utils/fuso.ts';
+import { fusoDaEmpresa } from '../empresa/index.ts';
 import * as repositorio from './dashboard.repository.ts';
 
 export interface ResumoDoDashboard {
@@ -13,7 +14,8 @@ export interface ResumoDoDashboard {
 // Ativo é todo colaborador que não foi desligado: quem está de férias continua na empresa e
 // continua entrando no sistema (authMiddleware só barra Inativo).
 export const resumoDaEmpresa = async (empresaId: number): Promise<ResumoDoDashboard> => {
-    const { inicio, fim } = limitesDoDia(diaLocal(Math.floor(relogio.agora() / 1000)));
+    const fuso = await fusoDaEmpresa(empresaId);
+    const { inicio, fim } = fuso.limitesDoDia(fuso.diaLocal(agoraEmSegundos()));
     const contagens = await repositorio.contagensDaEmpresa(empresaId, inicio, fim);
     return {
         colaboradoresAtivos: contagens.colaboradores_ativos,

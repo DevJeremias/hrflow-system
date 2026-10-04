@@ -2,6 +2,8 @@
 // saem como ErroDeEmpresa) e só chega ao banco pelo repositório.
 import * as repositorio from './empresa.repository.ts';
 import type { EmpresaGravada } from './empresa.repository.ts';
+import { criarFuso } from '../../shared/utils/fuso.ts';
+import type { Fuso } from '../../shared/utils/fuso.ts';
 import { ErroDeEmpresa } from './empresa.erros.ts';
 import type { DadosDaEmpresa } from './empresa.schemas.ts';
 
@@ -11,6 +13,7 @@ export interface EmpresaDoSistema {
     razao_social: string | null;
     cnpj: string | null;
     regime_tributario: EmpresaGravada['regime_tributario'];
+    fuso: string;
     // O encarregado pelo tratamento de dados pessoais (LGPD), que os colaboradores veem no perfil.
     encarregado_nome: string | null;
     encarregado_email: string | null;
@@ -18,8 +21,8 @@ export interface EmpresaDoSistema {
 
 const CNPJ_DUPLICADO = 'Este CNPJ já está cadastrado em outra empresa.';
 
-const empresaDe = ({ nome, razao_social, cnpj, regime_tributario, encarregado_nome, encarregado_email }: EmpresaGravada): EmpresaDoSistema =>
-    ({ nome, razao_social, cnpj, regime_tributario, encarregado_nome, encarregado_email });
+const empresaDe = ({ nome, razao_social, cnpj, regime_tributario, fuso, encarregado_nome, encarregado_email }: EmpresaGravada): EmpresaDoSistema =>
+    ({ nome, razao_social, cnpj, regime_tributario, fuso, encarregado_nome, encarregado_email });
 
 export const buscarEmpresa = async (empresaId: number): Promise<EmpresaDoSistema> => {
     const empresa = await repositorio.empresaPorId(empresaId);
@@ -35,4 +38,12 @@ export const atualizarEmpresa = async ({ empresaId, dados }: { empresaId: number
         throw erro;
     }
     return buscarEmpresa(empresaId);
+};
+
+// O fuso da empresa, para quem precisa do "dia" e do "mês" dela (ponto, folha, relatórios). A empresa vem
+// do token, então não existir é falha inesperada.
+export const fusoDaEmpresa = async (empresaId: number): Promise<Fuso> => {
+    const zona = await repositorio.fusoDaEmpresa(empresaId);
+    if (zona === undefined) throw new Error(`Empresa ${empresaId} do token não existe.`);
+    return criarFuso(zona);
 };

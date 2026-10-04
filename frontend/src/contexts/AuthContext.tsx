@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import httpClient, {
@@ -10,6 +10,7 @@ import httpClient, {
 } from '../services/httpClient';
 import { avisarAbas, observarSessao } from '../services/sessaoEntreAbas';
 import { User, destinoDoLogin, lerSessao, rotaDepoisDoLogin } from '../utils/sessao';
+import { AuthContext } from './sessaoContext';
 
 export type { User };
 
@@ -22,22 +23,6 @@ const CHAVES_LEGADAS = ['token', 'user', 'nomeUsuario', 'funcionarioId', 'perfil
 const AVISO_SESSAO_EXPIRADA = 'Sua sessão expirou. Entre novamente para continuar.';
 const AVISO_SESSAO_ENCERRADA_EM_OUTRA_ABA = 'Sua sessão foi encerrada em outra aba. Entre novamente para continuar.';
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  // Falha ao confirmar a sessão sem que o servidor a tenha recusado (rede, API fora, resposta inválida).
-  sessionError: string | null;
-  // Aviso para a tela de login quando a sessão foi encerrada pelo servidor.
-  sessionNotice: string | null;
-  retrySession: () => void;
-  login: (email: string, senha: string) => Promise<void>;
-  // O aviso, se houver, aparece na tela de login (ex.: a troca de senha encerra a sessão).
-  logout: (aviso?: string) => Promise<void>;
-  updateUser: (data: Partial<User>) => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);

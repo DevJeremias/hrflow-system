@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, MessageSquare, PlusCircle, Layers, AlertCircle } from 'lucide-react';
 import { HistoryDay, MonthTotals, PeriodTotals, WeeklyTotal } from '../../services/pontoService';
-import { ROTULO_DA_JUSTIFICATIVA, diaDaSemana, diaTemMarcacao, formatarDataIso, hojeDeBelem, podeJustificar, rotuloDoDia } from '../../utils/ponto';
+import { ROTULO_DA_JUSTIFICATIVA, diaDaSemana, diaTemMarcacao, formatarDataIso, hojeNoFuso, podeJustificar, rotuloDoDia } from '../../utils/ponto';
 import Badge, { type BadgeTone } from '../ui/Badge';
 import Button from '../ui/Button';
 import Card, { CardHeader } from '../ui/Card';
@@ -9,6 +9,7 @@ import DataTable, { type Column } from '../ui/DataTable';
 import Field, { Input, Textarea } from '../ui/Field';
 import Modal from '../ui/Modal';
 import ErrorAlert from '../ErrorAlert';
+import { useFusoDaEmpresa } from '../../hooks/useFusoDaEmpresa';
 
 const TOM_DO_STATUS: Record<HistoryDay['status'], BadgeTone> = {
   ok: 'success',
@@ -102,6 +103,7 @@ interface Props {
 }
 
 const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, monthTotals, onSaveNote }) => {
+  const fuso = useFusoDaEmpresa();
   const [selectedDay, setSelectedDay] = useState<HistoryDay | null>(null);
   const [noteText, setNoteText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -113,7 +115,7 @@ const DashboardTimeMirror: React.FC<Props> = ({ month, setMonth, historyData, mo
     setSaveError('');
   };
 
-  const hoje = hojeDeBelem();
+  const hoje = hojeNoFuso(fuso);
   const mesSemMarcacoes = !historyData.some(diaTemMarcacao);
 
   const handleClose = () => {

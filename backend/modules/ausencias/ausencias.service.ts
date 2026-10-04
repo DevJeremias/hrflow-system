@@ -1,7 +1,10 @@
 // Regras do fluxo de férias e afastamentos: o colaborador pede, o RH decide, e o período aprovado
 // vale na situação do colaborador e na folha. Não conhece HTTP (falhas de regra saem como
 // ErroDeAusencia) e só chega ao banco pelo repositório.
-import { relogio, diaLocal } from '../ponto/index.ts';
+import { relogio, agoraEmSegundos } from '../../shared/utils/fuso.ts';
+import type { Fuso } from '../../shared/utils/fuso.ts';
+import { fusoDaEmpresa } from '../empresa/index.ts';
+import { notificarColaboradores } from '../notificacoes/index.ts';
 import * as regras from './ausencias.regras.ts';
 import type { SaldoDeFerias, StatusDeAusencia, TipoDeAusencia } from './ausencias.regras.ts';
 import * as repositorio from './ausencias.repository.ts';
@@ -13,8 +16,8 @@ import { limiteEDeslocamento } from '../../shared/utils/paginacao.ts';
 
 export { relogio };
 
-// O "hoje" do pedido, da situação e do saldo é o dia de Belém: o mesmo relógio do ponto.
-export const hojeEmBelem = (): string => diaLocal(Math.floor(relogio.agora() / 1000));
+// O "hoje" do pedido, da situação e do saldo é o dia no fuso da empresa: o mesmo relógio do ponto.
+export const hojeDaEmpresa = async (empresaId: number): Promise<string> => (await fusoDaEmpresa(empresaId)).diaLocal(agoraEmSegundos());
 
 const paraIso = (segundos: number): string => new Date(segundos * 1000).toISOString();
 
@@ -42,12 +45,12 @@ export interface AusenciaDaFila extends Ausencia {
     canDecide: boolean;
 }
 
-const paraAusencia = (linha: AusenciaDaEmpresa): Ausencia => ({
+const paraAusencia = (linha: AusenciaDaEmpresa, fuso: Fuso): Ausencia => ({
     id: linha.id,
     employeeId: linha.funcionario_id,
     employeeName: linha.nome_funcionario,
     type: linha.tipo,
-    requestDate: diaLocal(linha.criado),
+    requestDate: fuso.diaLocal(linha.criado),
     startDate: linha.inicio,
     endDate: linha.fim,
     days: regras.diasCorridos(linha.inicio, linha.fim),
@@ -78,7 +81,7 @@ export const solicitar = async ({ empresaId, funcionarioId, corpo }: DadosDaSoli
     const colaboradorId = exigirVinculo(funcionarioId, 'solicitar férias ou afastamentos');
     const { tipo, inicio, fim, observacao, anexo } = corpo;
 
-    const motivo = regras.motivoDeRecusaDoPedido({ tipo, inicio, fim, anexado: anexo !== null }, hojeEmBelem());
+    const motivo = regras.motivoDeRecusaDoPedido({ tipo, inicio, fim, anexado: anexo !== null }, await hojeDaEmpresa(empresaId));
     if (motivo) throw new ErroDeAusencia('invalido', motivo);
 
     const id = await repositorio.emTransacao(async (repo) => {
@@ -104,12 +107,13 @@ export const solicitar = async ({ empresaId, funcionarioId, corpo }: DadosDaSoli
         if (anexo) await repo.inserirAnexo({ ausenciaId: criada, empresaId, nome: anexo.nome, tipo: anexo.tipo, conteudo: anexo.conteudo });
         return criada;
     });
-    return paraAusencia((await repositorio.ausenciaDaEmpresa(id, empresaId))!);
+    return paraAusencia((await repositorio.ausenciaDaEmpresa(id, empresaId))!, await fusoDaEmpresa(empresaId));
 };
 
 export const listarMinhas = async ({ empresaId, funcionarioId }: { empresaId: number; funcionarioId: number | null }): Promise<Ausencia[]> => {
     const colaboradorId = exigirVinculo(funcionarioId, 'consultar as próprias solicitações');
-    return (await repositorio.ausenciasDoColaborador(colaboradorId, empresaId)).map(paraAusencia);
+    const fuso = await fusoDaEmpresa(empresaId);
+    return (await repositorio.ausenciasDoColaborador(colaboradorId, empresaId)).map((linha) => paraAusencia(linha, fuso));
 };
 
 export interface Ator {
@@ -134,8 +138,9 @@ export const listarDaEmpresa = async ({ empresaId, ator, consulta }: { empresaId
         repositorio.ausenciasDaEmpresa({ empresaId, status, funcionarioId, limite, deslocamento }),
         repositorio.contarDaEmpresa({ empresaId, status, funcionarioId }),
     ]);
+    const fuso = await fusoDaEmpresa(empresaId);
     const ausencias = linhas.map((linha) => ({
-        ...paraAusencia(linha),
+        ...paraAusencia(linha, fuso),
         canDecide: linha.status === 'Pendente' && motivoDeNaoDecidir(ator, linha) === null,
     }));
     return { ausencias, total };
@@ -164,14 +169,30 @@ export const decidir = async ({ empresaId, id, status, resposta, usuarioId, ator
 
         await repo.decidir({ id, empresaId, status, resposta, decididoPor: usuarioId });
     });
-    return paraAusencia((await repositorio.ausenciaDaEmpresa(id, empresaId))!);
+    const decidida = paraAusencia((await repositorio.ausenciaDaEmpresa(id, empresaId))!, await fusoDaEmpresa(empresaId));
+    await avisarDecisao(empresaId, decidida);
+    return decidida;
+};
+
+const dataPorExtenso = (dia: string): string => dia.split('-').reverse().join('/');
+
+// O colaborador fica sabendo da decisão no sino (e por e-mail, se configurado), com o motivo da recusa.
+const avisarDecisao = (empresaId: number, { employeeId, type, startDate, endDate, status, reply }: Ausencia): Promise<void> => {
+    const aprovada = status === 'Aprovada';
+    const periodo = `${dataPorExtenso(startDate)} a ${dataPorExtenso(endDate)}`;
+    return notificarColaboradores(empresaId, [employeeId], {
+        tipo: 'ausencia',
+        titulo: `${type} ${aprovada ? 'aprovada' : 'recusada'}`,
+        mensagem: `A sua solicitação de ${type.toLowerCase()} de ${periodo} foi ${aprovada ? 'aprovada' : 'recusada'}.${reply ? ` Resposta do RH: ${reply}` : ''}`,
+        link: '/meu-painel/solicitacoes',
+    });
 };
 
 // O saldo é o do colaborador consultado, que a rota já autorizou; a empresa vem do token.
 export const saldoDoColaborador = async ({ empresaId, funcionarioId }: { empresaId: number; funcionarioId: number }): Promise<SaldoDeFerias> => {
     const colaborador = await repositorio.colaborador(funcionarioId, empresaId);
     if (!colaborador) throw new ErroDeAusencia('inexistente', 'Colaborador não encontrado nesta empresa.');
-    return regras.calcularSaldo(colaborador.admissao, hojeEmBelem(), await repositorio.feriasPedidas(funcionarioId));
+    return regras.calcularSaldo(colaborador.admissao, await hojeDaEmpresa(empresaId), await repositorio.feriasPedidas(funcionarioId));
 };
 
 export interface ArquivoAnexado {

@@ -29,6 +29,7 @@ export interface SessaoApi {
   perfil: Perfil;
   empresa_id: number;
   empresa_nome: string;
+  empresa_fuso: string;
   funcionario_id: number | null;
   avatar: string | null;
 }
@@ -396,6 +397,80 @@ export interface MeusDadosSalvosApi extends MensagemApi {
 export interface CorpoDeAlterarSenhaApi {
   senhaAtual: string;
   novaSenha: string;
+}
+
+// --- Relatórios ------------------------------------------------------------------------------
+
+// GET /api/relatorios/headcount?de=&ate=: uma linha por mês. `turnover` em %.
+export interface LinhaDeHeadcountApi {
+  mes: string;
+  admitidos: number;
+  desligados: number;
+  ativos: number;
+  turnover: number;
+}
+
+// GET /api/relatorios/aniversariantes?mes=
+export interface AniversarianteApi {
+  funcionarioId: number;
+  nome: string;
+  departamento: string | null;
+  cargo: string | null;
+  dia: number;
+}
+
+export interface LinhaDeCustoApi {
+  departamento: string;
+  colaboradores: number;
+  bruto: number;
+  descontos: number;
+  liquido: number;
+  encargos: number;
+  custoTotal: number;
+}
+
+// GET /api/relatorios/custo-departamento?competencia=
+export interface CustoPorDepartamentoApi {
+  competencia: string;
+  statusDaFolha: 'aberta' | 'fechada';
+  departamentos: LinhaDeCustoApi[];
+  total: LinhaDeCustoApi;
+}
+
+export interface LinhaDeAbsenteismoApi {
+  departamento: string;
+  colaboradores: number;
+  diasApurados: number;
+  faltas: number;
+  ausenciasJustificadas: number;
+  atrasos: number;
+  taxa: number;
+}
+
+// GET /api/relatorios/absenteismo?mes=
+export interface AbsenteismoApi {
+  mes: string;
+  departamentos: LinhaDeAbsenteismoApi[];
+  total: LinhaDeAbsenteismoApi;
+}
+
+// --- Notificações ----------------------------------------------------------------------------
+
+export interface NotificacaoApi {
+  id: number;
+  tipo: string;
+  titulo: string;
+  mensagem: string;
+  // Caminho do front-end que o aviso abre.
+  link: string | null;
+  lida: boolean;
+  criadaEm: string;
+}
+
+// GET /api/notificacoes
+export interface ListaDeNotificacoesApi {
+  naoLidas: number;
+  itens: NotificacaoApi[];
 }
 
 // --- Solicitações de alteração cadastral (B-22) ----------------------------------------------

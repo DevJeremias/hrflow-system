@@ -6,7 +6,13 @@ import { lerSessao, ehGestao, rotaInicial, rotaDepoisDoLogin, destinoDoLogin } f
 const sessaoValida = () => ({ id: 3, nome: 'Rita RH Ficticia', perfil: 'RH', funcionario_id: 1, empresa_nome: 'Empresa Ficticia Alfa Ltda', avatar: null });
 
 test('lerSessao converte a resposta do servidor no usuário do front-end', () => {
-  assert.deepEqual(lerSessao(sessaoValida()), { id: 3, nome: 'Rita RH Ficticia', role: 'RH', funcionarioId: 1, empresaNome: 'Empresa Ficticia Alfa Ltda', avatar: null, senhaProvisoria: false });
+  assert.deepEqual(lerSessao(sessaoValida()), { id: 3, nome: 'Rita RH Ficticia', role: 'RH', funcionarioId: 1, empresaNome: 'Empresa Ficticia Alfa Ltda', empresaFuso: 'America/Belem', avatar: null, senhaProvisoria: false });
+});
+
+test('lerSessao lê o fuso da empresa e usa Belém quando a API não o informa', () => {
+  assert.equal(lerSessao({ ...sessaoValida(), empresa_fuso: 'America/Manaus' })?.empresaFuso, 'America/Manaus');
+  assert.equal(lerSessao({ ...sessaoValida(), empresa_fuso: '  ' })?.empresaFuso, 'America/Belem');
+  assert.equal(lerSessao({ ...sessaoValida(), empresa_fuso: 3 })?.empresaFuso, 'America/Belem');
 });
 
 test('lerSessao aceita administrador sem vínculo e avatar ausente', () => {

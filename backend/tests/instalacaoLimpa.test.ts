@@ -13,7 +13,9 @@ import { novoCnpj } from './support/cnpj.ts';
 import { imagemReal } from './support/imagens.ts';
 import pool from '../shared/db/pool.ts';
 import { criarApp } from '../app.ts';
-import { mesLocal } from '../modules/ponto/ponto.fuso.ts';
+import { criarFuso } from '../shared/utils/fuso.ts';
+
+const { mesLocal } = criarFuso('America/Belem');
 
 describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, () => {
     let server: http.Server, baseUrl: string;
@@ -179,7 +181,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
         const salvo = await chamar('PUT', '/api/empresa', estado.admin, { razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' });
         assert.equal(salvo.status, 200);
-        assert.deepEqual(salvo.corpo, { nome: 'Empresa Ficticia Limpa', razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11222333000181', regime_tributario: 'Simples Nacional', encarregado_nome: null, encarregado_email: null });
+        assert.deepEqual(salvo.corpo, { nome: 'Empresa Ficticia Limpa', razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11222333000181', regime_tributario: 'Simples Nacional', fuso: 'America/Belem', encarregado_nome: null, encarregado_email: null });
     });
 
     it('processa e fecha a folha da competência e entrega o holerite individual', async () => {

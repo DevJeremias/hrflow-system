@@ -1,9 +1,14 @@
 // Regras da autenticação: quem pode abrir conta, quem pode entrar e o que a sessão mostra. Não
 // conhece HTTP (falhas de regra saem como ErroDeAuth) e só chega ao banco pelo repositório.
+import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
+import { emailConfigurado, enviarEmailSemFalhar, linkDoApp } from '../../shared/email/email.ts';
+import { emailDeRedefinicaoDeSenha, VALIDADE_DA_REDEFINICAO_EM_MINUTOS } from '../../shared/email/modelos.ts';
+import { agoraEmSegundos } from '../../shared/utils/fuso.ts';
 import { ErroDeAuth } from './auth.erros.ts';
 import * as repositorio from './auth.repository.ts';
-import type { DadosDeLogin, DadosDeRegistro } from './auth.schemas.ts';
+import type { DadosDeEsqueciSenha, DadosDeLogin, DadosDeRedefinicao, DadosDeRegistro } from './auth.schemas.ts';
+import { LINK_INVALIDO } from './auth.schemas.ts';
 import { emitirToken } from './auth.sessao.ts';
 import { autoriaDoLogin } from '../../shared/utils/auditar.ts';
 import type { EventoDeAuditoria } from '../../shared/utils/auditar.ts';
@@ -29,6 +34,7 @@ export interface IdentidadeDoUsuario {
     perfil: string;
     empresa_id: number;
     empresa_nome: string;
+    empresa_fuso: string;
     funcionario_id: number | null;
     avatar: string | null;
     nome: string;
@@ -98,6 +104,40 @@ export const login = async ({ email, senha }: DadosDeLogin, ip: string | null): 
 export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDoUsuario> => {
     const identidade = await repositorio.identidadeDaSessao(usuarioId);
     if (!identidade) throw new ErroDeAuth('naoAutenticado', 'Sessão encerrada. Faça login novamente.');
-    const { id, perfil, empresa_id, empresa_nome, funcionario_id, avatar, nome, senha_provisoria } = identidade;
-    return { id, perfil, empresa_id, empresa_nome, funcionario_id, avatar, nome, senha_provisoria: Boolean(senha_provisoria) };
+    const { id, perfil, empresa_id, empresa_nome, empresa_fuso, funcionario_id, avatar, nome, senha_provisoria } = identidade;
+    return { id, perfil, empresa_id, empresa_nome, empresa_fuso, funcionario_id, avatar, nome, senha_provisoria: Boolean(senha_provisoria) };
+};
+
+const hashDoToken = (token: string): string => crypto.createHash('sha256').update(token).digest('hex');
+
+// "Esqueci a senha": manda por e-mail um link com um token de uso único e validade de 1 hora. A
+// resposta é a mesma exista ou não a conta (e esteja ela ativa ou não), para a rota não servir
+// para descobrir quem tem cadastro; o e-mail sai em segundo plano pelo mesmo motivo (o tempo da
+// resposta não denuncia a conta). Sem e-mail configurado a rota diz isso, em vez de prometer o que
+// não vai acontecer.
+export const solicitarRedefinicao = async ({ email }: DadosDeEsqueciSenha): Promise<void> => {
+    if (!emailConfigurado()) {
+        throw new ErroDeAuth('naoDisponivel', 'O envio de e-mail não está habilitado neste ambiente. Procure o RH da sua empresa para redefinir a senha.');
+    }
+    const usuario = await repositorio.usuarioPorEmail(email);
+    if (!usuario) return;
+    if (usuario.funcionario_id) {
+        const funcionario = await repositorio.funcionarioDoUsuario(usuario.funcionario_id, usuario.empresa_id);
+        if (funcionario?.status === 'Inativo') return;
+    }
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    const agora = agoraEmSegundos();
+    await repositorio.criarRedefinicao(usuario.id, hashDoToken(token), agora + VALIDADE_DA_REDEFINICAO_EM_MINUTOS * 60, agora);
+    // O token vai no fragmento (#): fica fora do log do servidor e do cabeçalho Referer.
+    void enviarEmailSemFalhar(emailDeRedefinicaoDeSenha({ nome: usuario.nome, email }, linkDoApp(`/redefinir-senha#token=${token}`)));
+};
+
+// Troca a senha pelo token do e-mail. O token é consumido ao primeiro uso; todas as sessões abertas
+// encerram, e quem estava com senha provisória deixa de estar.
+export const redefinirSenha = async ({ token, senha }: DadosDeRedefinicao): Promise<void> => {
+    const senhaCripto = await bcrypt.hash(senha, CUSTO_DO_HASH);
+    if (!await repositorio.consumirRedefinicao(hashDoToken(token), agoraEmSegundos(), senhaCripto)) {
+        throw new ErroDeAuth('invalido', LINK_INVALIDO);
+    }
 };

@@ -23,6 +23,7 @@ export interface IdentidadeDaSessao extends RowDataPacket {
     perfil: string;
     empresa_id: number;
     empresa_nome: string;
+    empresa_fuso: string;
     funcionario_id: number | null;
     // Endereço da miniatura (GET /api/perfil/avatar), nunca a imagem.
     avatar: string | null;
@@ -83,7 +84,7 @@ export const funcionarioDoUsuario = async (funcionarioId: number, empresaId: num
 
 export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeDaSessao | undefined> => {
     const [linhas] = await db.query<IdentidadeDaSessao[]>(
-        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, u.funcionario_id, ${urlDoAvatarSql('u')} AS avatar, u.senha_provisoria,
+        `SELECT u.id, u.perfil, u.empresa_id, e.nome AS empresa_nome, e.fuso AS empresa_fuso, u.funcionario_id, ${urlDoAvatarSql('u')} AS avatar, u.senha_provisoria,
                 COALESCE(f.nome, u.nome) AS nome
          FROM usuarios u
          JOIN empresas e ON e.id = u.empresa_id
@@ -92,4 +93,69 @@ export const identidadeDaSessao = async (usuarioId: number): Promise<IdentidadeD
         [usuarioId]
     );
     return linhas[0];
+};
+
+// O pedido de redefinição: só o hash do token fica no banco. Um pedido novo invalida os anteriores
+// que ainda não foram usados, então só o link do último e-mail vale.
+export const criarRedefinicao = async (usuarioId: number, tokenHash: string, expiraEm: number, agora: number): Promise<void> => {
+    const conexao = await db.getConnection();
+    try {
+        await conexao.beginTransaction();
+        await conexao.query(
+            'UPDATE redefinicoes_de_senha SET usado_em = FROM_UNIXTIME(?) WHERE usuario_id = ? AND usado_em IS NULL',
+            [agora, usuarioId]
+        );
+        await conexao.query(
+            'INSERT INTO redefinicoes_de_senha (usuario_id, token_hash, expira_em) VALUES (?, ?, FROM_UNIXTIME(?))',
+            [usuarioId, tokenHash, expiraEm]
+        );
+        await conexao.commit();
+    } catch (erro) {
+        await conexao.rollback().catch(() => {});
+        throw erro;
+    } finally {
+        conexao.release();
+    }
+};
+
+interface PedidoDeRedefinicao extends RowDataPacket {
+    id: number;
+    usuario_id: number;
+    funcionario_status: string | null;
+}
+
+// Consome o token e grava a senha numa transação só: o token vale uma vez, mesmo que duas requisições
+// cheguem juntas (a linha fica travada). Devolve false se o token não existe, já foi usado, expirou ou
+// é de quem foi desligado. Subir a versão da sessão encerra todas as sessões abertas com a senha esquecida.
+export const consumirRedefinicao = async (tokenHash: string, agora: number, senhaCripto: string): Promise<boolean> => {
+    const conexao = await db.getConnection();
+    try {
+        await conexao.beginTransaction();
+        const [pedidos] = await conexao.query<PedidoDeRedefinicao[]>(
+            `SELECT r.id, r.usuario_id, f.status AS funcionario_status
+             FROM redefinicoes_de_senha r
+             JOIN usuarios u ON u.id = r.usuario_id
+             LEFT JOIN funcionarios f ON f.id = u.funcionario_id AND f.empresa_id = u.empresa_id
+             WHERE r.token_hash = ? AND r.usado_em IS NULL AND r.expira_em > FROM_UNIXTIME(?)
+             FOR UPDATE OF r`,
+            [tokenHash, agora]
+        );
+        const pedido = pedidos[0];
+        if (!pedido || pedido.funcionario_status === 'Inativo') {
+            await conexao.rollback();
+            return false;
+        }
+        await conexao.query(
+            'UPDATE usuarios SET senha = ?, senha_provisoria = FALSE, sessao_versao = sessao_versao + 1 WHERE id = ?',
+            [senhaCripto, pedido.usuario_id]
+        );
+        await conexao.query('UPDATE redefinicoes_de_senha SET usado_em = FROM_UNIXTIME(?) WHERE id = ?', [agora, pedido.id]);
+        await conexao.commit();
+        return true;
+    } catch (erro) {
+        await conexao.rollback().catch(() => {});
+        throw erro;
+    } finally {
+        conexao.release();
+    }
 };

@@ -7,6 +7,8 @@ import db from './shared/db/pool.ts';
 import { lerAmbiente } from './shared/config/ambiente.ts';
 import logger from './shared/observabilidade/logger.ts';
 import { criarEncerramento } from './shared/observabilidade/encerramento.ts';
+import { configurarEmail, transporteDeLog } from './shared/email/email.ts';
+import { criarTransporteSes } from './shared/email/ses.ts';
 import { descarregarSentry, iniciarSentry, registrarNoSentry } from './shared/observabilidade/sentry.ts';
 
 // Falha antes de a porta abrir: não há o que encerrar com calma, o processo só sai com o motivo no log.
@@ -30,8 +32,11 @@ process.on('unhandledRejection', falhaInesperada('Promise rejeitada sem tratamen
 process.on('uncaughtException', falhaInesperada('Exceção sem tratamento'));
 
 try {
-    const { porta, sentryDsn } = lerAmbiente();
+    const { porta, sentryDsn, email } = lerAmbiente();
     await iniciarSentry(sentryDsn);
+    if (email) {
+        configurarEmail({ transporte: email.transporte === 'ses' ? criarTransporteSes() : transporteDeLog, remetente: email.remetente, urlDoApp: email.urlDoApp });
+    }
 
     // O app (e com ele o segredo JWT) só é carregado depois de o ambiente ser conferido.
     const { criarApp } = await import('./app.ts');

@@ -1,3 +1,5 @@
+import { FUSO_PADRAO } from './fuso.ts';
+
 export const PERFIS = ['Administrador', 'RH', 'Colaborador'] as const;
 export type Perfil = typeof PERFIS[number];
 
@@ -33,6 +35,8 @@ export interface User {
   role: Perfil;
   funcionarioId: number | null;
   empresaNome: string;
+  // Fuso IANA da empresa ('America/Manaus'): o dia do ponto e o mês da folha seguem ele.
+  empresaFuso: string;
   avatar?: string | null;
   senhaProvisoria: boolean;
 }
@@ -49,7 +53,7 @@ const ehId = (valor: unknown): valor is number => Number.isInteger(valor) && (va
 // Devolve null se algo não bate: quem chama trata como sessão inválida.
 export const lerSessao = (dados: unknown): User | null => {
   if (typeof dados !== 'object' || dados === null) return null;
-  const { id, nome, perfil, funcionario_id: funcionarioId, empresa_nome: empresaNome, avatar, senha_provisoria: senhaProvisoria } = dados as Record<string, unknown>;
+  const { id, nome, perfil, funcionario_id: funcionarioId, empresa_nome: empresaNome, empresa_fuso: empresaFuso, avatar, senha_provisoria: senhaProvisoria } = dados as Record<string, unknown>;
 
   if (!ehId(id) || typeof nome !== 'string' || !nome.trim() || !ehPerfil(perfil)) return null;
   if (typeof empresaNome !== 'string' || !empresaNome.trim()) return null;
@@ -57,7 +61,10 @@ export const lerSessao = (dados: unknown): User | null => {
   if (avatar !== null && avatar !== undefined && typeof avatar !== 'string') return null;
 
   // Ausente vale como falso: uma API anterior a este campo nunca marcou senha provisória.
-  return { id, nome, role: perfil, funcionarioId, empresaNome, avatar: avatar ?? null, senhaProvisoria: senhaProvisoria === true };
+  // Ausente vale Belém: uma API anterior a este campo servia um fuso só.
+  const fuso = typeof empresaFuso === 'string' && empresaFuso.trim() ? empresaFuso : FUSO_PADRAO;
+
+  return { id, nome, role: perfil, funcionarioId, empresaNome, empresaFuso: fuso, avatar: avatar ?? null, senhaProvisoria: senhaProvisoria === true };
 };
 
 // A API serve a miniatura do avatar em um endereço fixo; `versao` força o navegador a buscar de novo

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ehGestao } from '../utils/sessao';
 import Avatar from '../components/ui/Avatar';
 import { IconButton } from '../components/ui/Button';
+import SinoDeNotificacoes from '../components/Notificacoes/SinoDeNotificacoes';
 
 interface HeaderProps {
   onOpenSidebar: () => void;
@@ -33,6 +34,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenSidebar, menuAberto, menuId }) =>
       </div>
 
       <div className="flex items-center gap-3">
+        <SinoDeNotificacoes />
         <div className="hidden text-right sm:block">
           <p className="text-sm font-semibold text-ink">{primeiroNome}</p>
           <p className="text-xs text-ink-muted">{user?.role}</p>

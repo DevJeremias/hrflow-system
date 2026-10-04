@@ -14,6 +14,15 @@ import authMiddleware from '../shared/middlewares/authMiddleware.ts';
 import tratarErros from '../shared/middlewares/tratarErros.ts';
 import { empresaRoutes } from '../modules/empresa/index.ts';
 import { normalizarCnpj } from '../modules/empresa/empresa.regras.ts';
+import { FUSOS_DO_BRASIL } from '../modules/empresa/empresa.schemas.ts';
+import { criarFuso, FUSO_PADRAO } from '../shared/utils/fuso.ts';
+
+describe('fusos oferecidos', () => {
+    it('todo fuso oferecido é uma zona que o runtime conhece, e o padrão está entre eles', () => {
+        for (const zona of FUSOS_DO_BRASIL) assert.doesNotThrow(() => criarFuso(zona), zona);
+        assert.ok((FUSOS_DO_BRASIL as readonly string[]).includes(FUSO_PADRAO));
+    });
+});
 
 describe('validação do CNPJ', () => {
     it('aceita CNPJ com ou sem pontuação e devolve só os dígitos', () => {
@@ -76,7 +85,7 @@ describe('dados da empresa', { skip: banco.skip }, () => {
         for (const token of [admin, rh]) {
             const { status, corpo } = await chamar('GET', token);
             assert.equal(status, 200);
-            assert.deepEqual(Object.keys(corpo).sort(), ['cnpj', 'encarregado_email', 'encarregado_nome', 'nome', 'razao_social', 'regime_tributario']);
+            assert.deepEqual(Object.keys(corpo).sort(), ['cnpj', 'encarregado_email', 'encarregado_nome', 'fuso', 'nome', 'razao_social', 'regime_tributario']);
             assert.equal(corpo.cnpj, null);
             assert.equal(corpo.razao_social, null);
             assert.equal(corpo.regime_tributario, null);
@@ -102,6 +111,18 @@ describe('dados da empresa', { skip: banco.skip }, () => {
         const limpo = await chamar('PUT', admin, { razao_social: 'Razao Ficticia Ltda', cnpj, regime_tributario: '' });
         assert.equal(limpo.status, 200);
         assert.equal(limpo.corpo.regime_tributario, null);
+    });
+
+    it('o Administrador troca o fuso da empresa e quem não o informa mantém o que já tem', async () => {
+        const { admin, rh } = await cenario();
+        const corpo = { razao_social: 'Razao Ficticia Ltda', cnpj: novoCnpj() };
+        assert.equal((await chamar('GET', rh)).corpo.fuso, 'America/Belem');
+        const manaus = await chamar('PUT', admin, { ...corpo, fuso: 'America/Manaus' });
+        assert.equal(manaus.status, 200);
+        assert.equal(manaus.corpo.fuso, 'America/Manaus');
+        const semFuso = await chamar('PUT', admin, { ...corpo, razao_social: 'Outra Razao Ficticia Ltda' });
+        assert.equal(semFuso.corpo.fuso, 'America/Manaus');
+        assert.equal((await chamar('GET', rh)).corpo.fuso, 'America/Manaus');
     });
 
     it('o encarregado pelo tratamento de dados (LGPD) é indicado pelo Administrador, mantido quando o corpo não o traz e apagado com vazio', async () => {
@@ -146,7 +167,8 @@ describe('dados da empresa', { skip: banco.skip }, () => {
             ['razão social vazia', { ...valido, razao_social: '   ' }, /Razão social é obrigatório/],
             ['razão social longa', { ...valido, razao_social: 'x'.repeat(256) }, /no máximo 255/],
             ['regime desconhecido', { ...valido, regime_tributario: 'MEI' }, /Regime tributário deve ser/],
-            ['campo fora do formato', { ...valido, fuso: 'America/Manaus' }, /Campo desconhecido: fuso/],
+            ['fuso fora do Brasil', { ...valido, fuso: 'Asia/Tokyo' }, /Fuso horário deve ser um destes/],
+            ['campo fora do formato', { ...valido, moeda: 'BRL' }, /Campo desconhecido: moeda/],
         ];
         for (const [nome, corpo, mensagem] of casos) {
             const { status, corpo: resposta } = await chamar('PUT', admin, corpo);

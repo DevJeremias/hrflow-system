@@ -12,18 +12,19 @@ backend/
 ├── server.ts               # ponto de entrada: carrega o .env, confere o ambiente, abre a porta e encerra com ordem no SIGTERM
 ├── modules/<área>/         # uma pasta por área do domínio, em camadas (padrão abaixo)
 ├── shared/                 # o que mais de uma área usa
-│   ├── config/             # ambiente (DB_*, PORT), segredo JWT, leitura de TRUST_PROXY
+│   ├── config/             # ambiente (DB_*, PORT, EMAIL_*), segredo JWT, leitura de TRUST_PROXY
 │   ├── db/                 # pool do MySQL, aplicador de migrations, fixtures de desenvolvimento
+│   ├── email/              # e-mail transacional opcional: transporte (SES ou log), modelos em pt-BR
 │   ├── middlewares/        # autenticação, perfis, validação de entrada, limites de tentativas, erros
 │   ├── observabilidade/    # logger pino, log por requisição (reqId), encerramento ordenado, Sentry opcional
 │   ├── schemas/            # blocos zod comuns, regras de texto, e-mail e senha, paginação
-│   └── utils/              # tradução de erros do MySQL, paginação das respostas, gravação da trilha de auditoria (auditar.ts), relógio e dia de Belém
+│   └── utils/              # fuso da empresa e relógio, tradução de erros do MySQL, paginação das respostas, gravação da trilha de auditoria (auditar.ts)
 ├── migrations/             # schema versionado (SQL numerado) e auditorias; não é código
 ├── tests/                  # testes de integração e de unidade (*.test.ts)
 └── types/                  # declarações que só o tsc usa (express.d.ts)
 ```
 
-As áreas são `auditoria` (leitura da trilha de auditoria), `auth`, `ausencias` (férias e afastamentos), `dashboard`, `empresa`, `estrutura`, `folha`, `funcionarios`, `perfil`, `ponto`, `saude` (health e ready, só rotas), `solicitacoes` (pedidos de alteração cadastral que o RH aprova) e `usuarios` (contas de acesso, só do Administrador). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
+As áreas são `auditoria` (leitura da trilha de auditoria), `auth`, `ausencias` (férias e afastamentos), `dashboard`, `empresa`, `estrutura`, `folha`, `funcionarios`, `notificacoes` (o sino e os avisos de holerite e de justificativa), `perfil`, `ponto`, `relatorios` (headcount, aniversariantes, custo por departamento e absenteísmo, em JSON, CSV e PDF), `saude` (health e ready, só rotas), `solicitacoes` (pedidos de alteração cadastral que o RH aprova) e `usuarios` (contas de acesso, só do Administrador). `modules/ponto` é a implementação de referência: para uma área nova, copie a estrutura dela.
 
 ## Regras de estrutura
 

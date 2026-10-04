@@ -2,7 +2,8 @@ import React, { useId, useState } from 'react';
 import { UploadCloud, AlertCircle, X } from 'lucide-react';
 import { NewRequest, RequestType, VacationBalance } from '../../services/requestService';
 import { ANEXO_OBRIGATORIO, TIPOS_DE_SOLICITACAO, rotuloDosDias, validarArquivo, validarPeriodo, type ErrosDoPeriodo } from '../../utils/solicitacoes';
-import { hojeDeBelem } from '../../utils/ponto';
+import { hojeNoFuso } from '../../utils/ponto';
+import { useFusoDaEmpresa } from '../../hooks/useFusoDaEmpresa';
 import Button, { IconButton } from '../ui/Button';
 import Field, { Input, Select, Textarea } from '../ui/Field';
 import Modal from '../ui/Modal';
@@ -29,11 +30,12 @@ const RequestsModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, balance }) 
   const [errors, setErrors] = useState<Erros>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const idArquivo = useId().replace(/:/g, '');
+  const fuso = useFusoDaEmpresa();
 
   if (!isOpen) return null;
 
   const anexoObrigatorio = ANEXO_OBRIGATORIO.includes(type);
-  const hoje = hojeDeBelem();
+  const hoje = hojeNoFuso(fuso);
 
   const escolherArquivo = (arquivo: File | undefined) => {
     setAttachment(arquivo ?? null);

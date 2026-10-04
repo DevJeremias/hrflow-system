@@ -11,7 +11,7 @@ import { criarUsuario, cabecalhosDaSessao } from './support/sessao.ts';
 import db from '../shared/db/pool.ts';
 import { carregarFixtures } from '../shared/db/fixtures.ts';
 import { criarApp } from '../app.ts';
-import { relogio, limitesDoDia, diaLocal } from '../modules/ponto/index.ts';
+import { relogio, criarFuso } from '../shared/utils/fuso.ts';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 const semBanco = banco.skip;
@@ -21,7 +21,8 @@ let baseUrl: string;
 
 // "Hoje" é o dia de Belém no instante fixado aqui, para o teste não atravessar a virada do dia.
 const AGORA = Math.floor(Date.now() / 1000);
-const { inicio: INICIO_DE_HOJE } = limitesDoDia(diaLocal(AGORA));
+const belem = criarFuso('America/Belem');
+const { inicio: INICIO_DE_HOJE } = belem.limitesDoDia(belem.diaLocal(AGORA));
 
 const empresaPorNome = async (nome: string) => (await db.query<RowDataPacket[]>('SELECT id FROM empresas WHERE nome = ?', [nome]))[0][0].id;
 

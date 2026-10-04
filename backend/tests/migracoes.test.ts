@@ -11,7 +11,7 @@ import type { Connection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 
 const TABELAS = [
     'ausencia_anexos', 'ausencias', 'empresas', 'departamentos', 'cargos', 'funcionarios', 'dependentes', 'usuarios', 'registro_pontos', 'justificativas_ponto', 'folhas', 'folha_itens',
-    'auditoria', 'historico_contratual', 'solicitacoes_alteracao', 'avatares', 'schema_migrations',
+    'auditoria', 'historico_contratual', 'solicitacoes_alteracao', 'avatares', 'notificacoes', 'redefinicoes_de_senha', 'schema_migrations',
 ];
 
 describe('migrations', { skip: banco.skip }, () => {

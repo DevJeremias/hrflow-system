@@ -1,6 +1,6 @@
 // Falha de regra da autenticação. O serviço diz o que deu errado (tipo e mensagem para o usuário)
 // e o controlador traduz o tipo em status HTTP; o que não for ErroDeAuth é falha inesperada.
-export type TipoDeErro = 'naoAutenticado' | 'proibido' | 'conflito';
+export type TipoDeErro = 'naoAutenticado' | 'proibido' | 'conflito' | 'invalido' | 'naoDisponivel';
 
 export class ErroDeAuth extends Error {
     tipo: TipoDeErro;

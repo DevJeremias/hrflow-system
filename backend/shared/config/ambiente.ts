@@ -13,9 +13,17 @@ export class ErroDeAmbiente extends Error {
     }
 }
 
+// O e-mail transacional é opcional: sem EMAIL_TRANSPORT a API não envia e `email` é null.
+export interface ConfigDeEmail {
+    transporte: 'ses' | 'log';
+    remetente: string;
+    urlDoApp: string;
+}
+
 export interface Ambiente {
     porta: number;
     sentryDsn: string | undefined;
+    email: ConfigDeEmail | null;
 }
 
 const PORTA_PADRAO = 3000;
@@ -23,6 +31,32 @@ const PORTA_PADRAO = 3000;
 const inteiroEntre = (valor: string, minimo: number, maximo: number): number | null => {
     const numero = /^\d+$/.test(valor) ? Number(valor) : NaN;
     return numero >= minimo && numero <= maximo ? numero : null;
+};
+
+const TRANSPORTES_DE_EMAIL = ['ses', 'log'] as const;
+
+const lerEmail = (env: NodeJS.ProcessEnv, problemas: string[]): ConfigDeEmail | null => {
+    const transporte = env.EMAIL_TRANSPORT?.trim();
+    if (!transporte) return null;
+    if (!(TRANSPORTES_DE_EMAIL as readonly string[]).includes(transporte)) {
+        problemas.push(`EMAIL_TRANSPORT deve ser um destes: ${TRANSPORTES_DE_EMAIL.join(', ')} (ou ficar vazia, sem e-mail).`);
+        return null;
+    }
+    // O transporte de log escreve o corpo do e-mail, que numa redefinição de senha é um token.
+    if (transporte === 'log' && env.NODE_ENV === 'production') {
+        problemas.push('EMAIL_TRANSPORT=log não é permitido em produção: o log guardaria os links de redefinição de senha.');
+    }
+
+    const remetente = env.EMAIL_FROM?.trim() ?? '';
+    if (!/^(?:[^<>@]+<[^\s<>@]+@[^\s<>@]+>|[^\s<>@]+@[^\s<>@]+)$/.test(remetente)) {
+        problemas.push('EMAIL_FROM é obrigatória com EMAIL_TRANSPORT e deve ser um endereço de e-mail (ex.: HRFlow <nao-responder@exemplo.com.br>).');
+    }
+
+    const url = env.APP_URL?.trim().replace(/\/+$/, '') ?? '';
+    if (!/^https?:\/\/[^\s/]+(:\d+)?$/.test(url)) {
+        problemas.push('APP_URL é obrigatória com EMAIL_TRANSPORT e deve ser o endereço do front-end, sem caminho (ex.: https://hrflow.exemplo.com.br).');
+    }
+    return { transporte: transporte as ConfigDeEmail['transporte'], remetente, urlDoApp: url };
 };
 
 export const lerAmbiente = (env: NodeJS.ProcessEnv = process.env): Ambiente => {
@@ -47,6 +81,8 @@ export const lerAmbiente = (env: NodeJS.ProcessEnv = process.env): Ambiente => {
     const porta = textoDaPorta ? inteiroEntre(textoDaPorta, 0, 65535) : PORTA_PADRAO;
     if (porta === null) problemas.push('PORT deve ser um número de porta entre 0 e 65535.');
 
+    const email = lerEmail(env, problemas);
+
     if (problemas.length > 0 || porta === null) throw new ErroDeAmbiente(problemas);
-    return { porta, sentryDsn: env.SENTRY_DSN?.trim() || undefined };
+    return { porta, sentryDsn: env.SENTRY_DSN?.trim() || undefined, email };
 };

@@ -1,7 +1,10 @@
 // Regras da folha por competência: quem entra, o cálculo de cada colaborador (folha.regras.ts), o
 // processamento que pode se repetir enquanto a folha está aberta e o fechamento que a trava. Não
 // conhece HTTP (falhas de regra saem como ErroDeFolha) e só chega ao banco pelo repositório.
-import { apurarDiasDoMes, relogio, diaLocal, limitesDoMes } from '../ponto/index.ts';
+import { relogio, agoraEmSegundos } from '../../shared/utils/fuso.ts';
+import { fusoDaEmpresa } from '../empresa/index.ts';
+import { notificarColaboradores } from '../notificacoes/index.ts';
+import { apurarDiasDoMes } from '../ponto/index.ts';
 import { ausenciasAprovadasNoPeriodo, diasDeFeriasNoPeriodo } from '../ausencias/index.ts';
 import { competenciaDoDia, primeiroDia, proximoMes, ultimoDia, rotuloDaCompetencia } from './folha.competencia.ts';
 import { CODIGO_SALARIO, SEM_LANCAMENTOS, calcularHolerite, emCentavos, emReais, haTabelaDeIrrfVigente, haTabelaVigente } from './folha.regras.ts';
@@ -78,11 +81,11 @@ export interface FolhaDaCompetencia {
 
 const paraIso = (segundos: number): string => new Date(segundos * 1000).toISOString();
 
-const hojeEmCompetencia = (): string => competenciaDoDia(diaLocal(Math.floor(relogio.agora() / 1000)));
+const hojeEmCompetencia = async (empresaId: number): Promise<string> => competenciaDoDia((await fusoDaEmpresa(empresaId)).diaLocal(agoraEmSegundos()));
 
 // A folha só existe para um mês que já começou e para o qual há tabela de INSS e de IRRF.
-const exigirCompetenciaProcessavel = (competencia: string) => {
-    if (competencia > hojeEmCompetencia()) {
+const exigirCompetenciaProcessavel = async (empresaId: number, competencia: string) => {
+    if (competencia > await hojeEmCompetencia(empresaId)) {
         throw new ErroDeFolha('invalido', `A competência ${rotuloDaCompetencia(competencia)} ainda não começou: não é possível processar a folha.`);
     }
     if (!haTabelaVigente(primeiroDia(competencia))) {
@@ -163,14 +166,16 @@ const agruparPorColaborador = <T extends { funcionario_id: number }>(linhas: rea
 // O que a folha precisa saber do ponto de cada colaborador no mês, lido de uma vez para a empresa
 // (ou para um colaborador): a apuração é a de modules/ponto, a mesma que a tela de ponto mostra.
 const carregarPonto = async (repo: repositorio.RepositorioDaFolha, empresaId: number, competencia: string, funcionarioId: number | null) => {
-    const { inicio, fim } = limitesDoMes(competencia);
+    // O dia do ponto, e portanto o mês da apuração, é o do fuso da empresa.
+    const fuso = await fusoDaEmpresa(empresaId);
+    const { inicio, fim } = fuso.limitesDoMes(competencia);
     const [marcacoes, justificativas, ausencias] = await Promise.all([
         repo.marcacoesDoMes(empresaId, inicio, fim, funcionarioId),
         repo.justificativasDoMes(empresaId, primeiroDia(competencia), proximoMes(competencia), funcionarioId),
         // Férias e afastamentos aprovados: abonam os dias no ponto e as férias geram o terço (modules/ausencias).
         ausenciasAprovadasNoPeriodo(empresaId, primeiroDia(competencia), ultimoDia(competencia)),
     ]);
-    return { marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas), ausencias };
+    return { fuso, marcacoes: agruparPorColaborador<MarcacaoDoMes>(marcacoes), justificativas: agruparPorColaborador<JustificativaDoMes>(justificativas), ausencias };
 };
 
 type PontoDoMes = Awaited<ReturnType<typeof carregarPonto>>;
@@ -193,7 +198,7 @@ const apurar = (
             pendencias.push({ funcionarioId: colaborador.id, nome: colaborador.nome, motivo: MOTIVO_SEM_SALARIO });
             continue;
         }
-        const { dias } = apurarDiasDoMes(competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? [], ponto.ausencias.get(colaborador.id) ?? []);
+        const { dias } = apurarDiasDoMes(ponto.fuso, competencia, colaborador, ponto.marcacoes.get(colaborador.id) ?? [], ponto.justificativas.get(colaborador.id) ?? [], ponto.ausencias.get(colaborador.id) ?? []);
         const lancamentos = lancamentosDe.get(colaborador.id) ?? SEM_LANCAMENTOS;
         const holerite = calcularHolerite({
             salario,
@@ -250,7 +255,7 @@ export const consultarFolha = async ({ empresaId, competencia }: { empresaId: nu
 
 // Cria a folha da competência ou, estando ela aberta, a recalcula com os dados de agora.
 export const processarFolha = async ({ empresaId, competencia, autoria }: { empresaId: number; competencia: string; autoria: Autoria }): Promise<{ folha: FolhaDaCompetencia; criada: boolean }> => {
-    exigirCompetenciaProcessavel(competencia);
+    await exigirCompetenciaProcessavel(empresaId, competencia);
     const { criada, folhaId } = await repositorio.emTransacao(async (repo) => {
         const criada = await repo.criarFolhaSeNaoExiste(empresaId, competencia);
         const folha = (await repo.travarFolha(empresaId, competencia))!;
@@ -289,7 +294,15 @@ export const fecharFolha = async ({ empresaId, usuarioId, competencia, autoria }
         await repo.auditar(autoria, { acao: 'folha.fechada', entidade: 'folha', entidadeId: folha.id, depois: { competencia } });
         return folha.id;
     });
-    return montarFolha((await repositorio.folhaDaCompetencia(empresaId, competencia))!, await repositorio.itensDaFolha(folhaId));
+    const fechada = montarFolha((await repositorio.folhaDaCompetencia(empresaId, competencia))!, await repositorio.itensDaFolha(folhaId));
+    // O holerite só aparece para o colaborador com a folha fechada: é quando ele é avisado.
+    await notificarColaboradores(empresaId, fechada.itens.map((item) => Number(item.id)), {
+        tipo: 'holerite',
+        titulo: `Holerite de ${rotuloDaCompetencia(competencia)} disponível`,
+        mensagem: `O seu holerite da competência ${rotuloDaCompetencia(competencia)} já pode ser consultado.`,
+        link: '/meu-painel/holerites',
+    });
+    return fechada;
 };
 
 const publicado = (item: repositorio.HoleritePublicado): HoleritePublicado => ({

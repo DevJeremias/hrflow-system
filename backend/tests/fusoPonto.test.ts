@@ -4,10 +4,11 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import * as fuso from '../modules/ponto/ponto.fuso.ts';
+import { criarFuso, mesValido } from '../shared/utils/fuso.ts';
 import * as regras from '../modules/ponto/ponto.regras.ts';
 
 const s = (iso: string) => Date.parse(iso) / 1000;
+const fuso = criarFuso('America/Belem');
 
 describe('fusoPonto', () => {
     it('o dia muda às 03:00 UTC, não à meia-noite UTC', () => {
@@ -42,15 +43,36 @@ describe('fusoPonto', () => {
     });
 
     it('valida o formato do mês', () => {
-        for (const ok of ['2026-03', '1999-12']) assert.equal(fuso.mesValido(ok), true, ok);
+        for (const ok of ['2026-03', '1999-12']) assert.equal(mesValido(ok), true, ok);
         for (const ruim of [undefined, null, '', '2026-3', '2026-13', '2026-00', '2026-03-01', "2026-03' OR 1=1", 202603, ['2026-03']]) {
-            assert.equal(fuso.mesValido(ruim), false, String(ruim));
+            assert.equal(mesValido(ruim), false, String(ruim));
         }
+    });
+
+    it('cada empresa tem o seu fuso: Manaus está uma hora atrás de Belém', () => {
+        const manaus = criarFuso('America/Manaus');
+        // 02:30 UTC é 23:30 do dia anterior em Belém (UTC-3) e 22:30 em Manaus (UTC-4).
+        assert.equal(fuso.diaLocal(s('2026-03-11T02:30:00Z')), '2026-03-10');
+        assert.equal(manaus.diaLocal(s('2026-03-11T02:30:00Z')), '2026-03-10');
+        assert.equal(manaus.horaLocal(s('2026-03-11T02:30:00Z')), '22:30:00');
+        // 03:30 UTC já é o dia 11 em Belém, mas ainda o dia 10 em Manaus.
+        assert.equal(fuso.diaLocal(s('2026-03-11T03:30:00Z')), '2026-03-11');
+        assert.equal(manaus.diaLocal(s('2026-03-11T03:30:00Z')), '2026-03-10');
+        assert.deepEqual(manaus.limitesDoDia('2026-03-10'), { inicio: s('2026-03-10T04:00:00Z'), fim: s('2026-03-11T04:00:00Z') });
+        assert.deepEqual(manaus.limitesDoMes('2026-03'), { inicio: s('2026-03-01T04:00:00Z'), fim: s('2026-04-01T04:00:00Z') });
+        assert.equal(manaus.mesLocal(s('2026-04-01T03:59:59Z')), '2026-03');
+    });
+
+    it('a zona é criada uma vez e uma zona desconhecida é recusada ao criar', () => {
+        assert.equal(criarFuso('America/Manaus'), criarFuso('America/Manaus'));
+        assert.equal(criarFuso().zona, 'America/Belem');
+        assert.throws(() => criarFuso('Marte/Olympus'), RangeError);
     });
 
     it('não depende do fuso do processo Node', () => {
         const codigo = `
-            import * as f from './modules/ponto/ponto.fuso.ts';
+            import { criarFuso } from './shared/utils/fuso.ts';
+            const f = criarFuso('America/Belem');
             const t = Date.parse('2026-03-11T01:30:05Z') / 1000;
             console.log([f.diaLocal(t), f.horaLocal(t), f.limitesDoDia('2026-03-10').inicio].join('|'));`;
         const esperado = `2026-03-10|22:30:05|${s('2026-03-10T03:00:00Z')}`;

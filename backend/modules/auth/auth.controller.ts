@@ -4,12 +4,12 @@ import type { Request, Response } from 'express';
 import * as service from './auth.service.ts';
 import { ErroDeAuth } from './auth.erros.ts';
 import type { TipoDeErro } from './auth.erros.ts';
-import type { DadosDeLogin, DadosDeRegistro } from './auth.schemas.ts';
+import type { DadosDeEsqueciSenha, DadosDeLogin, DadosDeRedefinicao, DadosDeRegistro } from './auth.schemas.ts';
 import { encerrarSessao, iniciarSessao } from './auth.sessao.ts';
 import { ipDaRequisicao } from '../../shared/utils/auditar.ts';
 import { responderErro } from '../../shared/utils/erros.ts';
 
-const STATUS_POR_TIPO: Record<TipoDeErro, number> = { naoAutenticado: 401, proibido: 403, conflito: 409 };
+const STATUS_POR_TIPO: Record<TipoDeErro, number> = { naoAutenticado: 401, proibido: 403, conflito: 409, invalido: 400, naoDisponivel: 501 };
 
 // Falha de regra vira a resposta que o serviço descreveu; falha do banco vira 4xx/503 (shared/utils/erros.ts)
 // e qualquer outra é 500 com a mensagem do endpoint.
@@ -46,6 +46,24 @@ export const login = async (req: Request, res: Response) => {
         res.json({ perfil, nome, senhaProvisoria });
     } catch (erro) {
         responderFalha(res, erro, 'Erro ao processar login.');
+    }
+};
+
+export const esqueciSenha = async (req: Request, res: Response) => {
+    try {
+        await service.solicitarRedefinicao(corpoDe<DadosDeEsqueciSenha>(req));
+        res.json({ mensagem: 'Se o e-mail estiver cadastrado, enviamos as instruções para redefinir a senha.' });
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao pedir a redefinição de senha.');
+    }
+};
+
+export const redefinirSenha = async (req: Request, res: Response) => {
+    try {
+        await service.redefinirSenha(corpoDe<DadosDeRedefinicao>(req));
+        res.json({ mensagem: 'Senha redefinida. Entre com a nova senha.' });
+    } catch (erro) {
+        responderFalha(res, erro, 'Erro ao redefinir a senha.');
     }
 };
 

@@ -36,6 +36,25 @@ export interface JornadaDoColaborador extends RowDataPacket {
     admissao: string | null;
 }
 
+// Quem a apuração do mês da empresa considera: a jornada de cada colaborador e onde ele trabalha.
+export interface ColaboradorParaApurar extends JornadaDoColaborador {
+    funcionario_id: number;
+    nome: string;
+    departamento: string | null;
+    // 'AAAA-MM-DD' do desligamento, ou null.
+    desligamento: string | null;
+}
+
+export interface RegistroDoMes extends RowDataPacket {
+    funcionario_id: number;
+    tipo_registro: TipoRegistro;
+    instante: number;
+}
+
+export interface JustificativaDoMes extends JustificativaDoDia {
+    funcionario_id: number;
+}
+
 export interface JustificativaDoDia extends RowDataPacket {
     dia: string;
     texto: string;
@@ -46,6 +65,11 @@ export interface JustificativaDoDia extends RowDataPacket {
 export interface AusenciaAprovada extends RowDataPacket {
     inicio: string;
     fim: string;
+}
+
+export interface AusenciaDaEmpresa extends AusenciaAprovada {
+    funcionario_id: number;
+    tipo: string;
 }
 
 export interface JustificativaDaEmpresa extends RowDataPacket {
@@ -235,6 +259,17 @@ const criarRepositorio = (executor: Connection) => ({
         return ausencias;
     },
 
+    // As ausências aprovadas de toda a empresa que tocam o mês [de, ate), para os relatórios.
+    async ausenciasAprovadasDaEmpresa(empresaId: number, de: string, ate: string): Promise<AusenciaDaEmpresa[]> {
+        const [ausencias] = await executor.query<AusenciaDaEmpresa[]>(
+            `SELECT funcionario_id, tipo, DATE_FORMAT(data_inicio, '%Y-%m-%d') AS inicio, DATE_FORMAT(data_fim, '%Y-%m-%d') AS fim
+             FROM ausencias
+             WHERE empresa_id = ? AND status = 'Aprovada' AND data_inicio < ? AND data_fim >= ?`,
+            [empresaId, ate, de]
+        );
+        return ausencias;
+    },
+
     // Estado atual da justificativa do dia (undefined se não houver), com `travar` até o fim da transação.
     async statusDaJustificativa(funcionarioId: number, data: string, { travar = false } = {}): Promise<DecisaoDaJustificativa | undefined> {
         const [linhas] = await executor.query<(RowDataPacket & { status: DecisaoDaJustificativa })[]>(
@@ -309,6 +344,49 @@ const criarRepositorio = (executor: Connection) => ({
         );
     },
 
+    // Quem entra na apuração do mês: admitido até o último dia e ainda na empresa no primeiro (o
+    // desligado sai a partir do dia seguinte ao desligamento; Inativo sem data de desligamento fica fora).
+    async colaboradoresParaApurar(empresaId: number, primeiroDia: string, ultimoDia: string): Promise<ColaboradorParaApurar[]> {
+        const [linhas] = await executor.query<ColaboradorParaApurar[]>(
+            `SELECT f.id AS funcionario_id, f.nome, d.nome AS departamento,
+                    f.carga_horaria_semanal AS carga_semanal, TIME_FORMAT(f.hora_entrada, '%H:%i') AS entrada,
+                    TIME_FORMAT(f.hora_saida, '%H:%i') AS saida, TIME_TO_SEC(f.hora_entrada) DIV 60 AS entrada_min,
+                    f.tolerancia_min, DATE_FORMAT(f.data_admissao, '%Y-%m-%d') AS admissao,
+                    DATE_FORMAT(f.data_desligamento, '%Y-%m-%d') AS desligamento
+             FROM funcionarios f
+             LEFT JOIN departamentos d ON d.id = f.departamento_id AND d.empresa_id = f.empresa_id
+             WHERE f.empresa_id = ?
+               AND (f.data_admissao IS NULL OR f.data_admissao <= ?)
+               AND (f.status <> 'Inativo' OR f.data_desligamento >= ?)
+             ORDER BY f.nome, f.id`,
+            [empresaId, ultimoDia, primeiroDia]
+        );
+        return linhas;
+    },
+
+    // As marcações de todos os colaboradores da empresa em [inicio, fim), do mais antigo ao mais novo.
+    async registrosDoMesDaEmpresa(empresaId: number, inicio: number, fim: number): Promise<RegistroDoMes[]> {
+        const [linhas] = await executor.query<RegistroDoMes[]>(
+            `SELECT funcionario_id, tipo_registro, UNIX_TIMESTAMP(data_hora_oficial) AS instante
+             FROM registro_pontos
+             WHERE empresa_id = ? AND data_hora_oficial >= FROM_UNIXTIME(?) AND data_hora_oficial < FROM_UNIXTIME(?)
+             ORDER BY data_hora_oficial ASC, id ASC`,
+            [empresaId, inicio, fim]
+        );
+        return linhas;
+    },
+
+    // As justificativas de todos os colaboradores da empresa com data de referência em [de, ate).
+    async justificativasDoMesDaEmpresa(empresaId: number, de: string, ate: string): Promise<JustificativaDoMes[]> {
+        const [linhas] = await executor.query<JustificativaDoMes[]>(
+            `SELECT funcionario_id, DATE_FORMAT(data_referencia, '%Y-%m-%d') AS dia, texto, status, resposta
+             FROM justificativas_ponto
+             WHERE empresa_id = ? AND data_referencia >= ? AND data_referencia < ?`,
+            [empresaId, de, ate]
+        );
+        return linhas;
+    },
+
     async jornadaDoColaborador(funcionarioId: number | string, empresaId: number): Promise<JornadaDoColaborador | undefined> {
         const [linhas] = await executor.query<JornadaDoColaborador[]>(
             `SELECT carga_horaria_semanal AS carga_semanal, TIME_FORMAT(hora_entrada, '%H:%i') AS entrada,
@@ -347,6 +425,7 @@ export const {
     registrosDaEmpresa,
     justificativasDoColaborador,
     ausenciasAprovadasDoColaborador,
+    ausenciasAprovadasDaEmpresa,
     salvarJustificativa,
     instanteDaJustificativa,
     justificativasDaEmpresa,
@@ -354,4 +433,7 @@ export const {
     decidirJustificativa,
     statusDaJustificativa,
     jornadaDoColaborador,
+    colaboradoresParaApurar,
+    registrosDoMesDaEmpresa,
+    justificativasDoMesDaEmpresa,
 } = criarRepositorio(db);

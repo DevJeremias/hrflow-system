@@ -94,7 +94,8 @@ const Login: React.FC = () => {
             </Field>
 
             <p className="text-sm text-ink-muted">
-              <span className="font-semibold text-ink">Esqueceu a senha?</span> Procure o RH da sua empresa: ele redefine o seu acesso.
+              <Link to="/esqueci-senha" className="font-semibold text-brand underline underline-offset-4 hover:text-brand-hover">Esqueceu a senha?</Link>{' '}
+              Receba um link por e-mail ou procure o RH da sua empresa.
             </p>
 
             {sessionNotice && !erro && (

@@ -18,8 +18,10 @@ import { funcionariosRoutes } from '../modules/funcionarios/index.ts';
 import { folhaRoutes } from '../modules/folha/index.ts';
 import { perfilRoutes } from '../modules/perfil/index.ts';
 import { gerarSenhaProvisoria } from '../modules/funcionarios/funcionarios.regras.ts';
-import { mesLocal } from '../modules/ponto/ponto.fuso.ts';
+import { criarFuso } from '../shared/utils/fuso.ts';
 import { validarSenhaDeRegistro } from '../shared/schemas/validadores.ts';
+
+const { mesLocal } = criarFuso('America/Belem');
 
 describe('ciclo de vida do colaborador (B-13)', { skip: banco.skip }, () => {
     let server: http.Server;

@@ -31,6 +31,8 @@ export const PERMISSOES = {
     // A fila de férias e afastamentos da empresa e a decisão sobre cada pedido (o alcance sobre cada pedido está em ausencias.service.ts).
     'ausencias:gerir': GESTAO,
     'dashboard:consultar': GESTAO,
+    // Os números agregados da empresa (headcount, custo, absenteísmo) e a exportação deles.
+    'relatorios:consultar': GESTAO,
 } as const satisfies Record<string, readonly Perfil[]>;
 
 export type Permissao = keyof typeof PERMISSOES;

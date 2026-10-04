@@ -16,6 +16,8 @@ const Termos = lazy(() => import('./pages/Legal/Termos'));
 const Privacidade = lazy(() => import('./pages/Legal/Privacidade'));
 const Login = lazy(() => import('./pages/Auth/Login'));
 const TrocarSenha = lazy(() => import('./pages/Auth/TrocarSenha'));
+const EsqueciSenha = lazy(() => import('./pages/Auth/EsqueciSenha'));
+const RedefinirSenha = lazy(() => import('./pages/Auth/RedefinirSenha'));
 const Layout = lazy(() => import('./layouts/Layout'));
 const Dashboard = lazy(() => import('./pages/Admin/Dashboard'));
 const Employees = lazy(() => import('./pages/Admin/Employees'));
@@ -26,6 +28,7 @@ const Company = lazy(() => import('./pages/Admin/Company'));
 const Approvals = lazy(() => import('./pages/Admin/Approvals'));
 const Audit = lazy(() => import('./pages/Admin/Audit'));
 const TimeTracking = lazy(() => import('./pages/Admin/TimeTracking'));
+const Reports = lazy(() => import('./pages/Admin/Reports'));
 const AdminRequests = lazy(() => import('./pages/Admin/Requests'));
 const EmployeeHome = lazy(() => import('./pages/Portal/EmployeeDashboard'));
 const Payslips = lazy(() => import('./pages/Portal/Payslips'));
@@ -100,6 +103,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<PublicLogin />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="/termos" element={<Termos />} />
           <Route path="/privacidade" element={<Privacidade />} />
           <Route path={ROTA_TROCA_DE_SENHA} element={<ProtectedRoute trocaDeSenha><TrocarSenha /></ProtectedRoute>} />
@@ -120,6 +125,7 @@ function App() {
             <Route path="folha" element={<Payroll />} />
             <Route path="empresa" element={<Company />} />
             <Route path="gestao-ponto" element={<TimeTracking />} />
+            <Route path="relatorios" element={<Reports />} />
             <Route path="solicitacoes" element={<AdminRequests />} />
             <Route path="usuarios" element={<ProtectedRoute allowedRoles={['Administrador']}><Users /></ProtectedRoute>} />
             <Route path="perfil" element={<Profile />} />

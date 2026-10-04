@@ -41,12 +41,16 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `GET /api/ausencias/saldo/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
 | `GET /api/ausencias/:id/anexo` | 200 de qualquer pedido da empresa | 200 de qualquer pedido da empresa | 200 só do próprio (404 nos demais) |
 | `GET /api/dashboard/resumo` | 200 | 200 | 403 |
+| `GET /api/relatorios/headcount`, `.../aniversariantes`, `.../custo-departamento`, `.../absenteismo` (JSON, e `?formato=csv` ou `?formato=pdf` para exportar) | 200 | 200 | 403 |
 | `GET /api/funcionarios/:id/historico-contratual`, `GET /api/funcionarios/:id/exportar` | 200 | 200 | 403 |
 | `POST /api/funcionarios/:id/anonimizar` | 200 (só de quem já foi desligado, nunca o próprio) | 403 | 403 |
 | `GET /api/auditoria` | 200 | 200 | 403 |
 | `GET /api/solicitacoes-alteracao`, `PATCH /api/solicitacoes-alteracao/:id` | 200 (todos os pedidos) | 200 (só os de Colaboradores; nunca o próprio) | 403 |
 | `POST /api/solicitacoes-alteracao`, `GET /api/solicitacoes-alteracao/minhas` | 400 no POST (altera direto); 200 no GET | 200 | 200 |
 | `GET /api/perfil/meus-dados`, `PUT /api/perfil/meus-dados`, `PUT /api/perfil/alterar-senha` | 200 | 200 (nome, e-mail, endereço e banco: 403 e cria o pedido) | 200 (nome, e-mail, endereço e banco: 403 e cria o pedido) |
+| `GET /api/notificacoes`, `POST /api/notificacoes/lidas`, `POST /api/notificacoes/:id/lida` | 200, só os próprios avisos | 200, só os próprios avisos | 200, só os próprios avisos |
+
+Rotas públicas, sem sessão e com limite de tentativas: `POST /api/auth/login`, `POST /api/auth/registrar`, `POST /api/auth/esqueci-senha` e `POST /api/auth/redefinir-senha`.
 
 Decisões que a tabela esconde:
 
@@ -66,7 +70,7 @@ Decisões que a tabela esconde:
 
 | Item | Administrador | RH | Colaborador |
 | --- | --- | --- | --- |
-| Dashboard, Colaboradores, Aprovações, Folha de Pagamento, Empresa, Gestão de Ponto, Auditoria | sim | sim | não |
+| Dashboard, Colaboradores, Aprovações, Folha de Pagamento, Empresa, Gestão de Ponto, Relatórios, Auditoria | sim | sim | não |
 | Depto & Cargos, Usuários | sim | não | não |
 | Meu ponto, Meu holerite | se tem cadastro | se tem cadastro | sim |
 | Meu Perfil | sim | sim | sim |
