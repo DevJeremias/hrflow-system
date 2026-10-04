@@ -72,7 +72,7 @@ describe('schemas de perfil', () => {
     });
 
     for (const [nome, [entrada, mensagem]] of Object.entries<[unknown, RegExp]>({
-        'nome ausente': [{ email: 'a@b.co' }, /Nome é obrigatório/],
+        'nome vazio': [{ nome: '' }, /Nome é obrigatório/],
         'e-mail inválido': [{ ...base(), email: 'x' }, /e-mail válido/],
         'avatar que não é data URL': [{ ...base(), avatar: 'http://exemplo.invalid/a.png' }, /data URL base64/],
         'avatar numérico': [{ ...base(), avatar: 123 }, /data URL base64/],

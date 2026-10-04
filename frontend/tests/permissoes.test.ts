@@ -10,15 +10,15 @@ const rotulos = (user: Parameters<typeof menuDoUsuario>[0]) =>
 
 test('o Administrador vê toda a gestão e os acessos; sem cadastro não vê ponto nem holerite', () => {
   assert.deepEqual(rotulos({ role: 'Administrador', funcionarioId: null }), [
-    'Dashboard', 'Colaboradores', 'Depto & Cargos', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Solicitações', 'Usuários', 'Meu Perfil',
+    'Dashboard', 'Colaboradores', 'Aprovações', 'Depto & Cargos', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Solicitações', 'Usuários', 'Auditoria', 'Meu Perfil',
   ]);
 });
 
 test('o RH não vê estrutura nem usuários, e com cadastro ganha Meu ponto e Meu holerite', () => {
   assert.deepEqual(rotulos({ role: 'RH', funcionarioId: 1 }), [
-    'Dashboard', 'Colaboradores', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Solicitações', 'Meu ponto', 'Meu holerite', 'Minhas Solicitações', 'Meu Perfil',
+    'Dashboard', 'Colaboradores', 'Aprovações', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Solicitações', 'Auditoria', 'Meu ponto', 'Meu holerite', 'Minhas Solicitações', 'Meu Perfil',
   ]);
-  assert.deepEqual(rotulos({ role: 'RH', funcionarioId: null }), ['Dashboard', 'Colaboradores', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Solicitações', 'Meu Perfil']);
+  assert.deepEqual(rotulos({ role: 'RH', funcionarioId: null }), ['Dashboard', 'Colaboradores', 'Aprovações', 'Folha de Pagamento', 'Empresa', 'Gestão de Ponto', 'Solicitações', 'Auditoria', 'Meu Perfil']);
 });
 
 test('o Administrador com cadastro também tem Meu ponto e Meu holerite', () => {

@@ -5,7 +5,7 @@ import { chaves } from './chaves';
 
 export const useMeuPerfil = () => useQuery({ queryKey: chaves.perfil, queryFn: userService.getMyProfile });
 
-// O nome do colaborador aparece nas marcações e na listagem de colaboradores.
+// O nome (que o Administrador grava direto) aparece nas marcações e na listagem de colaboradores.
 export const useAtualizarMeuPerfil = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -13,7 +13,7 @@ export const useAtualizarMeuPerfil = () => {
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: chaves.perfil }),
       queryClient.invalidateQueries({ queryKey: chaves.funcionarios }),
-        queryClient.invalidateQueries({ queryKey: chaves.ponto }),
+      queryClient.invalidateQueries({ queryKey: chaves.ponto }),
     ]),
   });
 };

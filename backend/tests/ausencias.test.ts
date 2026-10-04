@@ -444,6 +444,33 @@ describe('férias e afastamentos', { skip: banco.skip }, () => {
         });
     });
 
+    describe('LGPD: o atestado e o motivo são dado de saúde', () => {
+        it('a exportação traz os pedidos sem o arquivo, e a anonimização apaga o motivo e o atestado e mantém período e decisão', async () => {
+            await limpar();
+            await colaborador('Gil', empresaA, { admissao: '2020-02-03' });
+            const pedido = await pedir(tokens.Gil, { tipo: 'Licença Médica', inicio: '2026-09-28', fim: '2026-09-30', observacao: 'Cirurgia de joelho, CID M23.', anexo: anexo() });
+            assert.equal((await decidir(tokens.Rita, pedido.corpo.id, { status: 'Recusada', resposta: 'Atestado ilegível: CID M23 sem carimbo.' })).status, 200);
+
+            const exportacao = await chamar('GET', `/api/funcionarios/${ids.Gil}/exportar`, tokens.Administrador);
+            assert.equal(exportacao.status, 200);
+            const [exportado] = exportacao.corpo.ferias_e_afastamentos;
+            assert.deepEqual(
+                { tipo: exportado.tipo, observacao: exportado.observacao, anexo: exportado.anexo_nome, bytes: exportado.anexo_tamanho },
+                { tipo: 'Licença Médica', observacao: 'Cirurgia de joelho, CID M23.', anexo: 'atestado.pdf', bytes: PDF.length },
+            );
+            assert.ok(!JSON.stringify(exportacao.corpo).includes(PDF.toString('base64')), 'o arquivo não vai no JSON');
+
+            await db.query("UPDATE funcionarios SET status = 'Inativo', data_desligamento = '2026-10-01', motivo_desligamento = 'Teste' WHERE id = ?", [ids.Gil]);
+            assert.equal((await chamar('POST', `/api/funcionarios/${ids.Gil}/anonimizar`, tokens.Administrador)).status, 200);
+
+            const [[linha]] = await db.query<RowDataPacket[]>(
+                "SELECT observacao, resposta, status, DATE_FORMAT(data_inicio, '%Y-%m-%d') AS inicio FROM ausencias WHERE funcionario_id = ?", [ids.Gil]);
+            assert.deepEqual({ ...linha }, { observacao: '[removido na anonimização]', resposta: '[removido na anonimização]', status: 'Recusada', inicio: '2026-09-28' });
+            const [anexos] = await db.query<RowDataPacket[]>('SELECT 1 FROM ausencia_anexos x JOIN ausencias a ON a.id = x.ausencia_id WHERE a.funcionario_id = ?', [ids.Gil]);
+            assert.equal(anexos.length, 0, 'o atestado sai');
+        });
+    });
+
     describe('o que a ausência aprovada muda no sistema', () => {
         // Férias de 2026-10-05 a 2026-10-14 (10 dias), aprovadas.
         let feriasDoCaio: number;

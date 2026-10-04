@@ -1,5 +1,5 @@
 import httpClient from './httpClient';
-import type { CorpoDeDecisaoApi, CorpoDeSolicitacaoApi, SaldoDeFeriasApi, SolicitacaoApi, StatusDeSolicitacaoApi, TipoDeSolicitacaoApi } from '../types/api';
+import type { CorpoDeAusenciaApi, CorpoDeDecisaoDaAusenciaApi, SaldoDeFeriasApi, SolicitacaoApi, StatusDeSolicitacaoApi, TipoDeSolicitacaoApi } from '../types/api';
 import { lerComoBase64, tipoDoArquivo } from '../utils/solicitacoes';
 
 // src/services/requestService.ts
@@ -9,7 +9,7 @@ const API_URL = '/ausencias';
 export type RequestType = TipoDeSolicitacaoApi;
 export type RequestStatus = StatusDeSolicitacaoApi;
 export type EmployeeRequest = SolicitacaoApi;
-export type RequestDecision = CorpoDeDecisaoApi;
+export type RequestDecision = CorpoDeDecisaoDaAusenciaApi;
 export type VacationBalance = SaldoDeFeriasApi;
 
 export interface NewRequest {
@@ -55,7 +55,7 @@ const getAllRequests = async ({ pagina, limite, status }: CompanyRequestQuery): 
 
 // Devolve a solicitação criada. O anexo vai no corpo em base64; o tipo é o que a API confere nos primeiros bytes.
 const createRequest = async ({ type, startDate, endDate, observation, attachment }: NewRequest): Promise<EmployeeRequest> => {
-  const body: CorpoDeSolicitacaoApi = {
+  const body: CorpoDeAusenciaApi = {
     tipo: type,
     inicio: startDate,
     fim: endDate,

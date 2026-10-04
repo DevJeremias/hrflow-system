@@ -31,7 +31,8 @@ let alertasNativos: string[] = [];
 
 const json = (corpo: unknown, status = 200) => new Response(JSON.stringify(corpo), { status, headers: { 'Content-Type': 'application/json' } });
 
-const HOJE = new Date().toISOString().slice(0, 10);
+// O dia de Belém, o mesmo que a tela usa: depois das 21h em Belém o dia em UTC já é o seguinte.
+const HOJE = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Belem' });
 const DIA = { id: HOJE, date: HOJE, entry: '08:00', lunchOut: '12:00', lunchIn: '13:00', exit: '17:00', totalHours: '08:00', status: 'ok', open: false, delay: '00:00', note: '', noteStatus: null, noteReply: null, negativeAdjust: '00:00', positiveAdjust: '00:00' };
 const JORNADA = { weeklyHours: 40, entry: '08:00', exit: '17:00', toleranceMinutes: 10 };
 const TOTAIS_VAZIOS = { workloadLimit: '00:00', workloadDone: '00:00', pendingTime: '00:00', excessTime: '00:00', delayTime: '00:00', absences: 0, incompleteDays: 0 };
@@ -63,6 +64,7 @@ before(async () => {
     if (caminho === '/ausencias/12/anexo') return new Response('%PDF-1.4 atestado', { status: 200, headers: { 'Content-Type': 'application/pdf' } });
     if (caminho === '/ausencias/saldo/7') return json(SALDO);
     if (caminho === '/ausencias' && metodo === 'POST') return respostaDoPedido();
+    if (caminho === '/solicitacoes-alteracao/minhas') return json([]);
     if (caminho.startsWith('/ponto/hoje/')) return json(registrosDeHoje);
     if (caminho.startsWith('/ponto/historico/')) return json([DIA]);
     if (caminho.startsWith('/ponto/totais/')) return json({ workSchedule: JORNADA, totals: [], monthlySummary: TOTAIS_VAZIOS });
@@ -338,7 +340,7 @@ test('Meus Dados: os campos de edição têm id, name, rótulo e autocomplete; s
   await clicar(botaoPorTexto(host, /Editar Dados/));
 
   const campos = verificarCampos(host);
-  assert.deepEqual(campos.map((c) => [c.name, c.getAttribute('autocomplete')]), [['avatar', null], ['name', 'name'], ['email', 'email'], ['telefone', 'tel']]);
+  assert.deepEqual(campos.map((c) => [c.name, c.getAttribute('autocomplete')]), [['avatar', null], ['name', 'name'], ['email', 'email'], ['telefone', 'tel'], ['endereco', 'street-address'], ['banco', 'off'], ['agencia', 'off'], ['conta', 'off'], ['tipoConta', 'off']]);
   assert.equal(host.querySelector<HTMLInputElement>('[name="avatar"]')!.type, 'file');
   const idFoto = host.querySelector('[name="avatar"]')!.id;
   assert.equal(host.querySelector(`label[for="${idFoto}"]`)!.textContent, 'Alterar foto', 'o botão da câmera tem nome acessível');
@@ -359,7 +361,7 @@ test('Meus Dados: imagem acima de 2MB mostra toast de erro e nunca alert', async
 test('Meus Dados: as abas seguem o padrão ARIA e a de Segurança tem os autocompletes de senha', async () => {
   const host = await abrirPagina(Profile);
   const abas = [...host.querySelectorAll<HTMLElement>('[role="tab"]')];
-  assert.deepEqual(abas.map((aba) => aba.textContent), ['Meus Dados', 'Vínculo e Contrato', 'Segurança']);
+  assert.deepEqual(abas.map((aba) => aba.textContent), ['Meus Dados', 'Vínculo e Contrato', 'Segurança', 'Privacidade']);
   const painel = porRole(host, 'tabpanel')!;
   assert.equal(abas[0].getAttribute('aria-controls'), painel.id);
 

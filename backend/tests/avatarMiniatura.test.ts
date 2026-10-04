@@ -42,12 +42,15 @@ describe('miniatura do avatar', { skip: banco.skip }, () => {
         const bytes = Buffer.from(await resposta.arrayBuffer());
         return { status: resposta.status, bytes, cabecalhos: resposta.headers, json: () => JSON.parse(bytes.toString('utf8')) };
     };
+    // Só telefone e foto: nome e e-mail do colaborador dependem de aprovação (modules/solicitacoes).
     const salvar = (quem: string, avatar?: string | null) => chamar('PUT', '/api/perfil/meus-dados', quem, {
-        nome: sessoes[quem].nome, email: sessoes[quem].email, telefone: '', ...(avatar === undefined ? {} : { avatar }),
+        telefone: '', ...(avatar === undefined ? {} : { avatar }),
     });
     const urlNaSessao = async (quem: string): Promise<string | null> => (await chamar('GET', '/api/auth/sessao', quem)).json().avatar;
-    const linha = async (id: number): Promise<RowDataPacket> =>
-        (await db.query<RowDataPacket[]>('SELECT avatar, avatar_miniatura, avatar_atualizado_em FROM usuarios WHERE id = ?', [id]))[0][0];
+    // A linha de avatares do usuário (undefined sem foto): tipo, original, miniatura e versão.
+    const linha = async (id: number): Promise<RowDataPacket | undefined> =>
+        (await db.query<RowDataPacket[]>('SELECT tipo, imagem, miniatura, atualizado_em FROM avatares WHERE usuario_id = ?', [id]))[0][0];
+    const bytesDe = (dataUrl: string) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
 
     before(async () => {
         await banco.preparar();
@@ -114,15 +117,15 @@ describe('miniatura do avatar', { skip: banco.skip }, () => {
         assert.equal(revalidada.bytes.length, 0);
     });
 
-    it('guarda o original e a miniatura, e o colaborador também no cadastro do funcionário', async () => {
-        const antes = await linha(sessoes.admin.id);
-        assert.equal(antes.avatar, pesada);
-        assert.ok(antes.avatar_miniatura.length > 0);
-        assert.ok(antes.avatar_atualizado_em);
+    it('guarda o original em binário (não em base64) e a miniatura, para o administrador e para o colaborador', async () => {
+        const antes = (await linha(sessoes.admin.id))!;
+        assert.equal(antes.tipo, 'image/png');
+        assert.ok(antes.imagem.equals(bytesDe(pesada)), 'o original volta byte a byte');
+        assert.ok(antes.miniatura.length > 0);
+        assert.ok(antes.atualizado_em);
 
         await salvar('colaborador', pesada);
-        const [[cadastro]] = await db.query<RowDataPacket[]>('SELECT avatar FROM funcionarios WHERE id = ?', [funcionario]);
-        assert.equal(cadastro.avatar, pesada);
+        assert.ok((await linha(sessoes.colaborador.id))!.imagem.equals(bytesDe(pesada)));
         assert.match(await urlNaSessao('colaborador') ?? '', URL_DO_AVATAR);
     });
 
@@ -135,14 +138,10 @@ describe('miniatura do avatar', { skip: banco.skip }, () => {
         assert.equal((await salvar('admin', '')).status, 200);
         assert.equal(await urlNaSessao('admin'), null);
         assert.equal((await chamar('GET', '/api/perfil/avatar', 'admin')).status, 404);
-        const depois = await linha(sessoes.admin.id);
-        assert.equal(depois.avatar, null);
-        assert.equal(depois.avatar_miniatura, null);
-        assert.equal(depois.avatar_atualizado_em, null);
+        assert.equal(await linha(sessoes.admin.id), undefined, 'foto e miniatura saem juntas');
 
         await salvar('colaborador', null);
-        const [[cadastro]] = await db.query<RowDataPacket[]>('SELECT avatar FROM funcionarios WHERE id = ?', [funcionario]);
-        assert.equal(cadastro.avatar, null, 'null também remove');
+        assert.equal(await linha(sessoes.colaborador.id), undefined, 'null também remove');
     });
 
     it('uma foto nova troca a miniatura e a versão da URL', async () => {
@@ -163,22 +162,21 @@ describe('miniatura do avatar', { skip: banco.skip }, () => {
         assert.deepEqual([width, height], [128, 128]);
     });
 
-    it('gera a miniatura na primeira leitura para quem só tem o original (avatar anterior à miniatura)', async () => {
-        const [{ id }] = [sessoes.colaborador];
+    it('gera a miniatura na primeira leitura para quem só tem o original (copiado de antes da miniatura)', async () => {
+        const { id } = sessoes.colaborador;
         const original = await sharp({ create: { width: 300, height: 300, channels: 3, background: '#aa3366' } }).jpeg().toBuffer();
-        await db.query('UPDATE usuarios SET avatar = ?, avatar_miniatura = NULL, avatar_atualizado_em = NULL WHERE id = ?',
-            [`data:image/jpeg;base64,${original.toString('base64')}`, id]);
+        await db.query('REPLACE INTO avatares (usuario_id, tipo, imagem, miniatura) VALUES (?, ?, ?, NULL)', [id, 'image/jpeg', original]);
 
-        assert.match(await urlNaSessao('colaborador') ?? '', /^\/api\/perfil\/avatar\?v=0$/);
+        assert.match(await urlNaSessao('colaborador') ?? '', URL_DO_AVATAR);
         const resposta = await chamar('GET', '/api/perfil/avatar', 'colaborador');
         assert.equal(resposta.status, 200);
         const { width, height } = await sharp(resposta.bytes).metadata();
         assert.deepEqual([width, height], [128, 128]);
-        assert.ok((await linha(id)).avatar_miniatura.equals(resposta.bytes), 'a miniatura ficou guardada');
+        assert.ok((await linha(id))!.miniatura.equals(resposta.bytes), 'a miniatura ficou guardada');
     });
 
     it('um original ilegível devolve 404 na miniatura em vez de erro 500', async () => {
-        await db.query('UPDATE usuarios SET avatar = ?, avatar_miniatura = NULL WHERE id = ?', [dataUrl('png', 64), sessoes.colaborador.id]);
+        await db.query('REPLACE INTO avatares (usuario_id, tipo, imagem, miniatura) VALUES (?, ?, ?, NULL)', [sessoes.colaborador.id, 'image/png', bytesDe(dataUrl('png', 64))]);
         assert.equal((await chamar('GET', '/api/perfil/avatar', 'colaborador')).status, 404);
     });
 
@@ -187,7 +185,7 @@ describe('miniatura do avatar', { skip: banco.skip }, () => {
         const resposta = await salvar('outro', dataUrl('png', 64));
         assert.equal(resposta.status, 400);
         assert.match(resposta.json().erro, /imagem/i);
-        assert.equal((await linha(sessoes.outro.id)).avatar, null);
+        assert.equal(await linha(sessoes.outro.id), undefined);
     });
 
     it('cada pessoa lê só a própria miniatura', async () => {

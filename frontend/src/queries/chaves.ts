@@ -1,6 +1,8 @@
 // Chaves do cache de dados do servidor (TanStack Query). A primeira posição é a área: invalidar
 // uma área derruba todas as consultas dela, de qualquer filtro ou página.
 import type { EmployeeQuery } from '../services/employeeService';
+import type { AuditoriaQuery } from '../services/auditoriaService';
+import type { StatusDoPedidoApi } from '../types/api';
 
 export const chaves = {
   funcionarios: ['funcionarios'] as const,
@@ -30,6 +32,15 @@ export const chaves = {
   paginaDeUsuarios: (pagina: number, limite: number) => ['usuarios', 'pagina', pagina, limite] as const,
 
   perfil: ['perfil'] as const,
+
+  auditoria: ['auditoria'] as const,
+  paginaDeAuditoria: (consulta: AuditoriaQuery) => ['auditoria', 'pagina', consulta] as const,
+  historicoContratual: (funcionarioId: number) => ['auditoria', 'historico-contratual', funcionarioId] as const,
+
+  // Pedidos de alteração cadastral (nome, e-mail, endereço e banco); não são as solicitações de férias abaixo.
+  pedidos: ['pedidos-de-alteracao'] as const,
+  paginaDePedidos: (status: StatusDoPedidoApi | null, pagina: number, limite: number) => ['pedidos-de-alteracao', 'pagina', status, pagina, limite] as const,
+  meusPedidos: ['pedidos-de-alteracao', 'meus'] as const,
 
   solicitacoes: ['solicitacoes'] as const,
   minhasSolicitacoes: ['solicitacoes', 'minhas'] as const,

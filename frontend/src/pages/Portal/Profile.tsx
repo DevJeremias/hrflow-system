@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Lock, Briefcase } from 'lucide-react';
+import { User as UserIcon, Lock, Briefcase, ShieldHalf } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import ProfileDataTab from '../../components/Portal/ProfileDataTab';
 import ProfileContractTab from '../../components/Portal/ProfileContractTab';
 import ProfileSecurityTab from '../../components/Portal/ProfileSecurityTab';
-import type { DadosEditaveis } from '../../services/userService';
+import ProfilePrivacyTab from '../../components/Portal/ProfilePrivacyTab';
 import { useMeuPerfil } from '../../queries/perfil';
 import ErrorAlert from '../../components/ErrorAlert';
 import Card from '../../components/ui/Card';
@@ -14,7 +14,7 @@ import Tabs, { TabPanel, type TabItem } from '../../components/ui/Tabs';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { mensagemDeErro } from '../../utils/erros';
 
-type Aba = 'dados' | 'profissional' | 'seguranca';
+type Aba = 'dados' | 'profissional' | 'seguranca' | 'privacidade';
 
 const Profile: React.FC = () => {
   usePageTitle('Meus dados');
@@ -26,9 +26,7 @@ const Profile: React.FC = () => {
   const loadError = error ? mensagemDeErro(error, 'Erro ao carregar o perfil') : null;
 
   // O cache do perfil já foi invalidado pela mutação; aqui só a identidade da sessão acompanha.
-  const handleUpdatePerfil = (novosDados: DadosEditaveis) => {
-    updateUser({ nome: novosDados.nome, avatar: novosDados.avatar || null });
-  };
+  const handleUpdatePerfil = (identidade: { nome?: string; avatar?: string | null }) => updateUser(identidade);
 
   if (loading) {
     return (
@@ -51,6 +49,7 @@ const Profile: React.FC = () => {
     { id: 'dados', label: 'Meus Dados', icon: <UserIcon size={18} /> },
     ...(perfil.vinculado ? [{ id: 'profissional' as const, label: 'Vínculo e Contrato', icon: <Briefcase size={18} /> }] : []),
     { id: 'seguranca', label: 'Segurança', icon: <Lock size={18} /> },
+    { id: 'privacidade', label: 'Privacidade', icon: <ShieldHalf size={18} /> },
   ];
 
   return (
@@ -64,6 +63,7 @@ const Profile: React.FC = () => {
           {activeTab === 'dados' && <ProfileDataTab perfil={perfil} onUpdate={handleUpdatePerfil} />}
           {activeTab === 'profissional' && perfil.vinculado && <ProfileContractTab perfil={perfil} />}
           {activeTab === 'seguranca' && <ProfileSecurityTab />}
+          {activeTab === 'privacidade' && <ProfilePrivacyTab perfil={perfil} />}
         </TabPanel>
       </Card>
     </div>

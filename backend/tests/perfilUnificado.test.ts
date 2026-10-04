@@ -94,6 +94,7 @@ test('o colaborador recebe dados pessoais, vínculo, contrato e dados bancários
         cargo: 'Analista Ficticio',
         departamento: ctx.nomeDepartamento,
         vinculado: true,
+        encarregado: null,
     });
 });
 
@@ -115,9 +116,8 @@ test('o avatar gravado volta como URL da miniatura no perfil e na sessão, para 
     for (const quem of [ctx.admin, ctx.colaborador]) {
         const avatar = await imagemReal('png');
         const { usuario } = quem;
-        const salvo = await chamar('PUT', '/perfil/meus-dados', quem.token, {
-            nome: usuario.nome, email: usuario.email, telefone: '', avatar,
-        });
+        // Só telefone e foto: nome e e-mail do colaborador dependem de aprovação (modules/solicitacoes).
+        const salvo = await chamar('PUT', '/perfil/meus-dados', quem.token, { telefone: '', avatar });
         assert.equal(salvo.status, 200, usuario.perfil);
 
         const url = (await chamar('GET', '/perfil/meus-dados', quem.token)).corpo.avatar;
@@ -170,9 +170,8 @@ test('login, sessão e atualização de perfil não acessam funcionário de outr
     assert.equal(perfil.corpo.banco, null);
     assert.notEqual(perfil.corpo.nome, 'Eva Externa Ficticia');
 
-    const atualizacao = await chamar('PUT', '/perfil/meus-dados', credencial.token, {
-        nome: 'Nome Atualizado Fictício', email: ctx.cruzado.usuario.email, telefone: '0000000000', avatar: null,
-    });
+    // Sem cadastro na própria empresa, o telefone não tem onde ser gravado; o nome é da conta e depende de aprovação.
+    const atualizacao = await chamar('PUT', '/perfil/meus-dados', credencial.token, { telefone: '0000000000', avatar: null });
     assert.equal(atualizacao.status, 200);
     const [[funcionario]] = await db.query<RowDataPacket[]>('SELECT nome, telefone, banco FROM funcionarios WHERE id = ?', [ctx.funcionarioDeOutraEmpresa]);
     assert.deepEqual(funcionario, { nome: 'Eva Externa Ficticia', telefone: null, banco: 'Banco Alheio Ficticio' });

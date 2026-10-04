@@ -11,11 +11,15 @@ export interface EmpresaDoSistema {
     razao_social: string | null;
     cnpj: string | null;
     regime_tributario: EmpresaGravada['regime_tributario'];
+    // O encarregado pelo tratamento de dados pessoais (LGPD), que os colaboradores veem no perfil.
+    encarregado_nome: string | null;
+    encarregado_email: string | null;
 }
 
 const CNPJ_DUPLICADO = 'Este CNPJ já está cadastrado em outra empresa.';
 
-const empresaDe = ({ nome, razao_social, cnpj, regime_tributario }: EmpresaGravada): EmpresaDoSistema => ({ nome, razao_social, cnpj, regime_tributario });
+const empresaDe = ({ nome, razao_social, cnpj, regime_tributario, encarregado_nome, encarregado_email }: EmpresaGravada): EmpresaDoSistema =>
+    ({ nome, razao_social, cnpj, regime_tributario, encarregado_nome, encarregado_email });
 
 export const buscarEmpresa = async (empresaId: number): Promise<EmpresaDoSistema> => {
     const empresa = await repositorio.empresaPorId(empresaId);

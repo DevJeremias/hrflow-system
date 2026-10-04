@@ -40,6 +40,7 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 *   **Folha de Pagamento por competência:** o RH escolhe o mês, processa a folha (INSS e IRRF pelas tabelas vigentes, com dependentes e a redução da Lei 15.270/2025; FGTS e encargos por regime tributário, tudo em centavos; faltas e horas extras vindas do ponto; adiantamento, VT, VR e plano de saúde lançados por colaborador), confere as pendências, baixa os holerites em PDF (individual ou em lote) e fecha o mês. As regras e as fontes estão em `docs/folha-irrf-exemplo-auditado.md`. Folha fechada não muda mais: alterar salário, cargo ou dados da empresa depois não reescreve os holerites já emitidos. PJ e estágio não pagam INSS nem IRRF nem geram FGTS ou encargo CLT; quem está de férias entra na folha; quem foi desligado continua na folha do mês do desligamento e sai a partir do seguinte; quem está sem salário aparece em "pendências".
 *   **Férias e afastamentos:** o colaborador pede férias ou licença (com atestado, boletim ou comprovante em PDF, JPG ou PNG de até 5 MB) e acompanha o status na tela Minhas Solicitações, junto do saldo de férias e do período aquisitivo. O RH vê a fila, confere o anexo e o saldo, e aprova ou recusa (a recusa leva o motivo). O período aprovado vale sozinho: no primeiro dia o colaborador aparece como Férias (ou Afastado, numa licença) e no dia seguinte ao fim volta a Ativo, os dias não são falta no espelho de ponto e as férias geram o terço na folha.
 *   **Dados da empresa:** razão social, CNPJ e regime tributário, mantidos pelo Administrador na tela Empresa. Aparecem no cabeçalho do holerite, e a folha só fecha com razão social e CNPJ preenchidos.
+*   **Auditoria, histórico e LGPD:** toda ação que muda dados ou acesso entra numa trilha (quem, o quê, quando, IP, antes e depois) que o RH lê em **Auditoria**; salário, cargo e departamento têm histórico contratual com vigência; o colaborador grava sozinho só telefone e foto, e nome, e-mail, endereço e dados bancários passam por aprovação em **Aprovações**; a empresa exporta os dados de um colaborador e o Administrador anonimiza o cadastro de quem já saiu. A política de retenção e o que cada ação apaga estão em `docs/lgpd.md`.
 *   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem os seus holerites, um por mês fechado, com a empresa e o CNPJ da época.
 
 ## 📂 Estrutura de Diretórios
@@ -49,7 +50,7 @@ hrflow-system/
 ├── e2e/                   # Fluxos de ponta a ponta (Playwright) e a configuração deles
 ├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*) e guardar-estrutura.mts (guarda de .js/.jsx)
 ├── backend/               # API em TypeScript; estrutura e regras em backend/README.md
-│   ├── modules/           # Um módulo por área (auth, ponto, ausencias, dashboard, folha, empresa, perfil, estrutura, funcionarios, saude)
+│   ├── modules/           # Um módulo por área (auth, ponto, ausencias, dashboard, folha, empresa, perfil, estrutura, funcionarios, saude, usuarios, auditoria, solicitacoes)
 │   ├── shared/            # O que mais de uma área usa: config, db (pool, migrations, fixtures), middlewares, schemas, utils
 │   ├── migrations/        # Schema versionado (SQL numerado) e auditorias
 │   ├── tests/             # Testes de integração (MySQL descartável) e o apoio deles em tests/support
@@ -225,7 +226,7 @@ Os testes de componente (`frontend/tests/*Modal.test.ts`, `protectedRoute.test.t
 
 ### Testes de ponta a ponta (Playwright)
 
-Dois fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, e o RH cadastra um colaborador e o encontra na folha (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
+Três fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, o RH cadastra um colaborador e o encontra na folha, e o colaborador pede a troca do nome, o RH aprova e a auditoria registra a mudança (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
 
 ```bash
 npm run db:setup

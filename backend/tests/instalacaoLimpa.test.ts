@@ -131,7 +131,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
         const avatar = await imagemReal('png');
         assert.equal((await chamar('PUT', '/api/perfil/meus-dados', estado.colaborador, {
-            nome: 'Colaborador Ficticio', email: 'colaborador@limpa.exemplo.invalid', telefone: '(00) 11111-1111', avatar,
+            telefone: '(00) 11111-1111', avatar,
         })).status, 200);
         const depois = await chamar('GET', '/api/perfil/meus-dados', estado.colaborador);
         assert.match(depois.corpo.avatar, /^\/api\/perfil\/avatar\?v=\d+$/);
@@ -179,7 +179,7 @@ describe('instalação limpa: fluxos de ponta a ponta', { skip: banco.skip }, ()
 
         const salvo = await chamar('PUT', '/api/empresa', estado.admin, { razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11.222.333/0001-81', regime_tributario: 'Simples Nacional' });
         assert.equal(salvo.status, 200);
-        assert.deepEqual(salvo.corpo, { nome: 'Empresa Ficticia Limpa', razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11222333000181', regime_tributario: 'Simples Nacional' });
+        assert.deepEqual(salvo.corpo, { nome: 'Empresa Ficticia Limpa', razao_social: 'Empresa Ficticia Limpa Ltda', cnpj: '11222333000181', regime_tributario: 'Simples Nacional', encarregado_nome: null, encarregado_email: null });
     });
 
     it('processa e fecha a folha da competência e entrega o holerite individual', async () => {

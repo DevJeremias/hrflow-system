@@ -41,12 +41,20 @@ Quem tem cadastro de funcionário (`funcionario_id` na sessão) bate ponto e vê
 | `GET /api/ausencias/saldo/:funcionarioId` | 200 de qualquer um | 200 de qualquer um | 200 só do próprio |
 | `GET /api/ausencias/:id/anexo` | 200 de qualquer pedido da empresa | 200 de qualquer pedido da empresa | 200 só do próprio (404 nos demais) |
 | `GET /api/dashboard/resumo` | 200 | 200 | 403 |
-| `GET /api/perfil/meus-dados`, `PUT /api/perfil/meus-dados`, `PUT /api/perfil/alterar-senha` | 200 | 200 | 200 |
+| `GET /api/funcionarios/:id/historico-contratual`, `GET /api/funcionarios/:id/exportar` | 200 | 200 | 403 |
+| `POST /api/funcionarios/:id/anonimizar` | 200 (só de quem já foi desligado, nunca o próprio) | 403 | 403 |
+| `GET /api/auditoria` | 200 | 200 | 403 |
+| `GET /api/solicitacoes-alteracao`, `PATCH /api/solicitacoes-alteracao/:id` | 200 (todos os pedidos) | 200 (só os de Colaboradores; nunca o próprio) | 403 |
+| `POST /api/solicitacoes-alteracao`, `GET /api/solicitacoes-alteracao/minhas` | 400 no POST (altera direto); 200 no GET | 200 | 200 |
+| `GET /api/perfil/meus-dados`, `PUT /api/perfil/meus-dados`, `PUT /api/perfil/alterar-senha` | 200 | 200 (nome, e-mail, endereço e banco: 403 e cria o pedido) | 200 (nome, e-mail, endereço e banco: 403 e cria o pedido) |
 
 Decisões que a tabela esconde:
 
 * **O RH lê a estrutura e os dados da empresa, o Administrador os altera.** O RH precisa dos cargos e departamentos para cadastrar um colaborador e dos dados da empresa para conferir a folha; criar, renomear, apagar ou editar continua com o Administrador.
-* **O RH não se promove nem apaga colegas.** Ele não altera o próprio cadastro (salário, status, qualquer campo; os dados pessoais ele muda em `PUT /api/perfil/meus-dados`) nem o de quem tem conta de RH ou de Administrador. O que o RH pode editar é o cadastro de Colaborador.
+* **O RH não se promove nem apaga colegas.** Ele não altera o próprio cadastro (salário, status, qualquer campo) nem o de quem tem conta de RH ou de Administrador. O que o RH pode editar é o cadastro de Colaborador. Telefone e foto, ele muda em `PUT /api/perfil/meus-dados`; nome, e-mail, endereço e banco viram um pedido que o Administrador aprova.
+* **O colaborador grava sozinho só o telefone e a foto.** Nome, e-mail de login, endereço e dados bancários passam por aprovação: `PUT /api/perfil/meus-dados` com um desses campos diferente do atual responde 403, cria a solicitação e não grava mais nada (nem o telefone enviado junto). O RH decide o pedido de Colaboradores; o de RH é do Administrador, e ninguém decide o próprio. Trocar o e-mail exige a senha atual e derruba as sessões abertas.
+* **Anonimizar é irreversível e só do Administrador**, e só vale para o cadastro de quem já foi desligado (`docs/lgpd.md`). Exportar os dados de um colaborador é da gestão.
+* **A trilha de auditoria é da gestão**: Administrador e RH leem a trilha da própria empresa; nenhuma rota a edita.
 * **Férias e afastamentos** (`backend/modules/ausencias`): o colaborador pede e acompanha os pedidos dele; o RH vê a fila da empresa, o saldo e o período aquisitivo de quem pede, e aprova ou recusa (a recusa leva o motivo). Ninguém decide o próprio pedido, e o pedido de quem tem acesso de RH ou Administrador só o Administrador decide. Só um pedido em análise é decidido: uma decisão não é refeita.
 * **Senha provisória**: a conta criada ou redefinida entra com a senha provisória, e a sessão dela só alcança a troca de senha (`PUT /api/perfil/alterar-senha`) até a pessoa definir a própria.
 * **Ninguém exclui o próprio cadastro**, nem o Administrador: a conta cairia junto e a empresa poderia ficar sem quem a administre.
@@ -58,7 +66,7 @@ Decisões que a tabela esconde:
 
 | Item | Administrador | RH | Colaborador |
 | --- | --- | --- | --- |
-| Dashboard, Colaboradores, Folha de Pagamento, Empresa, Gestão de Ponto | sim | sim | não |
+| Dashboard, Colaboradores, Aprovações, Folha de Pagamento, Empresa, Gestão de Ponto, Auditoria | sim | sim | não |
 | Depto & Cargos, Usuários | sim | não | não |
 | Meu ponto, Meu holerite | se tem cadastro | se tem cadastro | sim |
 | Meu Perfil | sim | sim | sim |

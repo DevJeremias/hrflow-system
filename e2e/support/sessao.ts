@@ -28,3 +28,14 @@ export const sessaoDaApi = async (baseURL: string, email: string, senha = SENHA)
   expect(csrf, 'cookie de CSRF depois do login').toBeTruthy();
   return playwrightRequest.newContext({ baseURL, storageState: await api.storageState(), extraHTTPHeaders: { 'X-CSRF-Token': csrf as string } });
 };
+
+// O primeiro acesso de quem o RH cadastrou: a senha que ele definiu é provisória e só abre a troca. Termina com a
+// pessoa de volta ao login, com a senha nova.
+export const trocarSenhaProvisoria = async (page: Page, email: string, senhaProvisoria: string, senhaNova: string) => {
+  await entrar(page, email, senhaProvisoria, /\/trocar-senha$/);
+  await page.getByLabel('Senha provisória').fill(senhaProvisoria);
+  await page.getByLabel(/^Nova senha/).fill(senhaNova);
+  await page.getByLabel('Confirmar nova senha').fill(senhaNova);
+  await page.getByRole('button', { name: 'Definir senha' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+};

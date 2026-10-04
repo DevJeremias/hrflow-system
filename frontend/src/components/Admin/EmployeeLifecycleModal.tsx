@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Check, Copy, KeyRound, Trash2, UserCheck, UserMinus } from 'lucide-react';
+import { Check, Copy, EyeOff, KeyRound, Trash2, UserCheck, UserMinus } from 'lucide-react';
 import { Employee, employeeService } from '../../services/employeeService';
 import ErrorAlert from '../ErrorAlert';
 import Modal from '../ui/Modal';
@@ -8,7 +8,7 @@ import Field, { Input } from '../ui/Field';
 import { useToast } from '../ui/toastContext';
 import { mensagemDeErro } from '../../utils/erros';
 
-export type LifecycleKind = 'offboard' | 'reactivate' | 'reset' | 'delete';
+export type LifecycleKind = 'offboard' | 'reactivate' | 'reset' | 'delete' | 'anonymize';
 
 export interface LifecycleAction {
   kind: LifecycleKind;
@@ -85,6 +85,20 @@ const CONTENT: Record<LifecycleKind, {
     icon: <Trash2 size={22} aria-hidden="true" />,
     variant: 'danger',
   },
+  anonymize: {
+    sucesso: () => 'Cadastro anonimizado.',
+    title: (name) => `Anonimizar o cadastro de ${name}`,
+    effects: (name) => [
+      `CPF, nome, e-mail, telefone, endereço, dados bancários e foto de ${name} são apagados para sempre. Não há como desfazer.`,
+      'As marcações de ponto, as decisões e os valores da folha continuam, ligados ao código do cadastro e sem identificar a pessoa.',
+      'A localização das marcações e o texto das justificativas também são apagados, assim como o conteúdo pessoal da trilha de auditoria.',
+      'Baixe antes a cópia dos dados (Exportar dados) se a empresa precisar entregá-la ao titular.',
+    ],
+    confirm: 'Anonimizar cadastro',
+    busy: 'Anonimizando...',
+    icon: <EyeOff size={22} aria-hidden="true" />,
+    variant: 'danger',
+  },
 };
 
 // Confirmação das ações que mudam o acesso de um colaborador: cada uma diz o que vai acontecer
@@ -116,6 +130,8 @@ const EmployeeLifecycleModal: React.FC<Props> = ({ action, onClose, onDone }) =>
       await employeeService.changeStatus(employee.id, { status: 'Ativo' });
     } else if (kind === 'delete') {
       await employeeService.delete(employee.id);
+    } else if (kind === 'anonymize') {
+      await employeeService.anonymize(employee.id);
     } else {
       setTemporaryPassword(await employeeService.resetPassword(employee.id));
     }

@@ -15,6 +15,7 @@ export const LIMITES_PADRAO = {
     registroPorIp: { windowMs: 60 * MINUTO, limit: 5 },
     registroPorIdentidade: { windowMs: 60 * MINUTO, limit: 3 },
     alterarSenhaPorUsuario: { windowMs: 15 * MINUTO, limit: 5 },
+    confirmarSenhaPorUsuario: { windowMs: 15 * MINUTO, limit: 10 },
 };
 
 export const corpoJson = express.json({ limit: LIMITE_CORPO });
@@ -62,6 +63,16 @@ export const criarLimitadores = (limites: Partial<typeof LIMITES_PADRAO> = {}) =
                 return String(req.usuario.id);
             },
             skipSuccessfulRequests: true,
+        }),
+        // Trocar o e-mail (direto ou por solicitação) confere a senha atual. Só a senha errada conta: o 403 de
+        // "pedido criado" é um sucesso para este limite, para quem faz vários pedidos não ser bloqueado.
+        confirmarSenhaPorUsuario: criarLimitador(config.confirmarSenhaPorUsuario, {
+            keyGenerator: (req: Request) => {
+                if (!req.usuario) throw new Error('req.usuario ausente: a rota precisa do authMiddleware.');
+                return String(req.usuario.id);
+            },
+            skipSuccessfulRequests: true,
+            requestWasSuccessful: (_req: Request, res: Response) => res.statusCode < 400 || res.statusCode === 403 || res.statusCode === 409,
         }),
     };
 };

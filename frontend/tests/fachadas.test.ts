@@ -61,6 +61,15 @@ const folhaAberta = {
   totais: { bruto: 5000, descontos: 400, liquido: 4600, encargos: 1390 }, itens: [holerite], pendencias: [],
 };
 
+const PEDIDO = {
+  id: 5, status: 'pendente', solicitante: { nome: 'Ana Souza', perfil: 'Colaborador' }, alteracoes: { nome: 'Ana Souza Lima' }, anteriores: { nome: 'Ana Souza' },
+  resposta: null, decidido_por: null, decidido_em: null, criado_em: '2026-10-02T15:00:00.000Z',
+};
+const REGISTRO = {
+  id: 1, acao: 'funcionario.salario_alterado', entidade: 'funcionario', entidade_id: 7, funcionario_id: 7, usuario_id: 1, usuario_nome: 'Rita Teste', perfil: 'RH',
+  ip: '127.0.0.1', antes: { salario_base: 3000 }, depois: { salario_base: 3500 }, criado_em: '2026-10-02T15:00:00.000Z',
+};
+
 const json = (corpo: unknown, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(corpo), { status: 200, headers: { 'Content-Type': 'application/json', ...headers } });
 
@@ -76,6 +85,8 @@ const instalarApi = (perfil: 'Administrador' | 'Colaborador') => {
       case '/api/folha/meus-holerites': return json([{ ...holerite, competencia: '2026-09', empresa }]);
       case '/api/empresa': return json({ nome: 'Empresa Ficticia Alfa', razao_social: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181', regime_tributario: null });
       case '/api/funcionarios': return json([{ id: 7, nome: 'Ana Souza', email: 'ana@exemplo.invalid', cargo_nome: 'Dev', departamento_nome: 'Eng', status: 'Ativo' }], { 'X-Total-Count': '1' });
+      case '/api/solicitacoes-alteracao': return json([PEDIDO], { 'X-Total-Count': '1' });
+      case '/api/auditoria': return json([REGISTRO], { 'X-Total-Count': '1' });
       case '/api/estrutura/departamentos': return json([{ id: 1, nome: 'Eng', sigla: 'ENG', descricao: '', gestor: '' }]);
       case '/api/estrutura/cargos': return json([{ id: 1, nome: 'Dev', departamento_nome: 'Eng', nivel: 'Pleno', salario_base: '5000' }]);
       case '/api/perfil/meus-dados': return json({ perfil, vinculado: perfil === 'Colaborador', nome: 'Rita Teste', email: 'rita@exemplo.invalid', avatar: null, telefone: null, cpf: null, data_nascimento: null, data_admissao: null, endereco: null, tipo_contrato: null, nivel: null, banco: null, agencia: null, conta: null, tipo_conta: null, cargo: null, departamento: null });
@@ -179,6 +190,8 @@ const telasAdmin: Array<{ rota: string; titulo: RegExp; abrir?: RegExp[] }> = [
   { rota: '/admin/folha', titulo: /Ana Souza/ },
   { rota: '/admin/empresa', titulo: /Razão social/ },
   { rota: '/admin/gestao-ponto', titulo: /Ponto/ },
+  { rota: '/admin/aprovacoes', titulo: /Ana Souza Lima/ },
+  { rota: '/admin/auditoria', titulo: /Salário alterado/ },
   { rota: '/admin/perfil', titulo: /Rita Teste/ },
 ];
 
@@ -232,13 +245,13 @@ test('o holerite do colaborador lista as folhas fechadas, cada uma com a sua com
 });
 
 test('nenhuma rota do app consulta endpoint inexistente', async () => {
-  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/solicitacoes', '/admin/perfil']],
+  const rotas = [['Administrador', ['/admin', '/admin/colaboradores', '/admin/aprovacoes', '/admin/estrutura', '/admin/folha', '/admin/empresa', '/admin/gestao-ponto', '/admin/solicitacoes', '/admin/auditoria', '/admin/perfil']],
     ['Colaborador', ['/meu-painel', '/meu-painel/holerites', '/meu-painel/solicitacoes', '/meu-painel/perfil']]] as const;
   for (const [perfil, lista] of rotas) {
     for (const rota of lista) {
       instalarApi(perfil);
       const app = await abrirApp(ambiente, rota);
-      assert.deepEqual(chamadas.filter((c) => c.startsWith('/api/solicitacoes')), [], rota);
+      assert.deepEqual(chamadas.filter((c) => c.startsWith('/api/solicitacoes/')), [], rota);
       await fechar(app);
     }
   }
