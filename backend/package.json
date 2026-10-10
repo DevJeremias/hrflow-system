@@ -42,7 +42,7 @@
     "@types/pdfkit": "^0.17.6",
     "eslint": "^9.39.5",
     "pdf-parse": "^2.4.5",
-    "typescript": "~6.0",
+    "typescript": "~7.0",
     "typescript-eslint": "^8.71.0"
   }
 }
