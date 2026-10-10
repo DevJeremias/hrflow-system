@@ -3,7 +3,7 @@ import { Command, Github } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-zinc-950 pt-24 pb-12 text-white">
+    <footer className="bg-surface-inverse pb-12 pt-16 text-ink-inverse sm:pt-20">
       <div className="max-w-7xl mx-auto px-6">
         
         {/* Ajustado para 4 colunas em telas grandes para acomodar o melhor das duas branches */}
@@ -15,14 +15,14 @@ export default function Footer() {
               <div className="bg-brand-fill p-2.5 rounded-control text-brand-foreground shadow-raised">
                 <Command size={24} />
               </div>
-              <span className="text-2xl font-black tracking-tighter">HR<span className="text-indigo-300">Flow</span></span>
+              <span className="text-2xl font-bold tracking-tight">HR<span className="text-brand-fill">Flow</span></span>
             </div>
             
-            <p className="text-xl text-slate-400 font-medium max-w-sm">
+            <p className="max-w-sm text-base font-medium text-ink-inverse/70">
               Transformando a gestão de pessoas em uma vantagem competitiva ímpar para empresas do futuro.
             </p>
             
-            <p className="text-sm font-bold text-slate-400 pt-4 border-t border-white/10 w-max">
+            <p className="w-max border-t border-ink-inverse/10 pt-4 text-sm font-semibold text-ink-inverse/70">
               Projeto Acadêmico - Ciência da Computação
             </p>
 
@@ -32,7 +32,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Código-fonte do HRFlow no GitHub"
-                className="w-12 h-12 bg-white/5 rounded-card flex items-center justify-center hover:bg-brand-fill hover:text-brand-foreground transition-all text-slate-400"
+                className="flex h-12 w-12 items-center justify-center rounded-card bg-ink-inverse/5 text-ink-inverse/70 transition-colors hover:bg-brand-fill hover:text-brand-foreground"
               >
                 <Github size={20} />
               </a>
@@ -41,8 +41,8 @@ export default function Footer() {
 
           {/* Coluna da Equipa (Da branch devi) */}
           <div className="space-y-8">
-            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-widest">Equipe de Engenharia</h2>
-            <ul className="space-y-4 text-lg font-bold text-slate-400">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-brand-fill">Equipe de Engenharia</h2>
+            <ul className="space-y-4 text-sm font-semibold text-ink-inverse/70">
               <li>Henrique Jeremias</li>
               <li>Marcos</li>
               <li>Yuri Afonso</li>
@@ -55,22 +55,22 @@ export default function Footer() {
 
           {/* Coluna de Produto (Da branch main, padronizada com a cor indigo) */}
           <div className="space-y-8">
-            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-widest">Produto</h2>
-            <ul className="space-y-4 text-lg font-bold text-slate-400">
-              <li><Link to="/#funcionalidades" className="hover:text-white transition-colors">Funcionalidades</Link></li>
-              <li><Link to="/#beneficios" className="hover:text-white transition-colors">Benefícios</Link></li>
-              <li><Link to="/#contato" className="hover:text-white transition-colors">Criar conta</Link></li>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-brand-fill">Produto</h2>
+            <ul className="space-y-4 text-sm font-semibold text-ink-inverse/70">
+              <li><Link to="/#funcionalidades" className="transition-colors hover:text-ink-inverse">Funcionalidades</Link></li>
+              <li><Link to="/#beneficios" className="transition-colors hover:text-ink-inverse">Benefícios</Link></li>
+              <li><Link to="/#contato" className="transition-colors hover:text-ink-inverse">Criar conta</Link></li>
             </ul>
           </div>
 
         </div>
 
         {/* Rodapé (Combinando o copyright da devi com as políticas da main) */}
-        <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-400 font-bold text-sm">
+        <div className="flex flex-col items-center justify-between gap-6 border-t border-ink-inverse/10 pt-12 text-sm font-semibold text-ink-inverse/70 md:flex-row">
           <p>© {new Date().getFullYear()} HRFlow. Todos os direitos reservados.</p>
           <div className="flex gap-8">
-            <Link to="/termos" className="hover:text-white transition-colors">Termos de Uso</Link>
-            <Link to="/privacidade" className="hover:text-white transition-colors">Privacidade</Link>
+            <Link to="/termos" className="transition-colors hover:text-ink-inverse">Termos de Uso</Link>
+            <Link to="/privacidade" className="transition-colors hover:text-ink-inverse">Privacidade</Link>
           </div>
         </div>
 

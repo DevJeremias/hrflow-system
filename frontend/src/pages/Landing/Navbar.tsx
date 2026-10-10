@@ -26,7 +26,7 @@ export default function Navbar() {
   return (
     <header
       className={`fixed top-0 left-0 w-full z-50 backdrop-blur-md transition-all duration-300 ${
-        menuAberto ? 'bg-white' : 'bg-white/80'
+        menuAberto ? 'bg-surface' : 'bg-surface/80'
       } ${isScrolled || menuAberto ? 'py-3 shadow-card' : 'py-6 shadow-card'}`}
     >
       <div className="max-w-[1440px] mx-auto px-6 flex items-center justify-between">
