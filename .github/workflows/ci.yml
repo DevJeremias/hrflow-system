@@ -123,8 +123,8 @@ jobs:
         with:
           name: playwright
           path: |
-            e2e/playwright-report/
-            e2e/test-results/
+            playwright-report/
+            test-results/
           retention-days: 7
 
   # Dependências de produção sem vulnerabilidade conhecida. Falha por advisory novo, não por mudança do PR.
