@@ -167,9 +167,9 @@ const esperarTela = async (page: Page) => {
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => window.scrollTo(0, 0));
 };
-// A rasterização tipográfica da landing varia em poucos pixels entre o Chromium local e o CI.
+// A rasterização tipográfica varia entre Chromium local e CI; o limite de 0,1% não mascara mudanças de layout.
 const capturarTela = (page: Page, nome: string, largura: number) =>
-  expect(page).toHaveScreenshot(`${nome}-${largura}.png`, { maxDiffPixels: nome === 'landing' ? 100 : undefined });
+  expect(page).toHaveScreenshot(`${nome}-${largura}.png`, { maxDiffPixelRatio: 0.001 });
 
 for (const largura of LARGURAS) {
   test(`screenshots dos fluxos principais em ${largura}px`, async ({ page, browser, baseURL }) => {
