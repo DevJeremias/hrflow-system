@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
   ] : [];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Dashboard"
         description={<>Bem-vindo de volta, <span className="font-semibold text-brand">{firstName}</span>!</>}
@@ -40,7 +40,7 @@ const Dashboard: React.FC = () => {
       {loadError && <ErrorAlert message={loadError} onRetry={() => { refetch(); }} />}
 
       {!loadError && (
-        <div aria-busy={isLoading || undefined} className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div aria-busy={isLoading || undefined} className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-card" />)
             : statConfig.map((stat) => <StatCard key={stat.label} {...stat} />)}
