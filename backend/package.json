@@ -21,7 +21,7 @@
     "bcrypt": "^6.0.0",
     "compression": "^1.8.2",
     "cookie": "^0.7.2",
-    "dotenv": "^17.3.1",
+    "dotenv": "^18.0.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.3",
