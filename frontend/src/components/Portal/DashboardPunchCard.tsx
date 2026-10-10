@@ -29,7 +29,7 @@ const DashboardPunchCard: React.FC<Props> = ({ isRegistering, disabled, proximos
     <Card as="section" aria-label="Registro de ponto" padding="lg" className="flex flex-col items-center justify-center lg:col-span-2">
       <div className="mb-8 text-center">
         {/* Sem região viva: o relógio muda a cada segundo e não deve ser anunciado. */}
-        <time dateTime={currentTime.toISOString()} className="block text-6xl font-bold tabular-nums tracking-tighter text-ink md:text-8xl">
+        <time dateTime={currentTime.toISOString()} className="block text-4xl font-bold tabular-nums tracking-tight text-ink sm:text-5xl">
           {formattedTime}
         </time>
         <p className="mt-4 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-widest text-ink-muted">

@@ -7,17 +7,17 @@ export default function Stats() {
   ];
 
   return (
-    <section className="bg-slate-900 text-white py-20 relative z-20 -mt-12 md:-mt-24 rounded-t-card shadow-raised" id="metricas">
+    <section className="relative z-20 -mt-12 rounded-t-card bg-surface-inverse py-12 text-ink-inverse shadow-raised md:-mt-24 sm:py-16" id="metricas">
       <div className="max-w-7xl mx-auto px-6">
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 divide-y md:divide-y-0 md:divide-x divide-white/10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 divide-y md:divide-y-0 md:divide-x divide-ink-inverse/10">
           {stats.map((stat, index) => (
             <div key={index} className="flex flex-col items-center text-center pt-8 md:pt-0 px-6">
-              <h3 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-br from-white to-white/50 tracking-tighter mb-2">
+              <h3 className="mb-2 text-4xl font-bold tracking-tight text-ink-inverse sm:text-5xl">
                 {stat.value}
               </h3>
-              <p className="text-lg font-bold text-orange-400 mb-1">{stat.label}</p>
-              <p className="text-sm font-medium text-slate-400">{stat.desc}</p>
+              <p className="mb-1 font-semibold text-brand-fill">{stat.label}</p>
+              <p className="text-sm font-medium text-ink-inverse/70">{stat.desc}</p>
             </div>
           ))}
         </div>

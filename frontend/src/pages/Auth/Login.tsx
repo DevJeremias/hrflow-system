@@ -47,16 +47,16 @@ const Login: React.FC = () => {
         <div className="relative z-10 flex h-full w-full flex-col justify-between py-12 pl-10 pr-12 xl:py-16 xl:pl-20">
           <div className="flex items-center gap-3">
             <img src={logo} alt="" className="h-10 w-auto object-contain md:h-12" />
-            <span className="text-2xl font-extrabold tracking-tight text-white">
-              HR<span className="text-indigo-300">Flow</span>
+            <span className="text-2xl font-extrabold tracking-tight text-ink-inverse">
+              HR<span className="text-brand-fill">Flow</span>
             </span>
           </div>
 
           <div className="max-w-xl">
-            <p className="mb-6 text-3xl font-extrabold leading-tight text-white xl:text-5xl">
+            <p className="mb-6 text-3xl font-extrabold leading-tight text-ink-inverse xl:text-5xl">
               Sistema de Gestão de Recursos Humanos
             </p>
-            <p className="max-w-md text-xl font-medium leading-relaxed text-slate-300">
+            <p className="max-w-md text-xl font-medium leading-relaxed text-ink-inverse/70">
               Gerencie colaboradores, ponto, férias e folha de pagamento em um só lugar.
             </p>
           </div>
