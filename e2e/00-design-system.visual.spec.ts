@@ -94,12 +94,43 @@ const MARCACOES = [
   { id: 1, funcionario_id: 2, tipo_registro: 'Entrada', nome_funcionario: 'Caio Colaborador Ficticio', date: '2026-10-10', time: '08:00:00' },
   { id: 2, funcionario_id: 2, tipo_registro: 'Saída', nome_funcionario: 'Caio Colaborador Ficticio', date: '2026-10-10', time: '17:00:00' },
 ];
+const EMPRESA = {
+  nome: 'Empresa Ficticia Alfa Ltda',
+  razao_social: 'Empresa Ficticia Alfa Ltda',
+  cnpj: '12345678000190',
+  regime_tributario: 'Simples Nacional',
+  fuso: 'America/Belem',
+  encarregado_nome: 'Joana Ficticia',
+  encarregado_email: 'privacidade@alfa.exemplo.invalid',
+};
+const DEPARTAMENTOS = [{
+  id: 1,
+  nome: 'Tecnologia da Informação',
+  sigla: 'TI',
+  descricao: 'Sistemas internos, infraestrutura e suporte aos colaboradores.',
+  gestor: 'Caio Colaborador Ficticio',
+  total_colaboradores: 24,
+  colaboradores_ativos: 22,
+  total_cargos: 5,
+}];
+const CARGOS = [{
+  id: 1,
+  nome: 'Desenvolvedor(a)',
+  departamento_id: 1,
+  departamento_nome: 'Tecnologia da Informação',
+  nivel: 'Pleno',
+  salario_base: '6800.00',
+  ocupantes: 6,
+}];
 
 const json = (route: Route, value: unknown, headers: Record<string, string> = {}) =>
   route.fulfill({ status: 200, contentType: 'application/json', headers, body: JSON.stringify(value) });
 
 const instalarDadosVisuais = async (page: Page) => {
   await page.route('**/api/dashboard/resumo', (route) => json(route, RESUMO));
+  await page.route('**/api/empresa', (route) => json(route, EMPRESA));
+  await page.route('**/api/estrutura/departamentos', (route) => json(route, DEPARTAMENTOS));
+  await page.route('**/api/estrutura/cargos', (route) => json(route, CARGOS));
   await page.route('**/api/relatorios/headcount**', (route) => json(route, HEADCOUNT));
   await page.route('**/api/relatorios/aniversariantes**', (route) => json(route, []));
   await page.route('**/api/notificacoes**', (route) => json(route, { naoLidas: 0, itens: [] }));
@@ -171,6 +202,19 @@ for (const largura of LARGURAS) {
     await capturarTela(page, 'admin-colaborador-painel', largura);
 
     await page.keyboard.press('Escape');
+
+    await page.goto('/admin/estrutura');
+    await esperarTela(page);
+    await capturarTela(page, 'admin-estrutura-departamentos', largura);
+    await page.getByRole('tab', { name: /Cargos e Funções/ }).click();
+    await expect(page.getByRole('table', { name: 'Cargos da empresa' })).toBeVisible();
+    await capturarTela(page, 'admin-estrutura-cargos', largura);
+
+    await page.goto('/admin/empresa');
+    await esperarTela(page);
+    await expect(page.getByLabel('Razão social')).toHaveValue(EMPRESA.razao_social);
+    await capturarTela(page, 'admin-empresa', largura);
+
     await page.goto('/admin/folha');
     await esperarTela(page);
     await page.getByRole('button', { name: /Processar (folha|novamente)/ }).click();

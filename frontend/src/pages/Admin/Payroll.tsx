@@ -99,12 +99,12 @@ const Payroll: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Gestão de Folha"
         description={fechada ? `Folha de ${rotulo}, fechada.` : `Folha de ${rotulo}: confira os holerites e feche o mês.`}
         actions={(
-          <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-3">
             <Field label="Competência" name="competencia">
               <Input type="month" autoComplete="off" value={competencia} max={mesAtualNoFuso(fuso)} onChange={(e) => e.target.value && trocarCompetencia(e.target.value)} />
             </Field>
