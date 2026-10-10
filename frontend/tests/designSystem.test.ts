@@ -6,7 +6,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import postcss from 'postcss';
 import tailwindcss from 'tailwindcss';
-import config from '../tailwind.config.js';
+import config, { PONTO_THEME_COLOR } from '../tailwind.config.js';
 
 const raiz = new URL('..', import.meta.url).pathname;
 const src = join(raiz, 'src');
@@ -21,34 +21,54 @@ const contraste = (a: string, b: string) => {
   return (claro + 0.05) / (escuro + 0.05);
 };
 
-const cores = config.theme.extend.colors as Record<string, Record<string, string>>;
-const BRANCO = cores.surface.DEFAULT;
+const cssTokens = readFileSync(join(src, 'index.css'), 'utf8');
+const blocoTema = (seletor: RegExp) => cssTokens.match(seletor)?.[1] ?? '';
+const rootTokens = blocoTema(/:root\s*\{([^}]+)\}/);
+const canaisDaVariavel = (bloco: string, nome: string) => [...bloco.matchAll(new RegExp(`--${nome}-rgb:\\s*([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s*;`, 'g'))].at(-1);
+const corDaVariavel = (bloco: string, nome: string) => {
+  const canais = canaisDaVariavel(bloco, nome);
+  assert.ok(canais, `token --${nome}-rgb está definido`);
+  return `#${canais.slice(1).map((canal) => Math.round(Number(canal)).toString(16).padStart(2, '0')).join('')}`;
+};
+const temas = {
+  escuro: rootTokens,
+  claro: `${rootTokens}\n${blocoTema(/\[data-theme='light'\]\s*\{([^}]+)\}/)}`,
+};
 
-test('brand sobre branco tem contraste de pelo menos 4,5 (e o branco sobre brand também)', () => {
-  assert.equal(cores.brand.DEFAULT, '#4f46e5');
-  assert.ok(contraste(cores.brand.DEFAULT, BRANCO) >= 4.5, `brand/branco = ${contraste(cores.brand.DEFAULT, BRANCO).toFixed(2)}`);
-  assert.ok(contraste(BRANCO, cores.brand.hover) >= 4.5);
+test('as cores de marca separam preenchimento âmbar de texto com contraste', () => {
+  const cores = config.theme.extend.colors as Record<string, Record<string, string>>;
+  assert.match(cores.brand.DEFAULT, /--brand-text-rgb/);
+  assert.match(cores.brand.fill, /--brand-rgb/);
+  assert.equal(corDaVariavel(temas.escuro, 'brand').toUpperCase(), PONTO_THEME_COLOR);
+  for (const [nome, tema] of Object.entries(temas)) {
+    const texto = corDaVariavel(tema, 'brand-text');
+    const preenchimento = corDaVariavel(tema, 'brand');
+    const superficie = corDaVariavel(tema, 'surface');
+    const frenteDoBotao = corDaVariavel(tema, 'brand-foreground');
+    assert.ok(contraste(texto, superficie) >= 4.5, `${nome}: texto de marca/superfície`);
+    assert.ok(contraste(frenteDoBotao, preenchimento) >= 4.5, `${nome}: texto do botão/preenchimento de marca`);
+  }
 });
 
-test('todo par de texto e fundo dos tokens cumpre WCAG AA', () => {
-  const pares: [string, string, string, number][] = [
-    ['ink', cores.ink.DEFAULT, BRANCO, 4.5],
-    ['ink-muted sobre branco', cores.ink.muted, BRANCO, 4.5],
-    ['ink-muted sobre surface-sunken', cores.ink.muted, cores.surface.sunken, 4.5],
-    ['ink-subtle sobre branco', cores.ink.subtle, BRANCO, 4.5],
-    ['ink-subtle sobre surface-muted', cores.ink.subtle, cores.surface.muted, 4.5],
-    ['brand sobre brand-soft', cores.brand.DEFAULT, cores.brand.soft, 4.5],
-    ['success sobre soft', cores.success.DEFAULT, cores.success.soft, 4.5],
-    ['warning sobre soft', cores.warning.DEFAULT, cores.warning.soft, 4.5],
-    ['danger sobre soft', cores.danger.DEFAULT, cores.danger.soft, 4.5],
-    ['danger sobre branco', cores.danger.DEFAULT, BRANCO, 4.5],
-    ['branco sobre danger', BRANCO, cores.danger.DEFAULT, 4.5],
-    ['info sobre soft', cores.info.DEFAULT, cores.info.soft, 4.5],
-    ['branco sobre a barra lateral', BRANCO, cores.surface.inverse, 4.5],
-    ['slate-300 sobre a barra lateral', '#cbd5e1', cores.surface.inverse, 4.5],
-    ['borda de campo sobre branco (componente de interface)', cores.line.input, BRANCO, 3],
-  ];
-  const falhas = pares.filter(([, frente, fundo, minimo]) => contraste(frente, fundo) < minimo).map(([nome, frente, fundo]) => `${nome}: ${contraste(frente, fundo).toFixed(2)}`);
+test('pares de texto, estado e foco cumprem WCAG AA nos dois temas', () => {
+  const pares = [
+    ['ink', 'ink', 'surface', 4.5],
+    ['ink muted', 'ink-muted', 'surface', 4.5],
+    ['ink muted em fundo rebaixado', 'ink-muted', 'surface-sunken', 4.5],
+    ['ink subtle', 'ink-subtle', 'surface-muted', 4.5],
+    ['marca no fundo suave', 'brand-text', 'brand-soft', 4.5],
+    ['sucesso no fundo suave', 'success', 'success-soft', 4.5],
+    ['aviso no fundo suave', 'warning', 'warning-soft', 4.5],
+    ['erro no fundo suave', 'danger', 'danger-soft', 4.5],
+    ['erro no botão', 'danger-foreground', 'danger', 4.5],
+    ['informação no fundo suave', 'info', 'info-soft', 4.5],
+    ['foco na superfície', 'focus', 'surface', 3],
+    ['borda de campo na superfície', 'line-input', 'surface', 3],
+    ['texto claro na navegação escura', 'ink-inverse', 'surface-inverse', 4.5],
+  ] as const;
+  const falhas = Object.entries(temas).flatMap(([temaNome, tema]) => pares
+    .filter(([, frente, fundo, minimo]) => contraste(corDaVariavel(tema, frente), corDaVariavel(tema, fundo)) < minimo)
+    .map(([nome, frente, fundo, minimo]) => `${temaNome}: ${nome} = ${contraste(corDaVariavel(tema, frente), corDaVariavel(tema, fundo)).toFixed(2)} < ${minimo}`));
   assert.deepEqual(falhas, []);
 });
 
@@ -58,11 +78,21 @@ const gerarCss = async (html: string) => {
 };
 
 test('os tokens e o plugin de animação geram CSS: a classe existe de verdade', async () => {
-  const css = await gerarCss('<div class="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 bg-brand text-ink-muted border-line rounded-control rounded-card rounded-modal shadow-modal font-sans motion-reduce:animate-none">');
-  for (const seletor of ['.animate-in', '.fade-in', '.zoom-in-95', '.slide-in-from-bottom-2', '.bg-brand', '.text-ink-muted', '.border-line', '.rounded-control', '.rounded-card', '.rounded-modal', '.shadow-modal']) {
+  const css = await gerarCss('<div class="animate-in fade-in zoom-in-95 slide-in-from-bottom-2 slide-in-from-right bg-brand-fill text-brand text-ink-muted border-line rounded-control rounded-card rounded-modal max-w-panel min-w-chart shadow-modal font-sans font-mono motion-reduce:animate-none">');
+  for (const seletor of ['.animate-in', '.fade-in', '.zoom-in-95', '.slide-in-from-bottom-2', '.slide-in-from-right', '.bg-brand-fill', '.text-brand', '.text-ink-muted', '.border-line', '.rounded-control', '.rounded-card', '.rounded-modal', '.max-w-panel', '.min-w-chart', '.shadow-modal']) {
     assert.ok(css.includes(seletor), `${seletor} não foi gerada`);
   }
-  assert.match(css, /Inter Variable/);
+  assert.match(css, /Geist Variable/);
+  assert.match(css, /Geist Mono Variable/);
+});
+
+test('o lint do CI aplica os guardrails de estilos, inline e dependências de UI', () => {
+  const eslint = readFileSync(join(raiz, 'eslint.config.js'), 'utf8');
+  const pacote = JSON.parse(readFileSync(join(raiz, 'package.json'), 'utf8')) as { scripts: { lint: string } };
+  assert.match(eslint, /design-system\/no-raw-design-values/);
+  assert.match(eslint, /design-system\/no-inline-design-style/);
+  assert.match(eslint, /design-system\/ui-boundary-imports/);
+  assert.match(pacote.scripts.lint, /lint-design-system\.mjs/);
 });
 
 test('o menor texto da escala é de 12 px', () => {

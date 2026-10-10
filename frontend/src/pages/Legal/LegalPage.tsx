@@ -11,7 +11,7 @@ interface LegalPageProps {
 
 export const Secao = ({ titulo, children }: { titulo: string; children: React.ReactNode }) => (
   <section className="space-y-3">
-    <h2 className="text-2xl font-black text-slate-900 tracking-tight">{titulo}</h2>
+    <h2 className="text-2xl font-black text-ink tracking-tight">{titulo}</h2>
     {children}
   </section>
 );
@@ -23,13 +23,13 @@ export default function LegalPage({ titulo, atualizadoEm, children }: LegalPageP
   }, [titulo]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div data-theme="light" className="min-h-screen bg-surface-muted">
       <Navbar />
-      <main className="max-w-3xl mx-auto px-6 pt-36 pb-24 space-y-10 text-lg font-medium leading-relaxed text-slate-600 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2">
+      <main className="max-w-3xl mx-auto px-6 pt-36 pb-24 space-y-10 text-lg font-medium leading-relaxed text-ink-muted [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2">
         <header className="space-y-3">
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">{titulo}</h1>
+          <h1 className="text-4xl md:text-5xl font-black text-ink tracking-tight">{titulo}</h1>
           <p className="text-sm font-bold text-ink-muted">Última atualização: {atualizadoEm}</p>
-          <p className="text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <p className="text-sm font-bold text-warning bg-warning-soft border border-warning-line rounded-card p-4">
             Versão inicial deste texto, ainda sujeita a revisão pelo responsável pelo produto.
           </p>
         </header>

@@ -38,6 +38,7 @@ interface ModalProps {
   // Esc, clique no fundo e o X chamam isto; quem precisa de confirmação antes de descartar decide aqui.
   onClose: () => void;
   size?: keyof typeof TAMANHOS;
+  presentation?: 'center' | 'right';
   footer?: React.ReactNode;
   headerActions?: React.ReactNode;
   closeOnBackdrop?: boolean;
@@ -54,9 +55,10 @@ interface ModalProps {
 
 // O modal existe enquanto está montado: quem o usa o renderiza condicionalmente. Ele vai para um contêiner no <body>,
 // deixa o restante da página inerte (foco e leitor de tela) e devolve o foco a quem o abriu ao desmontar.
-const Modal: React.FC<ModalProps> = ({ title, description, onClose, size = 'md', footer, headerActions, closeOnBackdrop = true, portalClassName = '', className = '', bodyClassName = 'px-5 py-5 sm:px-8 sm:py-6', form, children }) => {
+const Modal: React.FC<ModalProps> = ({ title, description, onClose, size = 'md', presentation = 'center', footer, headerActions, closeOnBackdrop = true, portalClassName = '', className = '', bodyClassName = 'px-5 py-5 sm:px-8 sm:py-6', form, children }) => {
   const idTitulo = useId();
   const idDescricao = useId();
+  const painelLateral = presentation === 'right';
   // O contêiner nasce no primeiro render e só entra no <body> no efeito: o React não toca no DOM durante o render.
   const [portal] = useState(() => document.createElement('div'));
   const dialogo = useRef<HTMLDivElement>(null);
@@ -82,16 +84,17 @@ const Modal: React.FC<ModalProps> = ({ title, description, onClose, size = 'md',
   );
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:static print:block print:p-0">
-      <div data-modal-backdrop aria-hidden="true" onClick={closeOnBackdrop ? onClose : undefined} className="absolute inset-0 bg-ink/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden" />
+    <div className={`fixed inset-0 z-50 flex ${painelLateral ? 'items-stretch justify-end p-0' : 'items-center justify-center p-4'} print:static print:block print:p-0`}>
+      <div data-modal-backdrop aria-hidden="true" onClick={closeOnBackdrop ? onClose : undefined} className="absolute inset-0 bg-overlay/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden" />
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
         aria-describedby={description ? idDescricao : undefined}
+        data-panel={painelLateral ? 'right' : undefined}
         tabIndex={-1}
-        className={`relative flex max-h-[calc(100dvh-2rem)] w-full ${TAMANHOS[size]} animate-in zoom-in-95 fade-in flex-col overflow-hidden rounded-modal bg-surface shadow-modal duration-200 print:max-h-none print:max-w-none print:rounded-none print:shadow-none ${className}`}
+        className={`relative flex w-full ${painelLateral ? 'h-dvh max-h-dvh max-w-panel animate-in slide-in-from-right rounded-none border-l border-line' : `max-h-[calc(100dvh-2rem)] ${TAMANHOS[size]} animate-in zoom-in-95 rounded-modal`} fade-in flex-col overflow-hidden bg-surface shadow-modal duration-200 print:max-h-none print:max-w-none print:rounded-none print:shadow-none ${className}`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4 sm:px-8 sm:py-5 print:hidden">
           <div className="min-w-0">

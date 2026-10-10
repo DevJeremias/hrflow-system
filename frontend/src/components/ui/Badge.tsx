@@ -18,7 +18,7 @@ interface BadgeProps {
 }
 
 const Badge: React.FC<BadgeProps> = ({ tone = 'neutral', children, className = '' }) => (
-  <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${TONS[tone]} ${className}`}>{children}</span>
+  <span className={`inline-flex items-center rounded-control px-2.5 py-1 text-xs font-semibold ${TONS[tone]} ${className}`}>{children}</span>
 );
 
 export default Badge;

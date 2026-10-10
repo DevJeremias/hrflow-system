@@ -137,7 +137,7 @@ const ProfileDataTab: React.FC<Props> = ({ perfil, onUpdate }) => {
               <>
                 {/* O campo de arquivo fica fora da tela, mas focável: o rótulo é o botão da câmera e mostra o foco do campo. */}
                 <input id={idFoto} name="avatar" type="file" accept="image/*" className="peer sr-only" onChange={handleImageUpload} />
-                <label htmlFor={idFoto} className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-ink text-white hover:bg-ink-muted peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand">
+                <label htmlFor={idFoto} className="absolute bottom-0 right-0 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-surface-inverse text-ink-inverse hover:bg-line-strong peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
                   <Camera size={16} aria-hidden="true" />
                   <span className="sr-only">Alterar foto</span>
                 </label>

@@ -63,7 +63,7 @@ const SinoDeNotificacoes: React.FC = () => {
       >
         <Bell size={22} aria-hidden="true" />
         {naoLidas > 0 && (
-          <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-white">
+          <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-danger-foreground">
             {naoLidas > SELO_MAXIMO ? `${SELO_MAXIMO}+` : naoLidas}
           </span>
         )}
@@ -103,11 +103,11 @@ const SinoDeNotificacoes: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => abrirAviso(aviso)}
-                    className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-surface-sunken ${aviso.lida ? '' : 'bg-brand-soft/40'}`}
+                    className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-surface-sunken ${aviso.lida ? '' : 'bg-brand-soft'}`}
                   >
                     <span className="flex items-start justify-between gap-3">
                       <span className={`text-sm text-ink ${aviso.lida ? 'font-medium' : 'font-bold'}`}>{aviso.titulo}</span>
-                      {!aviso.lida && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" role="img" aria-label="Não lida" />}
+                      {!aviso.lida && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-danger" role="img" aria-label="Não lida" />}
                     </span>
                     <span className="text-sm text-ink-muted">{aviso.mensagem}</span>
                     <span className="text-xs text-ink-muted">{formatarMomento(aviso.criadaEm, fuso)}</span>

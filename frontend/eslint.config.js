@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import { rules as designSystemRules, restrictedUiPackages } from './eslint-rules/design-system.mjs'
 
 export default defineConfig([
   globalIgnores(['dist', 'dev-dist']),
@@ -14,6 +15,7 @@ export default defineConfig([
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+    plugins: { 'design-system': { rules: designSystemRules } },
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -26,6 +28,12 @@ export default defineConfig([
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^_' }],
       'react-hooks/exhaustive-deps': 'error',
+      'design-system/no-raw-design-values': 'error',
+      'design-system/no-inline-design-style': 'error',
+      'design-system/ui-boundary-imports': 'error',
+      'no-restricted-imports': ['error', {
+        patterns: [{ group: restrictedUiPackages, message: 'Use os componentes reutilizáveis de frontend/src/components/ui.' }],
+      }],
     },
   },
   {

@@ -1,10 +1,10 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import tailwind from './tailwind.config.js'
+import { PONTO_THEME_COLOR } from './tailwind.config.js'
 
-// A cor da marca vive só no tema do Tailwind: o manifesto e o <meta theme-color> a repetem daqui.
-const corPrimaria = tailwind.theme.extend.colors.primary
+// O manifesto instalável e o tema do navegador usam o preenchimento âmbar da marca.
+const corPrimaria = PONTO_THEME_COLOR
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '')

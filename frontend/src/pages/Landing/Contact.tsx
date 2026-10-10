@@ -61,15 +61,15 @@ export default function Contact() {
   return (
     <section className="py-1 bg-white" id="contato">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="bg-brand rounded-[3rem] p-10 md:p-20 relative overflow-hidden shadow-[0_32px_64px_-12px_rgba(79,70,229,0.25)]">
+        <div className="bg-brand-fill rounded-card p-10 md:p-20 relative overflow-hidden shadow-raised">
           
           <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
             
-            <div className="text-left text-white">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-white text-xs font-black tracking-widest uppercase mb-6">
+            <div className="text-left text-brand-foreground">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 px-4 py-2 rounded-full text-brand-foreground text-xs font-black tracking-widest uppercase mb-6">
                 <Sparkles size={14} aria-hidden="true" /> Cadastro da empresa
               </div>
               <h2 className="text-4xl md:text-5xl font-black leading-tight mb-8">
@@ -78,21 +78,21 @@ export default function Contact() {
               
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
-                  <div className="bg-white/10 p-3 rounded-2xl text-white">
+                  <div className="bg-white/10 p-3 rounded-card text-brand-foreground">
                     <Zap size={24} />
                   </div>
-                  <p className="font-bold text-lg text-white">Folha em lote com desconto de INSS e holerite por colaborador.</p>
+                  <p className="font-bold text-lg text-brand-foreground">Folha em lote com desconto de INSS e holerite por colaborador.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="bg-white/10 p-3 rounded-2xl text-white">
+                  <div className="bg-white/10 p-3 rounded-card text-brand-foreground">
                     <ShieldCheck size={24} />
                   </div>
-                  <p className="font-bold text-lg text-white">Acesso separado por perfil e sessão protegida.</p>
+                  <p className="font-bold text-lg text-brand-foreground">Acesso separado por perfil e sessão protegida.</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl">
+            <div className="bg-surface rounded-card p-8 md:p-10 shadow-raised">
               <form className="space-y-4" onSubmit={handleSubmit}>
 
                 {erro && <div role="alert" className="p-4 bg-danger-soft text-danger rounded-card font-semibold text-sm border border-danger-line">{erro}</div>}

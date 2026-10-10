@@ -12,7 +12,7 @@ export default function Footer() {
           {/* Coluna da Marca (Identidade da devi + Redes Sociais da main) */}
           <div className="lg:col-span-2 space-y-8">
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg">
+              <div className="bg-brand-fill p-2.5 rounded-control text-brand-foreground shadow-raised">
                 <Command size={24} />
               </div>
               <span className="text-2xl font-black tracking-tighter">HR<span className="text-indigo-300">Flow</span></span>
@@ -32,7 +32,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Código-fonte do HRFlow no GitHub"
-                className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-indigo-500 hover:text-white transition-all text-slate-400"
+                className="w-12 h-12 bg-white/5 rounded-card flex items-center justify-center hover:bg-brand-fill hover:text-brand-foreground transition-all text-slate-400"
               >
                 <Github size={20} />
               </a>
@@ -41,7 +41,7 @@ export default function Footer() {
 
           {/* Coluna da Equipa (Da branch devi) */}
           <div className="space-y-8">
-            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-[0.2em]">Equipe de Engenharia</h2>
+            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-widest">Equipe de Engenharia</h2>
             <ul className="space-y-4 text-lg font-bold text-slate-400">
               <li>Henrique Jeremias</li>
               <li>Marcos</li>
@@ -55,7 +55,7 @@ export default function Footer() {
 
           {/* Coluna de Produto (Da branch main, padronizada com a cor indigo) */}
           <div className="space-y-8">
-            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-[0.2em]">Produto</h2>
+            <h2 className="text-xs font-black text-indigo-300 uppercase tracking-widest">Produto</h2>
             <ul className="space-y-4 text-lg font-bold text-slate-400">
               <li><Link to="/#funcionalidades" className="hover:text-white transition-colors">Funcionalidades</Link></li>
               <li><Link to="/#beneficios" className="hover:text-white transition-colors">Benefícios</Link></li>

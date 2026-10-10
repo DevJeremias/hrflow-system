@@ -23,12 +23,12 @@ export default function AnatomySection() {
           
           <div className="relative group perspective-1000 order-2 lg:order-1 flex justify-center">
             
-            <div className="absolute -left-6 md:-left-12 -top-10 w-[250px] h-[250px] md:w-[350px] md:h-[350px] bg-orange-200 rounded-full z-0 opacity-80 shadow-lg group-hover:scale-105 transition-transform duration-700"></div>
+            <div className="absolute -left-6 md:-left-12 -top-10 w-[250px] h-[250px] md:w-[350px] md:h-[350px] bg-orange-200 rounded-full z-0 opacity-80 shadow-raised group-hover:scale-105 transition-transform duration-700"></div>
             
             <div className="absolute -bottom-10 -right-4 md:-right-8 w-32 h-32 md:w-48 md:h-48 bg-purple-200 rounded-full z-0 opacity-80 group-hover:scale-110 transition-transform duration-1000"></div>
 
             <div className="relative z-10 transform-gpu rotate-y-[-5deg] rotate-x-[2deg] group-hover:rotate-0 group-hover:scale-[1.02] transition-all duration-1000 ease-out w-full max-w-2xl">
-              <div className="p-2 bg-white rounded-[2.5rem] shadow-xl border border-slate-200 backdrop-blur-sm">
+              <div className="p-2 bg-white rounded-card shadow-raised border border-slate-200 backdrop-blur-sm">
                 <img 
                   src={heroImagem} 
                   alt="Três pessoas trabalhando juntas em um escritório" 
@@ -36,13 +36,13 @@ export default function AnatomySection() {
                   height={493}
                   loading="lazy"
                   decoding="async"
-                  className="w-full h-auto rounded-[2rem] object-cover opacity-95"
+                  className="w-full h-auto rounded-card object-cover opacity-95"
                 />
               </div>
 
-              <div className="absolute -bottom-6 -right-6 bg-white text-slate-900 p-6 rounded-3xl shadow-[0_10px_30px_-5px_rgba(0,0,0,0.1)] animate-float-slow hidden md:block border border-slate-200">
+              <div className="absolute -bottom-6 -right-6 bg-white text-slate-900 p-6 rounded-card shadow-raised animate-float-slow hidden md:block border border-slate-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 text-green-700 rounded-xl flex items-center justify-center border border-green-200">
+                  <div className="w-10 h-10 bg-green-100 text-green-700 rounded-control flex items-center justify-center border border-green-200">
                     <CheckCircle2 size={24} />
                   </div>
                   <div>
@@ -56,7 +56,7 @@ export default function AnatomySection() {
 
           <div className="space-y-12 order-1 lg:order-2">
             <div className="space-y-6">
-              <h2 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-[0.9] lg:max-w-md">
+              <h2 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter leading-none lg:max-w-md">
                 Anatomia da <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-purple-600">
                   Eficiência.
@@ -91,8 +91,8 @@ export default function AnatomySection() {
                     colorClasses: "text-green-700 bg-green-50 border-green-100 group-hover:bg-green-500 group-hover:text-white"
                   }
                 ].map((item, index) => (
-                  <div key={index} className="flex items-start gap-5 p-6 rounded-3xl border border-slate-200 bg-white hover:border-slate-300 transition-all group shadow-sm hover:shadow-md">
-                    <div className={`p-3 rounded-xl transition-all duration-300 border ${item.colorClasses}`}>
+                  <div key={index} className="flex items-start gap-5 p-6 rounded-card border border-slate-200 bg-white hover:border-slate-300 transition-all group shadow-card hover:shadow-raised">
+                    <div className={`p-3 rounded-control transition-all duration-300 border ${item.colorClasses}`}>
                       {item.icon}
                     </div>
                     <div>

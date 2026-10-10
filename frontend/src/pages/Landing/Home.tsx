@@ -29,7 +29,7 @@ export default function Home() {
   }, [location]);
 
   return (
-    <div className="Home">
+    <div data-theme="light" className="Home">
       <Navbar />
       <main>
         <Hero />

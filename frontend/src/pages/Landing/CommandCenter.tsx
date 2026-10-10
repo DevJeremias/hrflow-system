@@ -19,13 +19,13 @@ export default function CommandCenter() {
 
         <div className="relative h-[500px] md:h-[600px] flex items-center justify-center">
           
-          <div className="absolute w-full max-w-4xl aspect-video bg-slate-300/50 border border-slate-300 rounded-[3rem] backdrop-blur-sm transform -rotate-x-12 translate-y-12 opacity-70"></div>
+          <div className="absolute w-full max-w-4xl aspect-video bg-slate-300/50 border border-slate-300 rounded-card backdrop-blur-sm transform -rotate-x-12 translate-y-12 opacity-70"></div>
           
-          <div className="absolute w-full max-w-3xl aspect-video bg-slate-200 border border-slate-300 rounded-[2.5rem] backdrop-blur-md transform -rotate-x-6 translate-y-6 opacity-90"></div>
+          <div className="absolute w-full max-w-3xl aspect-video bg-slate-200 border border-slate-300 rounded-card backdrop-blur-md transform -rotate-x-6 translate-y-6 opacity-90"></div>
           
-          <div className="absolute w-full max-w-2xl bg-white p-10 md:p-16 rounded-[3rem] shadow-2xl shadow-slate-300/60 transform group hover:scale-105 transition-transform duration-700 border border-slate-200">
+          <div className="absolute w-full max-w-2xl bg-white p-10 md:p-16 rounded-card shadow-raised transform group hover:scale-105 transition-transform duration-700 border border-slate-200">
             <div className="flex items-center gap-6 mb-8">
-              <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 border border-orange-200">
+              <div className="w-16 h-16 bg-orange-100 rounded-card flex items-center justify-center text-orange-600 border border-orange-200">
                 <Layers size={32} />
               </div>
               <div>

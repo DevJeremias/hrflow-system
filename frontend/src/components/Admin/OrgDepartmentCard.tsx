@@ -49,7 +49,7 @@ const OrgDepartmentCard: React.FC<Props> = ({ department, onEdit, onDelete }) =>
     </div>
 
     <div className="mt-auto flex items-center gap-3 border-t border-line pt-4">
-      <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+      <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-fill text-xs font-bold text-brand-foreground">
         {iniciais(department.manager)}
       </span>
       <div className="flex flex-col">

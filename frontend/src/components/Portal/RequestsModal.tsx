@@ -122,7 +122,7 @@ const RequestsModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, balance }) 
             // O valor é limpo para escolher de novo o mesmo arquivo depois de remover ou corrigir.
             onChange={(e) => { escolherArquivo(e.target.files?.[0]); e.target.value = ''; }}
           />
-          <label htmlFor={idArquivo} className="group flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-card border-2 border-dashed border-line-input bg-surface-muted text-center transition-colors hover:bg-surface-sunken peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand peer-aria-[invalid=true]:border-danger">
+          <label htmlFor={idArquivo} className="group flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-card border-2 border-dashed border-line-input bg-surface-muted text-center transition-colors hover:bg-surface-sunken peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus peer-aria-[invalid=true]:border-danger">
             <UploadCloud aria-hidden="true" className="mb-3 h-8 w-8 text-ink-muted group-hover:text-brand" />
             {attachment ? (
               <span className="max-w-full truncate px-4 text-sm font-semibold text-brand">{attachment.name}</span>

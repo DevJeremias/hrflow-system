@@ -53,7 +53,7 @@ const Login: React.FC = () => {
           </div>
 
           <div className="max-w-xl">
-            <p className="mb-6 text-3xl font-extrabold leading-[1.1] text-white xl:text-5xl">
+            <p className="mb-6 text-3xl font-extrabold leading-tight text-white xl:text-5xl">
               Sistema de Gestão de Recursos Humanos
             </p>
             <p className="max-w-md text-xl font-medium leading-relaxed text-slate-300">

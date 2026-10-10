@@ -151,7 +151,7 @@ const DepartmentsRoles: React.FC = () => {
                 type="button"
                 aria-pressed={roleFilter === 'Todos'}
                 onClick={() => setRoleFilter('Todos')}
-                className={`${CHIP} ${roleFilter === 'Todos' ? 'border-brand bg-brand text-white' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
+                className={`${CHIP} ${roleFilter === 'Todos' ? 'border-brand bg-brand-fill text-brand-foreground' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
               >
                 Todos ({roles.length})
               </button>
@@ -161,7 +161,7 @@ const DepartmentsRoles: React.FC = () => {
                   key={dept.id}
                   aria-pressed={roleFilter === dept.id}
                   onClick={() => setRoleFilter(dept.id)}
-                  className={`${CHIP} ${roleFilter === dept.id ? 'border-brand bg-brand text-white' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
+                  className={`${CHIP} ${roleFilter === dept.id ? 'border-brand bg-brand-fill text-brand-foreground' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
                 >
                   {dept.sigla} ({roles.filter((r) => r.departmentId === dept.id).length})
                 </button>

@@ -3,6 +3,116 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+    --brand-rgb: 242 179 61;
+    --brand-hover-rgb: 255 197 84;
+    --brand-soft-rgb: 47 42 32;
+    --brand-line-rgb: 89 71 43;
+    --brand-text-rgb: 242 179 61;
+    --brand-text-hover-rgb: 255 197 84;
+    --brand-foreground-rgb: 26 19 0;
+    --ink-rgb: 232 234 238;
+    --ink-muted-rgb: 163 171 183;
+    --ink-subtle-rgb: 135 145 161;
+    --ink-inverse-rgb: 255 255 255;
+    --surface-rgb: 18 21 26;
+    --surface-muted-rgb: 12 14 17;
+    --surface-sunken-rgb: 12 14 17;
+    --surface-inverse-rgb: 18 21 26;
+    --line-rgb: 38 43 52;
+    --line-strong-rgb: 54 61 73;
+    --line-input-rgb: 102 112 128;
+    --focus-rgb: 143 184 255;
+    --success-rgb: 79 216 160;
+    --success-soft-rgb: 26 61 50;
+    --success-line-rgb: 45 91 72;
+    --warning-rgb: 255 122 110;
+    --warning-soft-rgb: 60 36 37;
+    --warning-line-rgb: 101 51 49;
+    --danger-rgb: 255 122 110;
+    --danger-hover-rgb: 240 95 85;
+    --danger-soft-rgb: 60 36 37;
+    --danger-line-rgb: 101 51 49;
+    --info-rgb: 127 176 255;
+    --info-soft-rgb: 32 47 71;
+    --info-line-rgb: 47 70 104;
+    --document-ink-rgb: 21 23 26;
+    --document-surface-rgb: 250 250 248;
+    --document-muted-rgb: 241 241 238;
+    --document-line-rgb: 216 218 224;
+    --document-negative-rgb: 177 50 42;
+    --danger-foreground-rgb: 26 19 0;
+    --overlay-rgb: 0 0 0;
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+  }
+
+  [data-theme='light'] {
+    color-scheme: light;
+    --brand-soft-rgb: 254 245 227;
+    --brand-line-rgb: 226 200 151;
+    --brand-text-rgb: 138 90 0;
+    --brand-text-hover-rgb: 112 72 0;
+    --ink-rgb: 24 28 34;
+    --ink-muted-rgb: 66 74 85;
+    --ink-subtle-rgb: 95 103 115;
+    --surface-rgb: 255 255 255;
+    --surface-muted-rgb: 246 247 249;
+    --surface-sunken-rgb: 238 240 243;
+    --line-rgb: 217 221 227;
+    --line-strong-rgb: 188 195 205;
+    --line-input-rgb: 123 132 148;
+    --focus-rgb: 31 95 191;
+    --success-rgb: 15 123 85;
+    --success-soft-rgb: 232 245 239;
+    --success-line-rgb: 183 222 201;
+    --warning-rgb: 177 50 42;
+    --warning-soft-rgb: 252 236 235;
+    --warning-line-rgb: 235 197 194;
+    --danger-rgb: 177 50 42;
+    --danger-hover-rgb: 150 37 31;
+    --danger-foreground-rgb: 255 255 255;
+    --danger-soft-rgb: 252 236 235;
+    --danger-line-rgb: 235 197 194;
+    --info-rgb: 31 95 191;
+    --info-soft-rgb: 233 241 252;
+    --info-line-rgb: 194 213 242;
+  }
+
+  /* Componentes explicitamente escuros, como a navegação lateral, não herdam o tema claro do portal. */
+  [data-escuro] {
+    color-scheme: dark;
+    --brand-soft-rgb: 47 42 32;
+    --danger-foreground-rgb: 26 19 0;
+    --brand-line-rgb: 89 71 43;
+    --brand-text-rgb: 242 179 61;
+    --brand-text-hover-rgb: 255 197 84;
+    --ink-rgb: 232 234 238;
+    --ink-muted-rgb: 163 171 183;
+    --ink-subtle-rgb: 135 145 161;
+    --surface-rgb: 18 21 26;
+    --surface-muted-rgb: 12 14 17;
+    --surface-sunken-rgb: 12 14 17;
+    --line-rgb: 38 43 52;
+    --line-strong-rgb: 54 61 73;
+    --line-input-rgb: 102 112 128;
+    --focus-rgb: 143 184 255;
+    --success-rgb: 79 216 160;
+    --success-soft-rgb: 26 61 50;
+    --success-line-rgb: 45 91 72;
+    --warning-rgb: 255 122 110;
+    --warning-soft-rgb: 60 36 37;
+    --warning-line-rgb: 101 51 49;
+    --danger-rgb: 255 122 110;
+    --danger-hover-rgb: 240 95 85;
+    --danger-soft-rgb: 60 36 37;
+    --danger-line-rgb: 101 51 49;
+    --info-rgb: 127 176 255;
+    --info-soft-rgb: 32 47 71;
+    --info-line-rgb: 47 70 104;
+  }
+
   html {
     -webkit-text-size-adjust: 100%;
   }
@@ -11,15 +121,13 @@
     @apply bg-surface-muted font-sans text-ink antialiased;
   }
 
-  /* Anel de foco único para teclado; os componentes não o redefinem. */
   :focus-visible {
-    outline: 2px solid theme('colors.brand.DEFAULT');
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid rgb(var(--focus-rgb));
+    outline-offset: var(--focus-ring-offset);
   }
 
-  /* Sobre fundo escuro o anel de marca perde contraste: o contêiner marca com data-escuro. */
   [data-escuro] :focus-visible {
-    outline-color: #ffffff;
+    outline-color: rgb(var(--ink-inverse-rgb));
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -31,6 +139,25 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  body:has(.holerite-impressao) > *:not(.holerite-impressao) {
+    display: none !important;
+  }
+
+  .holerite-impressao {
+    position: static;
+    inset: auto;
+    display: block;
+    padding: 0;
+    background: transparent;
   }
 }
 

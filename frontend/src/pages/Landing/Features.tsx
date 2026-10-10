@@ -19,9 +19,9 @@ export default function Features() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 flex flex-col md:flex-row gap-8 items-center border border-gray-100 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
+          <div className="md:col-span-2 bg-gray-50 rounded-card p-10 flex flex-col md:flex-row gap-8 items-center border border-gray-100 hover:border-orange-200 hover:bg-white hover:shadow-raised transition-all duration-500 group">
             <div className="flex-1">
-              <div className="w-14 h-14 bg-orange-50 text-orange-600 border border-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
+              <div className="w-14 h-14 bg-orange-50 text-orange-600 border border-orange-100 rounded-card flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-card">
                 <Calculator size={28} />
               </div>
               <h3 className="text-2xl font-black text-ink mb-4">Folha de pagamento em lote</h3>
@@ -30,18 +30,18 @@ export default function Features() {
               </p>
             </div>
             
-            <div className="w-full md:w-64 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <div className="w-full md:w-64 bg-white p-4 rounded-card shadow-card border border-gray-100">
               <div className="h-4 w-1/2 bg-gray-100 rounded-full mb-3"></div>
               <div className="h-4 w-3/4 bg-gray-100 rounded-full mb-6"></div>
-              <div className="h-10 w-full bg-green-50 rounded-xl border border-green-100 flex items-center px-4">
+              <div className="h-10 w-full bg-green-50 rounded-control border border-green-100 flex items-center px-4">
                 <span className="text-green-700 font-bold text-sm">Desconto INSS</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-[2rem] p-10 flex flex-col justify-between border border-gray-100 hover:border-purple-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
+          <div className="bg-gray-50 rounded-card p-10 flex flex-col justify-between border border-gray-100 hover:border-purple-200 hover:bg-white hover:shadow-raised transition-all duration-500 group">
             <div>
-              <div className="w-14 h-14 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-sm">
+              <div className="w-14 h-14 bg-purple-50 border border-purple-100 rounded-card flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-card">
                 <Users size={28} />
               </div>
               <h3 className="text-2xl font-black text-ink mb-4">Estrutura Viva</h3>
@@ -51,16 +51,16 @@ export default function Features() {
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-[2rem] p-10 border border-gray-100 hover:border-green-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-            <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center text-green-600 mb-6 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all shadow-sm">
+          <div className="bg-gray-50 rounded-card p-10 border border-gray-100 hover:border-green-200 hover:bg-white hover:shadow-raised transition-all duration-500 group">
+            <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-card flex items-center justify-center text-green-600 mb-6 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all shadow-card">
               <Printer size={24} />
             </div>
             <h3 className="text-xl font-black text-ink mb-2">Holerite para imprimir</h3>
             <p className="text-ink-muted text-sm font-medium">Abra o holerite de cada colaborador e imprima ou salve em PDF pelo navegador.</p>
           </div>
 
-          <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 border border-gray-100 flex items-center gap-6 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-            <div className="hidden md:flex w-24 h-24 bg-orange-50 border border-orange-100 rounded-full items-center justify-center text-orange-600 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
+          <div className="md:col-span-2 bg-gray-50 rounded-card p-10 border border-gray-100 flex items-center gap-6 hover:border-orange-200 hover:bg-white hover:shadow-raised transition-all duration-500 group">
+            <div className="hidden md:flex w-24 h-24 bg-orange-50 border border-orange-100 rounded-full items-center justify-center text-orange-600 shadow-card flex-shrink-0 group-hover:scale-105 transition-transform">
               <ShieldCheck size={40} />
             </div>
             <div>

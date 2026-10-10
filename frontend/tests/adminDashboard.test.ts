@@ -153,6 +153,10 @@ test('o painel traz o headcount dos últimos 12 meses, com admitidos, desligados
     [mesesAntes(MES, 11)],
   );
   assert.match(host.textContent ?? '', /Colaboradores ativos por mês/);
+  const grafico = host.querySelector('figure svg');
+  assert.equal(grafico?.getAttribute('viewBox'), '0 0 720 260');
+  assert.equal(grafico?.querySelectorAll('path').length, 1, 'o headcount é uma linha, não barras');
+  assert.match(host.querySelector('figure table caption')?.textContent ?? '', /eixo vertical ajustado de 15 a 35/);
   const linhas = [...host.querySelectorAll('figure table tbody tr')];
   assert.equal(linhas.length, 12, 'uma linha por mês, para o leitor de tela');
   assert.deepEqual([...linhas.at(-1)!.querySelectorAll('td')].map((c) => c.textContent), ['31', '2', '1']);

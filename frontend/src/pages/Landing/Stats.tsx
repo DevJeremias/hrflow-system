@@ -7,7 +7,7 @@ export default function Stats() {
   ];
 
   return (
-    <section className="bg-slate-900 text-white py-20 relative z-20 mt-[-50px] md:mt-[-100px] rounded-t-[3rem] shadow-2xl" id="metricas">
+    <section className="bg-slate-900 text-white py-20 relative z-20 -mt-12 md:-mt-24 rounded-t-card shadow-raised" id="metricas">
       <div className="max-w-7xl mx-auto px-6">
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 divide-y md:divide-y-0 md:divide-x divide-white/10">
