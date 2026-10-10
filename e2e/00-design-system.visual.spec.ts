@@ -79,6 +79,11 @@ const FUNCIONARIO_DA_FOLHA = {
   ],
   chargesList: [],
 };
+const HOLERITE_PORTAL = {
+  ...FUNCIONARIO_DA_FOLHA,
+  competencia: '2026-09',
+  empresa: { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '12345678000190' },
+};
 const FOLHA = {
   competencia: '2026-10',
   status: 'aberta',
@@ -252,7 +257,7 @@ for (const largura of LARGURAS) {
       totals: [],
       monthlySummary: { workloadLimit: '00:00', workloadDone: '00:00', pendingTime: '00:00', excessTime: '00:00', delayTime: '00:00', absences: 0, incompleteDays: 0 },
     }));
-    await portal.route('**/api/folha/meus-holerites', (route) => json(route, []));
+    await portal.route('**/api/folha/meus-holerites', (route) => json(route, [HOLERITE_PORTAL]));
     await entrar(portal, 'caio@alfa.exemplo.invalid', SENHA, /\/meu-painel$/);
     await esperarTela(portal);
     await portal.clock.pauseAt(new Date('2026-10-10T12:00:00.000Z'));
@@ -262,6 +267,9 @@ for (const largura of LARGURAS) {
     await portal.goto('/meu-painel/holerites');
     await esperarTela(portal);
     await capturarTela(portal, 'colaborador-holerites', largura);
+    await portal.getByRole('button', { name: /Visualizar holerite de/ }).click();
+    await expect(portal.getByRole('dialog', { name: 'Detalhes do Holerite' })).toBeVisible();
+    await capturarTela(portal, 'colaborador-holerite', largura);
     await portalContext.close();
   });
 }
