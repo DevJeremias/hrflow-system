@@ -81,7 +81,7 @@ const Company: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl space-y-8 animate-in fade-in duration-300">
+    <div className="max-w-3xl space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Dados da Empresa"
         description="Razão social e CNPJ aparecem no cabeçalho dos holerites. A folha só fecha com os dois preenchidos."
@@ -96,7 +96,7 @@ const Company: React.FC = () => {
         <ErrorAlert message={loadError ?? 'Dados da empresa indisponíveis.'} onRetry={retry} />
       ) : (
         <Card as="section" padding="lg">
-          <form onSubmit={salvar} className="space-y-6">
+          <form onSubmit={salvar} className="space-y-5">
             <div className="flex items-center gap-3">
               <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-control bg-surface-sunken text-ink-muted"><Landmark size={24} /></span>
               <div>
@@ -131,7 +131,7 @@ const Company: React.FC = () => {
               </Select>
             </Field>
 
-            <fieldset className="space-y-4 border-t border-line pt-6">
+            <fieldset className="space-y-4 border-t border-line pt-5">
               <legend className="text-sm font-bold uppercase tracking-wider text-ink-muted">Encarregado pelo tratamento de dados (LGPD)</legend>
               <p className="text-sm text-ink-muted">
                 A pessoa que a empresa indica para receber os pedidos dos titulares. Os colaboradores a veem em "Meu Perfil", na aba Privacidade.

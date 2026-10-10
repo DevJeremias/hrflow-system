@@ -64,6 +64,9 @@ test('mostra carregamento e depois dados reais com indicadores calculados', asyn
   assert.doesNotMatch(host.textContent ?? '', /08:00:00/);
   assert.match(host.textContent ?? '', /Marcações no mês120/);
   assert.match(host.textContent ?? '', /Colaboradores nesta página1/);
+  const rotuloDosDias = [...host.querySelectorAll('p')].find((elemento) => elemento.textContent === 'Dias nesta página');
+  const cartaoDosDias = rotuloDosDias?.parentElement?.parentElement;
+  assert.ok(cartaoDosDias?.classList.contains('bg-surface'), 'uma contagem informativa não deve usar o tratamento visual de aviso');
   assert.match(host.textContent ?? '', /Página 1 de 3 · 120 marcações/);
   await act(async () => root.unmount());
   host.remove();

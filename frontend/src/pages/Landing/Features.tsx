@@ -8,7 +8,7 @@ export default function Features() {
         <div className="max-w-2xl mb-20">
           <h2 className="text-4xl md:text-5xl font-black text-ink tracking-tight mb-6">
             Do cadastro<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-purple-500">
+            <span className="text-brand">
               ao holerite.
             </span>
           </h2>
@@ -19,9 +19,9 @@ export default function Features() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 flex flex-col md:flex-row gap-8 items-center border border-gray-100 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
+          <div className="group md:col-span-2 flex flex-col items-center gap-8 rounded-card border border-line bg-surface-muted p-6 transition-shadow hover:shadow-raised md:flex-row sm:p-8">
             <div className="flex-1">
-              <div className="w-14 h-14 bg-orange-50 text-orange-600 border border-orange-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-card border border-brand-line bg-brand-soft text-brand shadow-card transition-colors group-hover:bg-brand-fill group-hover:text-brand-foreground">
                 <Calculator size={28} />
               </div>
               <h3 className="text-2xl font-black text-ink mb-4">Folha de pagamento em lote</h3>
@@ -30,18 +30,18 @@ export default function Features() {
               </p>
             </div>
             
-            <div className="w-full md:w-64 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-              <div className="h-4 w-1/2 bg-gray-100 rounded-full mb-3"></div>
-              <div className="h-4 w-3/4 bg-gray-100 rounded-full mb-6"></div>
-              <div className="h-10 w-full bg-green-50 rounded-xl border border-green-100 flex items-center px-4">
-                <span className="text-green-700 font-bold text-sm">Desconto INSS</span>
+            <div className="w-full rounded-card border border-line bg-surface p-4 shadow-card md:w-64">
+              <div className="mb-3 h-4 w-1/2 rounded-full bg-surface-muted"></div>
+              <div className="mb-6 h-4 w-3/4 rounded-full bg-surface-muted"></div>
+              <div className="flex h-10 w-full items-center rounded-control border border-success-line bg-success-soft px-4">
+                <span className="text-sm font-semibold text-success">Desconto INSS</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-[2rem] p-10 flex flex-col justify-between border border-gray-100 hover:border-purple-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
+          <div className="group flex flex-col justify-between rounded-card border border-line bg-surface-muted p-6 transition-shadow hover:shadow-raised sm:p-8">
             <div>
-              <div className="w-14 h-14 bg-purple-50 border border-purple-100 rounded-2xl flex items-center justify-center text-purple-600 mb-6 group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all shadow-sm">
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-card border border-brand-line bg-brand-soft text-brand shadow-card transition-colors group-hover:bg-brand-fill group-hover:text-brand-foreground">
                 <Users size={28} />
               </div>
               <h3 className="text-2xl font-black text-ink mb-4">Estrutura Viva</h3>
@@ -51,16 +51,16 @@ export default function Features() {
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-[2rem] p-10 border border-gray-100 hover:border-green-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-            <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center text-green-600 mb-6 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all shadow-sm">
+          <div className="group rounded-card border border-line bg-surface-muted p-6 transition-shadow hover:shadow-raised sm:p-8">
+            <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-card border border-success-line bg-success-soft text-success shadow-card transition-colors group-hover:bg-success group-hover:text-ink-inverse">
               <Printer size={24} />
             </div>
             <h3 className="text-xl font-black text-ink mb-2">Holerite para imprimir</h3>
             <p className="text-ink-muted text-sm font-medium">Abra o holerite de cada colaborador e imprima ou salve em PDF pelo navegador.</p>
           </div>
 
-          <div className="md:col-span-2 bg-gray-50 rounded-[2rem] p-10 border border-gray-100 flex items-center gap-6 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all duration-500 group">
-            <div className="hidden md:flex w-24 h-24 bg-orange-50 border border-orange-100 rounded-full items-center justify-center text-orange-600 shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
+          <div className="group md:col-span-2 flex items-center gap-6 rounded-card border border-line bg-surface-muted p-6 transition-shadow hover:shadow-raised sm:p-8">
+            <div className="hidden h-24 w-24 shrink-0 items-center justify-center rounded-full border border-brand-line bg-brand-soft text-brand shadow-card transition-transform group-hover:scale-105 md:flex">
               <ShieldCheck size={40} />
             </div>
             <div>

@@ -21,7 +21,7 @@ VITE_API_PROXY_TARGET=http://localhost:3000 npm run dev
 
 ## Design system
 
-Tokens em `tailwind.config.js` (cores `brand`, `ink`, `surface`, `line` e as semânticas `success`, `warning`, `danger`, `info`; raios `control`, `card` e `modal`; fonte Inter via `@fontsource-variable/inter`) e regras globais em `src/index.css` (anel de `focus-visible`, `prefers-reduced-motion`). Os pares de texto e fundo cumprem WCAG AA e `tests/designSystem.test.ts` calcula o contraste. Nenhum texto fica abaixo de 12 px (`text-xs`).
+Os tokens Ponto, os dois temas, os componentes, os guardrails de lint e os padrões responsivos estão documentados em [`docs/design-system.md`](../docs/design-system.md). Geist e Geist Mono são carregadas localmente. `npm run lint` valida CSS, classes e estilos inline; os snapshots da suíte E2E cobrem as telas principais em 360 px e 1280 px.
 
 Os componentes compartilhados vivem em `src/components/ui`; telas novas os usam em vez de classes soltas:
 

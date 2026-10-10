@@ -6,22 +6,22 @@ export default function Benefits() {
       title: "Menos planilhas soltas",
       desc: "Colaboradores, cargos, ponto e folha ficam no mesmo cadastro, em vez de espalhados em arquivos diferentes.",
       icon: <Clock size={32} />,
-      color: "text-orange-600 group-hover:text-white",
-      bg: "bg-orange-50 group-hover:bg-orange-500",
-      border: "border-orange-200 group-hover:border-orange-500"
+      color: "text-brand group-hover:text-brand-foreground",
+      bg: "bg-brand-soft group-hover:bg-brand-fill",
+      border: "border-brand-line group-hover:border-brand-fill"
     },
     {
       title: "Visão geral para o RH",
       desc: "Um painel mostra quantos colaboradores, departamentos e cargos existem e quais solicitações aguardam aprovação.",
       icon: <TrendingUp size={32} />,
-      color: "text-green-600 group-hover:text-white",
-      bg: "bg-green-50 group-hover:bg-green-600",
-      border: "border-green-200 group-hover:border-green-600"
+      color: "text-success group-hover:text-brand-foreground",
+      bg: "bg-success-soft group-hover:bg-brand-fill",
+      border: "border-success-line group-hover:border-brand-fill"
     }
   ];
 
   return (
-    <section className="relative py-32 bg-slate-50 overflow-hidden" id="beneficios">
+    <section className="relative overflow-hidden bg-surface-muted py-20 sm:py-24" id="beneficios">
       
       <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-10 rotate-180">
         <svg 
@@ -31,7 +31,7 @@ export default function Benefits() {
         >
           <path 
             d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" 
-            className="fill-slate-300" 
+            className="fill-surface"
           ></path>
         </svg>
       </div>
@@ -40,9 +40,9 @@ export default function Benefits() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
           
           <div className="space-y-8">
-            <h2 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter leading-tight">
+            <h2 className="text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Mais do que um software, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-purple-600">
+              <span className="text-brand">
                 seu novo braço direito.
               </span>
             </h2>
@@ -56,8 +56,8 @@ export default function Benefits() {
                 "Registro de ponto pelo próprio colaborador",
                 "Portal do colaborador com holerites e solicitações"
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-4 text-lg font-bold text-slate-700">
-                  <CheckCircle2 className="text-purple-600" size={24} />
+                <div key={i} className="flex items-center gap-4 font-semibold text-ink">
+                  <CheckCircle2 className="text-success" size={24} />
                   {item}
                 </div>
               ))}
@@ -66,12 +66,12 @@ export default function Benefits() {
 
           <div className="grid grid-cols-1 gap-8">
             {benefits.map((benefit, i) => (
-              <div key={i} className="group bg-white p-10 md:p-14 rounded-[3rem] border border-slate-200 hover:border-slate-300 hover:shadow-xl transition-all duration-500">
-                <div className={`${benefit.bg} ${benefit.color} ${benefit.border} border w-20 h-20 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-all duration-300 shadow-sm`}>
+              <div key={i} className="group rounded-card border border-line bg-surface p-6 shadow-card transition-shadow hover:shadow-raised sm:p-8">
+                <div className={`${benefit.bg} ${benefit.color} ${benefit.border} border w-20 h-20 rounded-card flex items-center justify-center mb-8 group-hover:scale-110 transition-all duration-300 shadow-card`}>
                   {benefit.icon}
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 mb-4">{benefit.title}</h3>
-                <p className="text-lg text-ink-muted font-medium leading-relaxed">{benefit.desc}</p>
+                <h3 className="mb-4 text-2xl font-bold text-ink">{benefit.title}</h3>
+                <p className="leading-relaxed text-ink-muted">{benefit.desc}</p>
               </div>
             ))}
           </div>

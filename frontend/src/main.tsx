@@ -7,7 +7,8 @@ import UiProviders from './components/ui/UiProviders';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { tratarFalhaDeCarregamento } from './utils/atualizacao';
-import '@fontsource-variable/inter/wght.css';
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
 import './index.css';
 
 tratarFalhaDeCarregamento();

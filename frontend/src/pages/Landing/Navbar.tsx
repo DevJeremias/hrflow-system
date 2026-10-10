@@ -26,8 +26,8 @@ export default function Navbar() {
   return (
     <header
       className={`fixed top-0 left-0 w-full z-50 backdrop-blur-md transition-all duration-300 ${
-        menuAberto ? 'bg-white' : 'bg-white/80'
-      } ${isScrolled || menuAberto ? 'py-3 shadow-md' : 'py-6 shadow-sm'}`}
+        menuAberto ? 'bg-surface' : 'bg-surface/80'
+      } ${isScrolled || menuAberto ? 'py-3 shadow-card' : 'py-6 shadow-card'}`}
     >
       <div className="max-w-[1440px] mx-auto px-6 flex items-center justify-between">
 
@@ -38,7 +38,7 @@ export default function Navbar() {
           className="flex items-center gap-3 group"
           onClick={() => window.scrollTo(0, 0)}
         >
-          <span aria-hidden="true" className="bg-slate-900 p-2 rounded-xl text-white group-hover:bg-brand transition-colors duration-500 shadow-md">
+          <span aria-hidden="true" className="bg-surface-inverse p-2 rounded-control text-white group-hover:bg-brand-fill transition-colors duration-500 shadow-card">
             <Command size={20} />
           </span>
           <span aria-hidden="true" className="text-2xl font-black text-ink tracking-tight">
@@ -70,7 +70,7 @@ export default function Navbar() {
 
           <Link
             to="/#contato"
-            className="hidden md:block bg-brand hover:bg-brand-hover text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg active:scale-95"
+            className="hidden md:block bg-brand-fill hover:bg-brand-fill-hover text-brand-foreground text-sm font-bold px-6 py-3 rounded-control transition-all shadow-raised active:scale-95"
           >
             Criar conta
           </Link>
@@ -104,14 +104,14 @@ export default function Navbar() {
           <Link
             to="/login"
             onClick={fecharMenu}
-            className="mt-3 py-3 text-center font-bold text-ink border border-line-input rounded-full"
+            className="mt-3 py-3 text-center font-bold text-ink border border-line-input rounded-control"
           >
             Entrar
           </Link>
           <Link
             to="/#contato"
             onClick={fecharMenu}
-            className="mt-2 py-3 text-center font-bold text-white bg-brand rounded-full"
+            className="mt-2 py-3 text-center font-bold text-brand-foreground bg-brand-fill rounded-control"
           >
             Criar conta
           </Link>

@@ -27,7 +27,7 @@ const ABAS: readonly TabItem<Aba>[] = [
 
 type ModalConfig = { isOpen: false } | { isOpen: true; type: 'department'; item: Department | null } | { isOpen: true; type: 'role'; item: Role | null };
 
-const CHIP = 'rounded-full border px-4 py-2 text-xs font-semibold transition-colors';
+const CHIP = 'rounded-control border px-3 py-2 text-xs font-semibold transition-colors';
 
 const DepartmentsRoles: React.FC = () => {
   usePageTitle('Departamentos e cargos');
@@ -108,7 +108,7 @@ const DepartmentsRoles: React.FC = () => {
   const abrirCriacao = () => setModalConfig(activeTab === 'depts' ? { isOpen: true, type: 'department', item: null } : { isOpen: true, type: 'role', item: null });
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       <PageHeader
         title="Departamentos & Cargos"
         description="Gerencie a hierarquia e os centros de custo da empresa."
@@ -133,7 +133,7 @@ const DepartmentsRoles: React.FC = () => {
           departments.length === 0 ? (
             <EmptyState icon={<Building2 size={28} />} title="Nenhum departamento cadastrado" description="Crie o primeiro departamento para organizar a empresa." />
           ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {departments.map((dept) => (
                 <DepartmentCard
                   key={dept.id}
@@ -151,7 +151,7 @@ const DepartmentsRoles: React.FC = () => {
                 type="button"
                 aria-pressed={roleFilter === 'Todos'}
                 onClick={() => setRoleFilter('Todos')}
-                className={`${CHIP} ${roleFilter === 'Todos' ? 'border-brand bg-brand text-white' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
+                className={`${CHIP} ${roleFilter === 'Todos' ? 'border-brand bg-brand-fill text-brand-foreground' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
               >
                 Todos ({roles.length})
               </button>
@@ -161,7 +161,7 @@ const DepartmentsRoles: React.FC = () => {
                   key={dept.id}
                   aria-pressed={roleFilter === dept.id}
                   onClick={() => setRoleFilter(dept.id)}
-                  className={`${CHIP} ${roleFilter === dept.id ? 'border-brand bg-brand text-white' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
+                  className={`${CHIP} ${roleFilter === dept.id ? 'border-brand bg-brand-fill text-brand-foreground' : 'border-line-input bg-surface text-ink-muted hover:border-brand hover:text-brand'}`}
                 >
                   {dept.sigla} ({roles.filter((r) => r.departmentId === dept.id).length})
                 </button>

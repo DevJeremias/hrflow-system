@@ -99,7 +99,7 @@ export default function TimeTracking() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <StatCard label="Marcações no mês" value={loading || loadError ? '—' : total} icon={<Clock size={24} />} tone="brand" />
           <StatCard label="Colaboradores nesta página" value={loading || loadError ? '—' : colaboradores} icon={<Users size={24} />} tone="success" />
-          <StatCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={24} />} tone="warning" />
+          <StatCard label="Dias nesta página" value={loading || loadError ? '—' : diasMonitorados} icon={<CalendarIcon size={24} />} tone="neutral" />
         </div>
 
         <Card as="section" padding="none" aria-busy={isPlaceholderData || undefined} className={`transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}>

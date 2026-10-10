@@ -27,7 +27,7 @@ const DashboardAnalitico: React.FC = () => {
   const restantes = (aniversariantes.data?.length ?? 0) - proximos.length;
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
       <Card as="section" padding="none" aria-label="Colaboradores ativos por mês" className="overflow-hidden xl:col-span-2">
         <CardHeader
           title="Colaboradores ativos por mês"

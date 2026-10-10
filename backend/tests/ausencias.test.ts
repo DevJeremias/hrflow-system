@@ -50,6 +50,10 @@ describe('férias e afastamentos', { skip: banco.skip }, () => {
 
     // Cada teste que mexe nas ausências começa de uma tabela vazia, para o saldo e as sobreposições não vazarem.
     const limpar = () => db.query('DELETE FROM ausencias');
+    const dataAtualDoBanco = async () => {
+        const [[linha]] = await db.query<RowDataPacket[]>('SELECT DATE_FORMAT(CURRENT_DATE(), \'%Y-%m-%d\') AS hoje');
+        return String(linha.hoje);
+    };
 
     const colaborador = async (rotulo: string, empresaId: number, { admissao = '2024-01-15', salario = 3000, perfil = 'Colaborador' } = {}) => {
         const funcionarioId = await criarFuncionario(db, empresaId, { nome: `Pessoa ${rotulo}`, salario, admissao });
@@ -95,11 +99,12 @@ describe('férias e afastamentos', { skip: banco.skip }, () => {
         before(limpar);
 
         it('férias com anexo nascem pendentes e o colaborador as vê na própria lista', async () => {
+            const feitoHoje = await dataAtualDoBanco();
             const { status, corpo } = await pedir(tokens.Caio, { inicio: '2026-10-19', fim: '2026-10-28', anexo: anexo() });
             assert.equal(status, 201);
             assert.deepEqual(
                 { tipo: corpo.type, status: corpo.status, de: corpo.startDate, ate: corpo.endDate, dias: corpo.days, anexo: corpo.hasAttachment, nome: corpo.attachmentName, feito: corpo.requestDate, resposta: corpo.reply },
-                { tipo: 'Férias', status: 'Pendente', de: '2026-10-19', ate: '2026-10-28', dias: 10, anexo: true, nome: 'atestado.pdf', feito: HOJE, resposta: null },
+                { tipo: 'Férias', status: 'Pendente', de: '2026-10-19', ate: '2026-10-28', dias: 10, anexo: true, nome: 'atestado.pdf', feito: feitoHoje, resposta: null },
             );
             const lista = await minhas(tokens.Caio);
             assert.equal(lista.length, 1);

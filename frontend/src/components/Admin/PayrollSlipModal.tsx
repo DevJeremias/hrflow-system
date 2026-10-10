@@ -65,10 +65,10 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
         </span>
       )}
     >
-      <div className="overflow-hidden rounded-card border-2 border-line bg-surface print:rounded-none print:border-2 print:border-ink">
+      <div data-theme="light" className="overflow-hidden rounded-card border-2 border-line bg-surface print:rounded-none print:border-2 print:border-ink">
         <div className="flex flex-col items-start gap-4 border-b-2 border-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6 print:border-ink">
           <div className="flex min-w-0 items-center gap-4">
-            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-ink text-white print:border print:border-ink print:bg-white print:text-ink">
+            <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-document text-document-surface print:border print:border-document print:bg-document-surface print:text-document">
               <Building size={24} />
             </span>
             <div className="min-w-0">
@@ -164,20 +164,13 @@ const PayrollSlipModal: React.FC<Props> = ({ isOpen, onClose, employee, month, c
               <span className={ROTULO}>Total de Descontos</span>
               <span className="font-semibold text-ink">{formatCurrency(employee.totalDeductions)}</span>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-ink p-4 text-white sm:p-6 print:bg-white print:text-ink">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-document p-4 text-document-surface sm:p-6 print:bg-document-surface print:text-document">
               <span className="text-xs font-semibold uppercase tracking-wider">Valor Líquido →</span>
               <span className="text-xl font-bold sm:text-2xl">{formatCurrency(employee.netSalary)}</span>
             </div>
           </div>
         </div>
       </div>
-      <style>{`
-        @media print {
-          @page { size: A4; margin: 12mm; }
-          body > *:not(.holerite-impressao) { display: none !important; }
-          .holerite-impressao { position: static; inset: auto; display: block; padding: 0; background: transparent; }
-        }
-      `}</style>
     </Modal>
   );
 };

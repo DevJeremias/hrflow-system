@@ -53,6 +53,15 @@ test('o modal é role=dialog, aria-modal e se nomeia pelo título', async () => 
   assert.equal(descricao?.textContent, 'Preencha os dados.');
 });
 
+test('painel lateral mantém semântica de diálogo e sinaliza sua apresentação', async () => {
+  await montar(createElement(Modal, { title: 'Novo colaborador', onClose: () => {}, presentation: 'right' },
+    createElement('input', { id: 'nome-painel', 'aria-label': 'Nome' }),
+  ));
+  assert.equal(dialogo().getAttribute('data-panel'), 'right');
+  assert.equal(dialogo().getAttribute('aria-modal'), 'true');
+  assert.equal(dialogo().getAttribute('aria-labelledby') !== null, true);
+});
+
 test('ao abrir, o foco entra no modal (no primeiro campo, não no botão de fechar)', async () => {
   await abrir();
   assert.ok(dialogo().contains(document.activeElement), 'o foco está dentro do diálogo');

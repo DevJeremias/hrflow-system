@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { build } from 'vite';
+import { PONTO_THEME_COLOR } from '../tailwind.config.js';
 
 const raiz = new URL('..', import.meta.url).pathname;
 const LIMITE_GZIP_DA_LANDING = 150 * 1024;
@@ -93,7 +94,7 @@ test('os ícones do manifesto são quadrados e do tamanho declarado, com um mask
 
 test('o manifesto fala pt-BR e usa a cor primária do tema, a mesma do meta theme-color', () => {
   const { lang, theme_color: cor } = manifesto();
-  const primaria = /primary:\s*'(#[0-9a-f]{6})'/i.exec(readFileSync(join(raiz, 'tailwind.config.js'), 'utf8'))?.[1];
+  const primaria = PONTO_THEME_COLOR;
   assert.equal(lang, 'pt-BR');
   assert.equal(cor, primaria);
   const html = readFileSync(join(saida, 'index.html'), 'utf8');

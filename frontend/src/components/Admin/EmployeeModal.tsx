@@ -191,6 +191,7 @@ const EmployeeModalContent: React.FC<ContentProps> = ({ onClose, onSave, employe
     <Modal
       title={employeeToEdit ? 'Editar Perfil' : 'Novo Colaborador'}
       description="Gestão de dados e contrato de trabalho."
+      presentation="right"
       onClose={requestClose}
       form={{ onSubmit: handleSubmit }}
       footer={(

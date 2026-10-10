@@ -23,7 +23,15 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [{
+    name: 'chromium',
+    use: {
+      ...devices['Desktop Chrome'],
+      locale: 'pt-BR',
+      // Os controles nativos de mês seguem a localidade do processo do Chromium.
+      launchOptions: { args: ['--lang=pt-BR'] },
+    },
+  }],
   webServer: [
     {
       // cwd em backend/: o dotenv lê o backend/.env de quem desenvolve; no CI as variáveis vêm do job.

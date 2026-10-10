@@ -13,13 +13,14 @@ const Layout: React.FC = () => {
   // Sem matchMedia (jsdom, SSR) vale desktop: a gaveta só existe abaixo de lg.
   const desktop = useMediaQuery(CONSULTA_DESKTOP, true);
   const gavetaAberta = isSidebarOpen && !desktop;
+  const temaClaro = location.pathname.startsWith('/meu-painel');
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-surface-muted">
+    <div data-theme={temaClaro ? 'light' : 'dark'} className="flex h-screen w-full overflow-hidden bg-surface-muted">
       <a
         href="#conteudo"
         inert={gavetaAberta}
-        className="sr-only rounded-control bg-brand px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70]"
+        className="sr-only rounded-control bg-brand-fill px-4 py-2 text-sm font-semibold text-brand-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70]"
       >
         Ir para o conteúdo
       </a>

@@ -20,40 +20,40 @@ export default function Hero() {
   const slides = [
     {
       id: 1,
-      bg: "bg-zinc-950", 
-      textColor: "text-white",
-      subtitleColor: "text-zinc-400",
-      mainTitleColor: "text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-purple-500",
+      bg: "bg-surface-inverse",
+      textColor: "text-ink-inverse",
+      subtitleColor: "text-ink-inverse/70",
+      mainTitleColor: "text-brand-fill",
       title: "Folha, ponto e colaboradores",
-      titleColor: "text-purple-300",
+      titleColor: "text-brand-fill",
       mainTitle: "Do cadastro ao holerite, no mesmo lugar.",
       desc: "Cadastre colaboradores, departamentos e cargos, registre o ponto e processe a folha de pagamento com desconto de INSS, tudo no HRFlow.",
       btnText: "Criar conta",
-      btnColor: "bg-purple-600 hover:bg-purple-700 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]",
+      btnColor: "bg-brand-fill hover:bg-brand-fill-hover text-brand-foreground shadow-raised",
       decoration: "mosaic"
     },
     {
       id: 2,
-      bg: "bg-[#f4efe8]", 
-      textColor: "text-zinc-900",
-      subtitleColor: "text-zinc-700",
+      bg: "bg-surface-muted",
+      textColor: "text-ink",
+      subtitleColor: "text-ink-muted",
       title: "Portal do colaborador",
       mainTitle: "Cada colaborador com o seu próprio painel.",
       desc: "Cada pessoa consulta os próprios holerites, registra o ponto e envia solicitações ao RH sem depender de planilhas ou mensagens.",
       btnText: "Criar conta",
-      btnColor: "bg-orange-700 hover:bg-orange-800 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]",
+      btnColor: "bg-brand-fill hover:bg-brand-fill-hover text-brand-foreground shadow-raised",
       decoration: "balls"
     },
     {
       id: 3,
-      bg: "bg-purple-700", 
-      textColor: "text-white",
-      subtitleColor: "text-purple-50",
+      bg: "bg-surface-inverse",
+      textColor: "text-ink-inverse",
+      subtitleColor: "text-ink-inverse/70",
       title: "Para o RH",
       mainTitle: "Menos planilha, mais gestão de pessoas.",
       desc: "Departamentos, cargos, ponto da equipe e folha mensal reunidos em um painel, com acesso separado para Administrador, RH e Colaborador.",
       btnText: "Criar conta",
-      btnColor: "bg-zinc-900 hover:bg-black text-white shadow-[0_0_20px_rgba(0,0,0,0.3)]",
+      btnColor: "bg-brand-fill hover:bg-brand-fill-hover text-brand-foreground shadow-raised",
       decoration: "lines"
     }
   ];
@@ -70,7 +70,7 @@ export default function Hero() {
     <section aria-roledescription="carrossel" aria-label="Apresentação do HRFlow" className="relative w-full h-screen min-h-[700px] overflow-hidden">
       
       <div 
-        className="flex w-full h-full transition-transform duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none"
+        className="flex w-full h-full transition-transform duration-1000 ease-ponto motion-reduce:transition-none"
         style={{ transform: `translateX(-${currentSlide * 100}%)` }}
       >
         {slides.map((slide, index) => (
@@ -96,7 +96,7 @@ export default function Hero() {
                   </h2>
                 )}
                 
-                <h1 className={`text-4xl md:text-6xl lg:text-7xl font-black leading-[1.05] tracking-tighter ${slide.mainTitleColor || ''}`}>
+                <h1 className={`text-4xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tighter ${slide.mainTitleColor || ''}`}>
                   {slide.mainTitle}
                 </h1>
                 
@@ -118,18 +118,18 @@ export default function Hero() {
                 {slide.decoration === 'mosaic' && (
                   <div className={`grid grid-cols-2 gap-4 w-full max-w-md h-[450px] transition-all duration-1000 delay-500 ${currentSlide === index ? 'scale-100 opacity-100' : 'scale-90 opacity-0'}`}>
                     
-                    <div className="bg-zinc-800 rounded-3xl row-span-2 overflow-hidden border border-zinc-700/50 shadow-2xl relative group">
+                    <div className="group relative row-span-2 overflow-hidden rounded-card border border-line-strong bg-surface-muted shadow-raised">
                       <img src={mosaico1} alt="" width={600} height={900} fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-purple-900/80 to-transparent z-10"></div>
-                      <p className="absolute bottom-4 left-4 z-20 text-white font-bold text-sm">Pessoas e equipes</p>
+                      <div className="absolute inset-0 z-10 bg-gradient-to-t from-surface-inverse/80 to-transparent"></div>
+                      <p className="absolute bottom-4 left-4 z-20 text-sm font-semibold text-ink-inverse">Pessoas e equipes</p>
                     </div>
 
-                    <div className="bg-zinc-800 rounded-3xl overflow-hidden border border-zinc-700/50 shadow-xl relative">
+                    <div className="relative overflow-hidden rounded-card border border-line-strong bg-surface-muted shadow-raised">
                       <img src={mosaico2} alt="" width={660} height={440} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/30 to-transparent"></div>
+                      <div className="absolute inset-0 bg-gradient-to-tr from-brand-fill/30 to-transparent"></div>
                     </div>
 
-                    <div className="bg-purple-900/40 rounded-3xl overflow-hidden border border-purple-500/30 relative flex items-center justify-center">
+                    <div className="relative flex items-center justify-center overflow-hidden rounded-card border border-line-strong bg-surface-muted">
                       <img src={mosaico3} alt="" width={612} height={408} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover opacity-60" />
                     </div>
                   </div>
@@ -139,11 +139,11 @@ export default function Hero() {
                 {slide.decoration === 'balls' && (
                   <div className={`relative w-full max-w-2xl h-[600px] flex items-center justify-center transition-all duration-1000 delay-500 ${currentSlide === index ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                     
-                    <div className="absolute -top-10 -right-10 w-48 h-48 bg-orange-400 rounded-full mix-blend-multiply opacity-70 animate-[bounce_6s_infinite] motion-reduce:animate-none shadow-2xl blur-sm z-0"></div>
-                    <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-green-400 rounded-full mix-blend-multiply opacity-70 animate-[bounce_7s_infinite_reverse] motion-reduce:animate-none shadow-2xl blur-sm z-0"></div>
-                    <div className="absolute top-1/4 -left-20 w-40 h-40 bg-purple-400 rounded-full mix-blend-multiply opacity-60 animate-pulse motion-reduce:animate-none shadow-2xl z-0"></div>
+                    <div className="absolute -right-10 -top-10 z-0 h-48 w-48 animate-[bounce_6s_infinite] rounded-full bg-brand-soft opacity-70 shadow-raised blur-sm motion-reduce:animate-none"></div>
+                    <div className="absolute -bottom-10 -left-10 z-0 h-64 w-64 animate-[bounce_7s_infinite_reverse] rounded-full bg-brand-soft opacity-70 shadow-raised blur-sm motion-reduce:animate-none"></div>
+                    <div className="absolute -left-20 top-1/4 z-0 h-40 w-40 animate-pulse rounded-full bg-brand-line opacity-60 shadow-raised motion-reduce:animate-none"></div>
                     
-                    <div className="relative z-10 w-full max-w-[550px] h-[500px] bg-white/40 backdrop-blur-xl border border-white/60 rounded-[3rem] shadow-[0_30px_70px_-15px_rgba(0,0,0,0.2)] flex items-center justify-center overflow-hidden p-3 transform hover:scale-[1.02] transition-transform duration-700">
+                    <div className="relative z-10 flex h-[500px] w-full max-w-[550px] items-center justify-center overflow-hidden rounded-card border border-line bg-surface/40 p-3 shadow-raised backdrop-blur-xl transition-transform duration-700 hover:scale-[1.02]">
                       
                       <img 
                         src={mosaico4} 
@@ -152,10 +152,10 @@ export default function Hero() {
                         height={820}
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover rounded-[2.2rem] shadow-inner" 
+                        className="w-full h-full object-cover rounded-card shadow-card"
                       />
                       
-                      <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none"></div>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-ink-inverse/10 to-transparent"></div>
                     </div>
                   </div>
                 )}
@@ -188,9 +188,7 @@ export default function Hero() {
         <button
           type="button"
           onClick={() => setPausado((valor) => !valor)}
-          className={`w-9 h-9 mr-2 rounded-full flex items-center justify-center transition-colors ${
-            slides[currentSlide].bg === 'bg-[#f4efe8]' ? 'bg-zinc-900/10 text-zinc-900 hover:bg-zinc-900/20' : 'bg-white/20 text-white hover:bg-white/40'
-          }`}
+          className={`w-9 h-9 mr-2 rounded-full flex items-center justify-center transition-colors ${slides[currentSlide].bg === 'bg-surface-muted' ? 'bg-ink/10 text-ink hover:bg-ink/20' : 'bg-ink-inverse/10 text-ink-inverse hover:bg-ink-inverse/20'}`}
           aria-label={pausado ? 'Retomar a troca automática de slides' : 'Pausar a troca automática de slides'}
         >
           {pausado ? <Play size={16} /> : <Pause size={16} />}
@@ -199,11 +197,7 @@ export default function Hero() {
           <button
             key={slide.id}
             onClick={() => setCurrentSlide(index)}
-            className={`w-3 h-3 rounded-full transition-all duration-500 ${
-              currentSlide === index 
-                ? slide.bg === 'bg-[#f4efe8]' ? 'bg-orange-500 w-8 scale-110' : 'bg-white w-8 scale-110'
-                : slide.bg === 'bg-[#f4efe8]' ? 'bg-zinc-300 hover:bg-zinc-400' : 'bg-white/30 hover:bg-white/60'
-            }`}
+            className={`w-3 h-3 rounded-full transition-all duration-500 ${currentSlide === index ? slide.bg === 'bg-surface-muted' ? 'bg-brand-fill w-8 scale-110' : 'bg-ink-inverse w-8 scale-110' : slide.bg === 'bg-surface-muted' ? 'bg-line-strong hover:bg-line-input' : 'bg-ink-inverse/30 hover:bg-ink-inverse/60'}`}
             aria-label={`Ir para o slide ${index + 1}`}
             aria-current={currentSlide === index}
           />
