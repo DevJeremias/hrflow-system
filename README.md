@@ -9,7 +9,7 @@
   <img alt="Node.js" src="https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white" />
   <img alt="MySQL" src="https://img.shields.io/badge/MySQL-00000F?style=for-the-badge&logo=mysql&logoColor=white" />
   <br/>
-  <b>Status:</b> Em Desenvolvimento (Fase 3 Concluída) 🚧
+  <b>Status:</b> Em produção em <a href="https://hrflow.calliari.dev">hrflow.calliari.dev</a> (Fases 1, 2, 3 e 5 concluídas, Fase 4 parcial) 🟢
 </div>
 
 <br/>
@@ -28,7 +28,7 @@ Construímos uma plataforma web que unifica a jornada do colaborador e da empres
 
 Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Client-Server):
 
-*   **Front-end (SPA):** Desenvolvido em **React** com **TypeScript** e **Vite**, garantindo uma tipagem estática rigorosa (evitando erros de *runtime*) e um build extremamente rápido. A interface foi construída com **TailwindCSS** para uma estética limpa, responsiva e moderna.
+*   **Front-end (SPA):** Desenvolvido em **React** com **TypeScript** e **Vite**, garantindo uma tipagem estática rigorosa (evitando erros de *runtime*) e um build extremamente rápido. A interface segue o design system **Ponto** (`docs/design-system.md`): tema escuro e denso com acentos âmbar e tipografia Geist na gestão, tema claro no portal do colaborador, tokens semânticos expostos pelo **TailwindCSS** e componentes reutilizáveis em `frontend/src/components/ui`. O lint barra cores e medidas literais fora dos tokens, e snapshots visuais em 360 px e 1280 px (job `e2e`) seguram mudanças de layout não intencionais. Os dados da API passam pelo **React Query** (`frontend/src/queries/`), e o app é instalável como **PWA** (`vite-plugin-pwa`), avisando quando há versão nova.
 *   **Back-end (API REST):** Construído em **Node.js** com **Express**. Toda a lógica pesada e de negócios (como o cálculo de impostos e ordenados) foi isolada no servidor para evitar manipulações no lado do cliente.
 *   **Segurança:** A autenticação e a proteção das rotas são gerenciadas via **JWT (JSON Web Tokens)**, armazenado em um cookie `HttpOnly` que o JavaScript da página não consegue ler, com proteção CSRF nas requisições que alteram dados. O back-end extrai a identidade do usuário diretamente do token, impedindo que um funcionário aceda ao holerite de outro.
 *   **Banco de Dados:** **MySQL** relacional. As tabelas são normalizadas para garantir a integridade dos dados, e há proteções contra entradas vazias (ex: tratamento de datas `NULL` via código) para manter o banco blindado contra falhas.
@@ -44,14 +44,18 @@ Para garantir escalabilidade e segurança, adotamos uma arquitetura separada (Cl
 *   **Dashboard e relatórios:** o painel mostra os colaboradores ativos dos últimos 12 meses, admitidos, desligados e turnover do mês, e os aniversariantes; a tela Relatórios (`/admin/relatorios`) traz headcount e turnover por período, custo da folha por departamento (a mesma folha, somada por setor), absenteísmo por departamento e aniversariantes, e exporta cada um em CSV (UTF-8 com BOM, pronto para o Excel brasileiro) e em PDF. Os mesmos relatórios saem em JSON em `GET /api/relatorios/{headcount,aniversariantes,custo-departamento,absenteismo}`.
 *   **Notificações:** o sino do cabeçalho avisa o colaborador do holerite disponível (ao fechar a folha), da decisão de cada justificativa e da decisão de férias e afastamentos. Com o e-mail configurado (`EMAIL_TRANSPORT`, ver `backend/.env.example`), o mesmo aviso sai por e-mail em pt-BR.
 *   **Auditoria, histórico e LGPD:** toda ação que muda dados ou acesso entra numa trilha (quem, o quê, quando, IP, antes e depois) que o RH lê em **Auditoria**; salário, cargo e departamento têm histórico contratual com vigência; o colaborador grava sozinho só telefone e foto, e nome, e-mail, endereço e dados bancários passam por aprovação em **Aprovações**; a empresa exporta os dados de um colaborador e o Administrador anonimiza o cadastro de quem já saiu. A política de retenção e o que cada ação apaga estão em `docs/lgpd.md`.
-*   **Portal do Colaborador:** Acesso restrito para funcionários visualizarem os seus holerites, um por mês fechado, com a empresa e o CNPJ da época.
+*   **Usuários e permissões:** a matriz Administrador × RH × Colaborador está em `docs/permissoes.md` e é conferida rota a rota pelos testes. Na tela **Usuários** (`/admin/usuarios`, só para o Administrador) o Administrador cria contas de RH e de Administrador com senha provisória, muda o perfil de uma conta e redefine senhas; colaboradores nascem no cadastro de colaboradores.
+*   **Portal do Colaborador** (`/meu-painel`): acesso restrito ao que é da própria pessoa. Marca o ponto com localização e acompanha o espelho do mês, com justificativas para o RH; vê os holerites, um por mês fechado, com a empresa e o CNPJ da época, e baixa cada um em PDF; pede férias e afastamentos em Minhas Solicitações; no perfil, grava telefone e foto e pede a alteração dos demais dados, acompanhando cada pedido; e recebe as notificações no sino do cabeçalho. Quem tem cadastro de funcionário usa o portal em qualquer perfil, inclusive RH e Administrador.
 
 ## 📂 Estrutura de Diretórios
 
 ```text
 hrflow-system/
-├── e2e/                   # Fluxos de ponta a ponta (Playwright) e a configuração deles
-├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*) e guardar-estrutura.mts (guarda de .js/.jsx)
+├── .github/               # CI (workflows/ci.yml), acompanhamento do deploy (workflows/deploy.yml), Dependabot, CODEOWNERS e template de PR
+├── deploy/                # Tudo que roda em produção: Dockerfiles, Compose, Caddyfile, deploy por pull, backup e rollback (deploy/README.md)
+├── docs/                  # Runbook de produção, design system, matriz de permissões, LGPD e o exemplo auditado da folha
+├── e2e/                   # Fluxos de ponta a ponta e snapshots visuais (Playwright) e a configuração deles
+├── scripts/               # dev.mjs, run-workspace.mjs, db.mjs (comandos db:*), verify.mjs e guardar-estrutura.mts (guarda de .js/.jsx)
 ├── backend/               # API em TypeScript; estrutura e regras em backend/README.md
 │   ├── modules/           # Um módulo por área (auth, ponto, ausencias, dashboard, folha, empresa, perfil, estrutura, funcionarios, saude, usuarios, auditoria, solicitacoes, notificacoes, relatorios)
 │   ├── shared/            # O que mais de uma área usa: config, db (pool, migrations, fixtures), middlewares, schemas, utils
@@ -62,12 +66,18 @@ hrflow-system/
 │   └── server.ts          # Ponto de entrada do Node.js: escuta a porta e encerra limpo no SIGTERM
 └── frontend/
     ├── src/
-    │   ├── components/    # Componentes React (Admin, Portal, UI)
-    │   ├── services/      # Comunicação com a API (fetch)
+    │   ├── pages/         # Uma tela por rota (Admin, Portal, Auth, Landing, Legal)
+    │   ├── layouts/       # Casca das áreas logadas: menu lateral, cabeçalho e itens de menu por perfil
+    │   ├── components/    # Componentes React (ui com os reutilizáveis do design system, Admin, Portal, Auth, Notificacoes)
+    │   ├── queries/       # Consultas e mutações da API com React Query
+    │   ├── services/      # Comunicação com a API (httpClient.ts e um serviço por área)
     │   ├── contexts/      # AuthContext: sessão (hidratada por GET /api/auth/sessao)
-    │   ├── utils/         # Validação da sessão e perfis (sessao.ts)
+    │   ├── hooks/         # Hooks compartilhados (título da página, fuso da empresa, foco em modais)
+    │   ├── utils/         # Sessão e perfis (sessao.ts), competência, fuso, máscaras e formatação
+    │   ├── types/         # Tipos das respostas da API (api.ts)
+    │   ├── assets/        # Imagens empacotadas pelo Vite
     │   └── App.tsx        # Rotas do Front-end (React Router)
-    ├── tests/             # Testes do cliente HTTP e da sessão (node:test, sem navegador)
+    ├── tests/             # Testes de componente e de tela no jsdom, do cliente HTTP, da sessão e do build (node:test, sem navegador)
     ├── vite.config.js
     └── package.json
 
@@ -81,6 +91,22 @@ hrflow-system/
 * [ ] **Fase 4:** Relógio de Ponto Eletrônico (parcial: registro de entradas e saídas, apuração diária e mensal contra a jornada do colaborador, e justificativas aprovadas ou recusadas pelo RH já existem; faltam banco de horas, feriados e fechamento do mês). A jornada (`carga_horaria_semanal`, `hora_entrada`, `hora_saida`, `tolerancia_min`) fica em `funcionarios`, com padrão de 40 horas, 08:00 às 17:00 e tolerância de 10 minutos; ainda não há tela para editá-la.
 * [x] **Fase 5:** Relatórios em CSV e PDF, Dashboard Analítico, notificações e fuso por empresa.
 
+Além das fases, o produto passou por uma revisão técnica (segurança, sessão em cookie com CSRF, migrations versionadas e CI) e por uma auditoria em três ondas (B-01 a B-25). A primeira corrigiu o INSS de 2026, as telas que prometiam o que o back-end não fazia, o dashboard, a estrutura, o holerite no celular, a sessão entre abas e o ponto por mês, e preparou a API para produção; a segunda trouxe a folha por competência, o ciclo de vida do colaborador, as permissões, a apuração do ponto, a observabilidade e a base do design system; a terceira, férias e afastamentos, IRRF, FGTS e holerite em PDF, cadastro completo, auditoria e LGPD, dashboard, relatórios e notificações, e a infraestrutura com deploy contínuo em produção. Depois vieram os testes de ponta a ponta e a migração visual para o design system Ponto.
+
+Próximos passos conhecidos, além da Fase 4:
+
+* [ ] **Infraestrutura** (detalhes em `docs/runbook.md`, "Próximos passos conhecidos"): MySQL 8.4 em produção, recuperação pontual (PITR), infraestrutura como código, registro CAA no DNS e alarmes de instância, disco, memória, certificado e backup.
+* [ ] **LGPD** (detalhes em `docs/lgpd.md`, "Limites conhecidos"): automatizar a retenção (anonimizar desligados depois do prazo aprovado pela empresa), fotos no S3 com URL assinada, criptografia por coluna e registro de consentimento e base legal.
+
+## 🌐 Produção e Deploy
+
+O HRFlow roda em produção em **https://hrflow.calliari.dev**.
+
+**Mesclar um pull request na `main` é publicar.** Não há passo manual: com o CI verde na `main`, a máquina de produção compila as imagens daquele commit, tira um dump do banco, aplica as migrations, sobe a versão nova e confere `/api/health` (que precisa trazer o SHA publicado) e `/api/ready`. Se a migration ou a subida falhar, ela volta sozinha à versão anterior. O workflow Deploy (`.github/workflows/deploy.yml`) fica vermelho se a versão nova não entrar no ar. Por isso, só mescle com o CI verde e com a mudança pronta para os usuários.
+
+* [`docs/runbook.md`](docs/runbook.md): publicar, voltar versão, backup e restauração, segredos e incidentes.
+* [`deploy/README.md`](deploy/README.md): os arquivos que rodam em produção e como uma publicação acontece.
+
 ---
 
 ## 🛠️ Guia de Configuração e Instalação (Ambiente Local)
@@ -89,7 +115,7 @@ Primeira execução em menos de 15 minutos, a partir de um clone novo e sem nenh
 
 ### Pré-requisitos
 
-* [Node.js](https://nodejs.org/) 22.18.0 ou superior, conforme `.node-version`: o Vite 8 pede 22.12 e o back-end roda TypeScript direto no Node, recurso ligado por padrão a partir da 22.18
+* [Node.js](https://nodejs.org/) 22.23.3, a versão fixada em `.node-version` e usada pelo CI. O back-end roda TypeScript direto no Node, recurso ligado por padrão a partir da 22.18, e algumas dependências de desenvolvimento (como o jsdom dos testes) pedem 22.22.2 ou superior
 * MySQL 8 ou superior. Se não houver um instalado, o caminho mais curto é o [Docker](https://docs.docker.com/get-docker/), usado no passo 2.
 
 ### Passo 1: Dependências
@@ -142,7 +168,7 @@ Dois endpoints públicos, sem sessão, para monitor e health check de contêiner
 
 | Endpoint | Pergunta | Resposta |
 | --- | --- | --- |
-| `GET /api/health` | o processo da API está de pé? Não toca o banco. | `200 {"status":"ok"}` |
+| `GET /api/health` | o processo da API está de pé? Não toca o banco. | `200 {"status":"ok"}`; com `APP_VERSION` definida (sempre em produção, com o SHA em execução), `200 {"status":"ok","versao":"<sha>"}` |
 | `GET /api/ready` | a API consegue atender? Faz `SELECT 1` com prazo de 2 s. | `200 {"status":"ok"}` ou `503 {"status":"indisponivel"}` |
 
 Rota de API inexistente responde `404 {"erro":"Rota não encontrada."}`. As respostas da API são comprimidas (gzip) e não trazem `X-Powered-By`.
@@ -223,18 +249,20 @@ Os arquivos de teste rodam quatro de cada vez. Antes deles, o `npm test` (`backe
 
 ### Testes do front-end
 
-Os testes do cliente HTTP e da validação da sessão rodam no Node, sem banco e sem navegador (`npm run test` na raiz roda o back-end e depois o front-end; `npm run test --workspace frontend` roda só o front-end).
+Os testes do front-end (55 arquivos em `frontend/tests/`) rodam no Node com `node:test`, sem banco e sem navegador (`npm run test` na raiz roda o back-end e depois o front-end; `npm run test --workspace frontend` roda só o front-end).
 
-Os testes de componente (`frontend/tests/*Modal.test.ts`, `protectedRoute.test.ts`, `authContext.test.ts`) renderizam o componente de verdade no jsdom com o Testing Library e a API simulada (`tests/support/componentes.ts`). Procure os elementos pelo papel e pelo nome acessível (`getByRole`), como uma pessoa os veria: assim o teste cai quando um modal perde o `role="dialog"`.
+A maioria é de componente e de tela: renderiza o componente de verdade no jsdom com o Testing Library e a API simulada (`tests/support/`), cobrindo os componentes do design system, as telas da gestão e do portal, as rotas e permissões por perfil, os relatórios e as notificações. Procure os elementos pelo papel e pelo nome acessível (`getByRole`), como uma pessoa os veria: assim o teste cai quando um modal perde o `role="dialog"`. Os demais cobrem o cliente HTTP, a sessão e o build de produção (chunks por rota, imagens e manifesto do PWA).
 
 ### Testes de ponta a ponta (Playwright)
 
-Três fluxos rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup`: o colaborador entra e marca o ponto, o RH cadastra um colaborador e o encontra na folha, e o colaborador pede a troca do nome, o RH aprova e a auditoria registra a mudança (`e2e/`). Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
+Cinco testes rodam num navegador de verdade contra a API e o front-end de verdade, num banco criado por `npm run db:setup` (`e2e/`). Três são fluxos: o colaborador entra e marca o ponto, o RH cadastra um colaborador e o encontra na folha, e o colaborador pede a troca do nome, o RH aprova e a auditoria registra a mudança. Os outros dois (`e2e/00-design-system.visual.spec.ts`) comparam as telas principais em 360 px e 1280 px com os snapshots versionados; atualize os snapshots (`npm run e2e -- --update-snapshots`) só quando a diferença visual for intencional e revisável.
+
+Os campos nativos de mês do Chromium seguem a localidade do processo, então o sistema precisa ter o locale `pt_BR.UTF-8` gerado e o comando roda com ele. Com o MySQL do passo 2 e o `backend/.env` do passo 3 prontos:
 
 ```bash
 npm run db:setup
 npx playwright install chromium   # uma vez
-npm run e2e
+LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8 npm run e2e
 ```
 
 O Playwright sobe a API (porta 3181) e o Vite (porta 3182); `E2E_API_PORT` e `E2E_WEB_PORT` mudam as portas. Os fluxos criam os próprios colaboradores, então rodam de novo sem apagar o banco. No GitHub Actions eles rodam no job `e2e`, que guarda o relatório e os traces quando um fluxo falha.
@@ -261,7 +289,7 @@ Sobre o lint do front-end (`frontend/eslint.config.js`):
 
 Sistema desenvolvido e arquitetado por:
 
-* **Henrique Jeremias** ([@devjeremias](https://www.google.com/search?q=https://github.com/devjeremias))
+* **Henrique Jeremias** ([@devjeremias](https://github.com/devjeremias))
 * **Marcos**
 * **Yuri**
 * **Thalison**
