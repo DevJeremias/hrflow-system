@@ -49,7 +49,7 @@ export const rules = {
       messages: { inline: 'Use tokens e componentes do design system; estilo inline não é permitido para {{property}}.' },
     },
     create(context) {
-      const arquivo = context.getFilename().replaceAll('\\', '/');
+      const arquivo = context.filename.replaceAll('\\', '/');
       const excecao = [...EXCECOES_STYLE].find(([sufixo]) => arquivo.endsWith(`/${sufixo}`))?.[1] ?? new Set();
       return {
         JSXAttribute(node) {
@@ -83,7 +83,7 @@ export const rules = {
       messages: { boundary: 'components/ui não pode depender de {{source}}; mova o padrão visual para o design system.' },
     },
     create(context) {
-      const arquivo = context.getFilename().replaceAll('\\', '/');
+      const arquivo = context.filename.replaceAll('\\', '/');
       if (!archivoEnDesignSystem(arquivo)) return {};
       return {
         ImportDeclaration(node) {
