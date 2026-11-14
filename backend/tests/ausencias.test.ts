@@ -14,6 +14,7 @@ import { criarApp } from '../app.ts';
 import { relogio } from '../modules/ponto/index.ts';
 import { TAMANHO_MAXIMO_DO_ANEXO } from '../modules/ausencias/ausencias.anexo.ts';
 import { calcularHolerite } from '../modules/folha/folha.regras.ts';
+import { criarFuso } from '../shared/utils/fuso.ts';
 
 // Quinta-feira, 3 de outubro de 2026, meio-dia em Belém.
 const HOJE = '2026-10-03';
@@ -50,9 +51,11 @@ describe('férias e afastamentos', { skip: banco.skip }, () => {
 
     // Cada teste que mexe nas ausências começa de uma tabela vazia, para o saldo e as sobreposições não vazarem.
     const limpar = () => db.query('DELETE FROM ausencias');
-    const dataAtualDoBanco = async () => {
-        const [[linha]] = await db.query<RowDataPacket[]>('SELECT DATE_FORMAT(CURRENT_DATE(), \'%Y-%m-%d\') AS hoje');
-        return String(linha.hoje);
+    // O pedido nasce com o relógio do banco (criado_em), não o relógio congelado, e a API o mostra no fuso da
+    // empresa: entre 21h e meia-noite em Belém, o dia UTC do banco já é o seguinte.
+    const hojeNaEmpresa = async () => {
+        const [[linha]] = await db.query<RowDataPacket[]>('SELECT UNIX_TIMESTAMP() AS agora');
+        return criarFuso().diaLocal(Number(linha.agora));
     };
 
     const colaborador = async (rotulo: string, empresaId: number, { admissao = '2024-01-15', salario = 3000, perfil = 'Colaborador' } = {}) => {
@@ -99,7 +102,7 @@ describe('férias e afastamentos', { skip: banco.skip }, () => {
         before(limpar);
 
         it('férias com anexo nascem pendentes e o colaborador as vê na própria lista', async () => {
-            const feitoHoje = await dataAtualDoBanco();
+            const feitoHoje = await hojeNaEmpresa();
             const { status, corpo } = await pedir(tokens.Caio, { inicio: '2026-10-19', fim: '2026-10-28', anexo: anexo() });
             assert.equal(status, 201);
             assert.deepEqual(
