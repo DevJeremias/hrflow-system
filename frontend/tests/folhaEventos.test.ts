@@ -8,12 +8,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { act, botaoPorTexto, clicar, createElement, desmontarTudo, dom, esperar, iniciarVite, montar, porRole } from './support/ui.ts';
 import { novoQueryClient } from './support/consulta.ts';
 import { json, type Chamada } from './support/apiAdmin.ts';
+import { mesAtualNoFuso, rotuloDaCompetencia } from '../src/utils/competencia.ts';
 import type { ComponentType } from 'react';
 import type { ViteDevServer } from 'vite';
 
 Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: dom.window.localStorage });
 
-const COMPETENCIA = '2026-10';
+// A tela abre no mês corrente: uma competência fixa quebraria o teste na virada do mês.
+const COMPETENCIA = mesAtualNoFuso();
 const EMPRESA = { razaoSocial: 'Empresa Ficticia Alfa Ltda', cnpj: '11222333000181' };
 const SEM_LANCAMENTOS = { adiantamento: 0, valeTransporte: 0, valeRefeicao: 0, planoSaude: 0 };
 
@@ -231,7 +233,7 @@ test('os lançamentos do colaborador: mostra o que veio do ponto, salva os quatr
   assert.deepEqual(gravacao?.corpo, { adiantamento: 300, valeTransporte: 500.5, valeRefeicao: 0, planoSaude: 0 });
   assert.ok(chamadas.slice(antes).some((c) => c.metodo === 'GET' && c.caminho === `/folha/competencias/${COMPETENCIA}`), 'a folha é lida de novo');
   assert.equal(porRole(document, 'dialog'), null, 'o modal fecha ao salvar');
-  assert.match(texto(document.body), /Lançamentos de Ana Souza Ficticia salvos: o holerite de outubro de 2026 foi recalculado\./);
+  assert.match(texto(document.body), new RegExp(`Lançamentos de Ana Souza Ficticia salvos: o holerite de ${rotuloDaCompetencia(COMPETENCIA)} foi recalculado\\.`));
 
   // Reaberto, já traz o que foi lançado.
   await clicar(botaoPorTexto(host, /Lançamentos de Ana Souza Ficticia/));

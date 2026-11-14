@@ -29,15 +29,19 @@ const consultaDe = <T>(req: Request): T => {
     return req.dadosValidados.query as T;
 };
 
+// O nome vai sempre entre aspas: o res.attachment do Express o omite quando o nome é um token, e o
+// front-end (utils/arquivo.ts) só lê o filename entre aspas.
+const anexo = (nome: string) => `attachment; filename="${nome}"`;
+
 // Números de uma empresa que não devem ficar em cache de proxy nem no disco compartilhado.
 const responder = async <T>(res: Response, relatorio: Relatorio<T>, formato: Formato) => {
     res.set('Cache-Control', 'no-store');
     if (formato === 'json') return res.json(relatorio.dados);
     if (formato === 'csv') {
-        res.type('text/csv; charset=utf-8').attachment(`${relatorio.tabela.arquivo}.csv`);
+        res.type('text/csv; charset=utf-8').setHeader('Content-Disposition', anexo(`${relatorio.tabela.arquivo}.csv`));
         return res.send(gerarCsv(relatorio.tabela));
     }
-    res.type('application/pdf').attachment(`${relatorio.tabela.arquivo}.pdf`);
+    res.type('application/pdf').setHeader('Content-Disposition', anexo(`${relatorio.tabela.arquivo}.pdf`));
     return res.send(await gerarPdf(relatorio.tabela));
 };
 
